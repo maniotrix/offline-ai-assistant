@@ -30,7 +30,9 @@ class WebSocketService {
     private reconnectDelay = 1000;
 
     connect(): void {
-        this.socket = new WebSocket('ws://localhost:8000/ws');
+        // Use window.location.hostname to get the current host (either localhost or IP address)
+        const wsUrl = `ws://${window.location.hostname}:8000/ws`;
+        this.socket = new WebSocket(wsUrl);
         
         this.socket.onopen = () => {
             console.log('WebSocket Connected');
