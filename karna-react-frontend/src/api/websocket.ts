@@ -1,5 +1,3 @@
-import io from 'socket.io-client';
-
 interface Status {
     vision: string;
     language: string;
@@ -25,84 +23,87 @@ interface SocketError {
 }
 
 class WebSocketService {
-    private socket: SocketIOClient.Socket | null = null;
+    private socket: WebSocket | null = null;
     private messageHandlers: Map<string, (data: any) => void> = new Map();
-    private rpcCallbacks: Map<string, (response: RPCResponse) => void> = new Map();
+    private reconnectAttempts = 0;
+    private maxReconnectAttempts = 5;
+    private reconnectDelay = 1000;
 
     connect(): void {
-        this.socket = io('ws://localhost:8000/ws', {
-            reconnection: true,
-            reconnectionAttempts: 5,
-            reconnectionDelay: 1000,
-            reconnectionDelayMax: 5000,
-            timeout: 20000,
-            transports: ['websocket']
-        });
+        this.socket = new WebSocket('ws://localhost:8000/ws');
         
-        this.socket.on('connect', () => {
+        this.socket.onopen = () => {
             console.log('WebSocket Connected');
+            this.reconnectAttempts = 0;
             this.requestStatus().catch(console.error);
-        });
+        };
 
-        this.socket.on('rpc_response', (response: RPCResponse) => {
-            const handler = this.messageHandlers.get(response.type);
-            if (handler) {
-                handler(response.data);
+        this.socket.onmessage = (event) => {
+            try {
+                const response: RPCResponse = JSON.parse(event.data);
+                const handler = this.messageHandlers.get(response.type);
+                if (handler) {
+                    handler(response.data);
+                }
+            } catch (error) {
+                console.error('Failed to parse WebSocket message:', error);
             }
-        });
+        };
 
-        this.socket.on('error', (error: SocketError) => {
+        this.socket.onerror = (error) => {
             console.error('WebSocket error:', error);
             this.messageHandlers.forEach(handler => 
-                handler({ error: error.message || 'Unknown error occurred' })
+                handler({ error: 'WebSocket error occurred' })
             );
-        });
+        };
 
-        this.socket.on('disconnect', () => {
-            console.log('WebSocket disconnected, attempting to reconnect...');
-        });
+        this.socket.onclose = () => {
+            console.log('WebSocket disconnected');
+            if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                setTimeout(() => {
+                    this.reconnectAttempts++;
+                    console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
+                    this.connect();
+                }, this.reconnectDelay);
+            }
+        };
     }
 
     async sendCommand(command: string): Promise<any> {
-        if (!this.socket?.connected) {
+        if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
             throw new Error('WebSocket is not connected');
         }
         
+        const request: RPCRequest = {
+            method: 'execute_command',
+            params: { command }
+        };
+        
+        this.socket.send(JSON.stringify(request));
+        
         return new Promise((resolve, reject) => {
-            this.socket!.emit('rpc', {
-                method: 'execute_command',
-                params: { command }
-            } as RPCRequest, (response: RPCResponse) => {
-                if (response.type === 'error') {
-                    reject(new Error(response.data));
+            const handler = (response: any) => {
+                if (response.error) {
+                    reject(new Error(response.error));
                 } else {
-                    resolve(response.data);
+                    resolve(response);
                 }
-            });
+            };
+            this.messageHandlers.set('command_response', handler);
         });
     }
 
     async requestStatus(): Promise<void> {
-        if (!this.socket?.connected) {
+        if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
             throw new Error('WebSocket is not connected');
         }
 
-        return new Promise((resolve, reject) => {
-            this.socket!.emit('rpc', {
-                method: 'get_status',
-                params: {}
-            } as RPCRequest, (response: RPCResponse) => {
-                if (response.type === 'error') {
-                    reject(new Error(response.data));
-                } else {
-                    const handler = this.messageHandlers.get('status_update');
-                    if (handler) {
-                        handler(response.data as Status);
-                    }
-                    resolve();
-                }
-            });
-        });
+        const request: RPCRequest = {
+            method: 'get_status',
+            params: {}
+        };
+        
+        this.socket.send(JSON.stringify(request));
     }
 
     onStatusUpdate(handler: (status: Status) => void): void {
@@ -114,7 +115,10 @@ class WebSocketService {
     }
 
     disconnect(): void {
-        this.socket?.disconnect();
+        if (this.socket) {
+            this.socket.close();
+            this.socket = null;
+        }
     }
 }
 
