@@ -39,6 +39,7 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         print(f"WebSocket error: {e}")
     finally:
+        await websocket.close()
         websocket_manager.disconnect(websocket)
 
 @router.get("/api/status")
@@ -67,13 +68,18 @@ async def process_command(command_text: str):
     global current_status
     try:
         command_processor = get_command_processor_instance()
-        result = command_processor.process_command(command_text)
+        result = await command_processor.process_command(command_text)
         current_status = {
             "operation": "command_execution",
             "status": "completed",
             "message": "Command executed successfully",
             "progress": 100
         }
+        # Broadcast status update to all connected WebSocket clients
+        await websocket_manager.broadcast({
+            "type": "status_update",
+            "data": current_status
+        })
     except Exception as e:
         current_status = {
             "operation": "command_execution",
@@ -81,3 +87,7 @@ async def process_command(command_text: str):
             "message": str(e),
             "progress": 0
         }
+        await websocket_manager.broadcast({
+            "type": "error",
+            "data": str(e)
+        })

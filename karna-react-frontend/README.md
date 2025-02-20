@@ -45,6 +45,7 @@ bbox-editor/
 │   │   └── types.ts              # TypeScript interfaces for bounding boxes
 │   ├── api/
 │   │   └── api.ts                # API calls for fetching and saving data
+│   │   └── websocket.ts          # WebSocket service for real-time communication
 │   ├── App.tsx                   # Main application container
 │   ├── main.tsx                  # React entry point
 │   ├── index.css                  # Global styles (Tailwind)
@@ -120,6 +121,107 @@ Make sure your **Flask backend** is running at **`http://localhost:5000`**.
 - `POST /api/save_bboxes` → Save updated bounding box data.
 
 ---
+
+# Karna React Frontend - WebSocket Implementation
+
+## Overview
+The frontend implements a WebSocket client using Socket.IO to establish real-time communication with the backend. The implementation is encapsulated in the `WebSocketService` class.
+
+## Architecture
+
+### WebSocket Service
+Located in `src/api/websocket.ts`, the WebSocketService provides:
+- Connection management
+- RPC-style message handling
+- Status subscription
+- Error handling
+
+## Implementation Details
+
+### Service Structure
+```typescript
+class WebSocketService {
+    private socket: Socket | null;
+    private messageHandlers: Map<string, (data: any) => void>;
+    private rpcCallbacks: Map<string, (response: RPCResponse) => void>;
+}
+```
+
+### Key Features
+
+#### Connection Management
+- Automatic reconnection with configurable attempts
+- Connection state monitoring
+- Clean disconnection handling
+
+#### Message Types
+```typescript
+interface RPCResponse {
+    type: 'command_response' | 'status_update' | 'error';
+    data: any;
+}
+
+interface RPCRequest {
+    method: string;
+    params: any;
+}
+```
+
+#### Status Subscription
+```typescript
+// Subscribe to status updates
+websocketService.onStatusUpdate((status) => {
+    // Handle status update
+});
+
+// Request current status
+await websocketService.requestStatus();
+```
+
+#### Command Execution
+```typescript
+// Send a command
+await websocketService.sendCommand("your command here");
+
+// Listen for command responses
+websocketService.onCommandResponse((response) => {
+    // Handle command response
+});
+```
+
+## Usage in Components
+
+### Basic Setup
+```typescript
+import { websocketService } from '../api/websocket';
+
+useEffect(() => {
+    // Connect when component mounts
+    websocketService.connect();
+
+    return () => {
+        // Cleanup on unmount
+        websocketService.disconnect();
+    };
+}, []);
+```
+
+### Error Handling
+- All WebSocket operations are Promise-based
+- Errors are properly typed and propagated
+- Connection errors trigger automatic reconnection
+
+## Integration with Backend
+- Connects to backend WebSocket endpoint at `ws://localhost:8000/ws`
+- Uses Socket.IO for reliable bi-directional communication
+- Implements the same message protocol as defined in the backend
+
+## Best Practices
+1. Use the singleton WebSocketService instance
+2. Always handle connection errors
+3. Clean up subscriptions on component unmount
+4. Use TypeScript for type safety
+5. Implement error boundaries for WebSocket-related errors
 
 ## 🎯 Future Enhancements
 - ✅ **Undo/Redo support**.

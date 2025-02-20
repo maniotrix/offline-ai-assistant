@@ -100,7 +100,8 @@ def get_orchestrator_instance(model_paths: dict = None):
         _orchestrator_instance = AssistantOrchestrator(model_paths)
     return _orchestrator_instance
 
-async def main():
+@app.on_event("startup")
+async def startup_event():
     # Configure logging
     logging.basicConfig(
         level=logging.INFO,
@@ -117,26 +118,14 @@ async def main():
         'tokenizer': str(base_path / 'models/language/smol_lm2/tokenizer'),
     }
 
-    # Initialize orchestrator
+    # Initialize and start orchestrator
     assistant = get_orchestrator_instance(model_paths)
-    
-    try:
-        # Start services
-        await assistant.start()
-        
-        # Main loop
-        while True:
-            command = input("Enter command (or 'exit' to quit): ")
-            if command.lower() == 'exit':
-                break
-                
-            result = await assistant.process_command(command)
-            print(f"Command result: {result}")
-            
-    finally:
-        # Cleanup
-        await assistant.stop()
+    await assistant.start()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    assistant = get_orchestrator_instance()
+    await assistant.stop()
 
 if __name__ == "__main__":
-    asyncio.run(main())
     uvicorn.run(app, host="0.0.0.0", port=8000)

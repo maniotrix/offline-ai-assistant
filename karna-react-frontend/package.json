@@ -9,8 +9,10 @@
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
+    "@microsoft/signalr": "^8.0.7",
     "@mui/icons-material": "^6.4.3",
     "@mui/material": "^6.4.3",
+    "@types/socket.io-client": "^1.4.36",
     "easy-peasy": "^6.0.5",
     "fabric": "^5.2.4",
     "konva": "^9.3.18",
@@ -20,6 +22,7 @@
     "react-konva": "^18.0.0",
     "react-router-dom": "^6.29.0",
     "react-scrollbars-custom": "^4.1.1",
+    "socket.io-client": "^4.8.1",
     "uuid": "^11.0.5",
     "zustand": "^4.1.0"
   },
