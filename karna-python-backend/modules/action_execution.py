@@ -1,4 +1,4 @@
-from base import BaseService
+from base import BaseService, SingletonMeta
 import pyautogui
 from typing import Dict, Tuple, Optional
 import asyncio
@@ -12,12 +12,14 @@ class ActionResult:
     coordinates: Optional[Tuple[int, int]] = None
     element_id: Optional[str] = None
 
-class ActionService(BaseService):
+class ActionService(BaseService, metaclass=SingletonMeta):
     def __init__(self):
-        super().__init__()
-        self._action_queue = asyncio.Queue()
-        self._running_actions = set()
-        pyautogui.FAILSAFE = True  # Enable failsafe
+        if not hasattr(self, '_initialized'):
+            super().__init__()
+            self._action_queue = asyncio.Queue()
+            self._running_actions = set()
+            pyautogui.FAILSAFE = True  # Enable failsafe
+            self._initialized = True
         
     async def initialize(self) -> None:
         """Initialize action service"""
@@ -126,3 +128,12 @@ class ActionService(BaseService):
         # Implement validation logic based on your requirements
         # This is a placeholder implementation
         return result.success
+
+# Singleton instance getter
+_action_service_instance = None
+
+def get_action_service_instance():
+    global _action_service_instance
+    if _action_service_instance is None:
+        _action_service_instance = ActionService()
+    return _action_service_instance

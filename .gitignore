@@ -1,14 +1,8 @@
-# .gitignore
-
-# Byte-compiled / optimized / DLL files
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
-
-# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -21,65 +15,80 @@ lib64/
 parts/
 sdist/
 var/
+wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 
-# PyInstaller
-*.manifest
-*.spec
+# Virtual Environment
+venv/
+env/
+ENV/
 
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
 
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
+# Project specific
+data/screenshots/*
+data/annotations/*
+!data/screenshots/.gitkeep
+!data/annotations/.gitkeep
+models/vision/*/*.pth
+models/language/*/*.pth
+models/*.pth
+*.onnx
+*.pt
+*.pth
 
-# Translations
-*.mo
-*.pot
-
-# Django stuff
+# Logs and databases
 *.log
+*.sqlite3
+*.db
 
-# Scrapy stuff:
-.scrapy
+# Environment variables
+.env
+.env.local
+.env.*.local
 
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-target/
+# Cache
+.cache/
+.pytest_cache/
+.coverage
+htmlcov/
 
 # Jupyter Notebook
 .ipynb_checkpoints
 
-# IPython
-profile_default/
-ipython_config.py
+# React & Node.js
+node_modules/
+coverage/
+build/
+.env.development.local
+.env.test.local
+.env.production.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp/
+.pnp.js
 
-# Virtual environment
-venv/
-ENV/
-env/
-.venv/
+# React testing
+/coverage
 
-# VS Code settings
-.vscode/
+# React production
+/build
 
-# Windows specific files
-Thumbs.db
-ehthumbs.db
+# React misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# Others
-*.swp
-*~
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts

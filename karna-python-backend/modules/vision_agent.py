@@ -1,4 +1,4 @@
-from base import BaseService
+from base import BaseService, SingletonMeta
 import numpy as np
 import torch
 from typing import Optional, Dict, Tuple
@@ -7,15 +7,17 @@ import mss
 import cv2
 from PIL import Image
 
-class VisionService(BaseService):
+class VisionService(BaseService, metaclass=SingletonMeta):
     def __init__(self, model_path: str, config_path: str):
-        super().__init__()
-        self.model_path = model_path
-        self.config_path = config_path
-        self.screen_capture = mss.mss()
-        self.model: Optional[torch.nn.Module] = None
-        self._last_frame: Optional[np.ndarray] = None
-        self._frame_lock = asyncio.Lock()
+        if not hasattr(self, '_initialized'):
+            super().__init__()
+            self.model_path = model_path
+            self.config_path = config_path
+            self.screen_capture = mss.mss()
+            self.model: Optional[torch.nn.Module] = None
+            self._last_frame: Optional[np.ndarray] = None
+            self._frame_lock = asyncio.Lock()
+            self._initialized = True
         
     async def initialize(self) -> None:
         """Initialize YOLO model with ONNX optimization"""
@@ -82,3 +84,14 @@ class VisionService(BaseService):
             "boxes": detections[0] if isinstance(detections, tuple) else detections,
             "timestamp": asyncio.get_event_loop().time()
         }
+
+# Singleton instance getter
+_vision_service_instance = None
+
+def get_vision_service_instance(model_path: str = None, config_path: str = None):
+    global _vision_service_instance
+    if _vision_service_instance is None:
+        if model_path is None or config_path is None:
+            raise ValueError("model_path and config_path are required for first initialization")
+        _vision_service_instance = VisionService(model_path, config_path)
+    return _vision_service_instance

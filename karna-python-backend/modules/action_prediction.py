@@ -1,4 +1,4 @@
-from base import BaseService
+from base import BaseService, SingletonMeta
 import torch
 from typing import Dict, Optional, List
 import json
@@ -13,16 +13,18 @@ class Intent:
     parameters: Dict
     raw_output: Dict
 
-class LanguageService(BaseService):
+class LanguageService(BaseService, metaclass=SingletonMeta):
     def __init__(self, model_path: str, config_path: str, tokenizer_path: str):
-        super().__init__()
-        self.model_path = model_path
-        self.config_path = config_path
-        self.tokenizer_path = tokenizer_path
-        self.model = None
-        self.tokenizer = None
-        self._request_queue = asyncio.Queue()
-        self._batch_size = 4  # Configurable batch size for efficient processing
+        if not hasattr(self, '_initialized'):
+            super().__init__()
+            self.model_path = model_path
+            self.config_path = config_path
+            self.tokenizer_path = tokenizer_path
+            self.model = None
+            self.tokenizer = None
+            self._request_queue = asyncio.Queue()
+            self._batch_size = 4  # Configurable batch size for efficient processing
+            self._initialized = True
         
     async def initialize(self) -> None:
         """Initialize language model and tokenizer"""
@@ -155,3 +157,14 @@ class LanguageService(BaseService):
                 results.append(intent)
                 
             return results
+
+# Singleton instance getter
+_language_service_instance = None
+
+def get_language_service_instance(model_path: str = None, config_path: str = None, tokenizer_path: str = None):
+    global _language_service_instance
+    if _language_service_instance is None:
+        if model_path is None or config_path is None or tokenizer_path is None:
+            raise ValueError("model_path, config_path and tokenizer_path are required for first initialization")
+        _language_service_instance = LanguageService(model_path, config_path, tokenizer_path)
+    return _language_service_instance

@@ -4,9 +4,10 @@ import CanvasEditor from "./components/CanvasEditor/CanvasEditor";
 import ClassSelector from "./components/ClassSelector/ClassSelector";
 import Header from "./components/Header/Header";
 import Homepage from "./components/home/Homepage";
-import { fetchAnnotations } from "./api/api";
+import { fetchAnnotations, subscribeToStatus } from "./api/api";
 import useAnnotationStore from "./stores/annotationStore";
 import { Box } from "@mui/material";
+import { websocketService } from "./api/websocket";
 
 const EditorLayout = ({ imageUrl, onCancel }: { imageUrl: string | null, onCancel: () => void }) => (
   <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>
@@ -21,6 +22,22 @@ const EditorLayout = ({ imageUrl, onCancel }: { imageUrl: string | null, onCance
 const App: React.FC = () => {
   const { setAnnotations } = useAnnotationStore();
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Initialize WebSocket connection
+    websocketService.connect();
+
+    // Subscribe to status updates
+    subscribeToStatus((status) => {
+      console.log('Status update received:', status);
+      // Handle status updates here
+    });
+
+    // Cleanup on unmount
+    return () => {
+      websocketService.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     const loadAnnotations = async () => {
