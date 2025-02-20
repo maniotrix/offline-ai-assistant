@@ -1,0 +1,29 @@
+/* Ensure Tailwind CSS is properly installed and configured */
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+/* Custom global styles */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: sans-serif;
+}
+
+/* Header styling */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  background-color: #1976d2;
+  color: white;
+  font-size: 1.2rem;
+  font-weight: bold;
+  box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.2);
+  height: 64px;
+  position: fixed;
+  top: 0;
+  width: 100%;
+  z-index: 1000;
+}
