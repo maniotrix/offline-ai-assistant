@@ -10,6 +10,8 @@ export default defineConfig({
         target: 'http://localhost:8000',
         changeOrigin: true,
       }
-    }
+    },
+    host: true, // Listen on all local IPs
+    port: 5173
   }
 })
