@@ -1,13 +1,11 @@
 import asyncio
 import logging
 from pathlib import Path
-from fastapi import FastAPI, WebSocket, BackgroundTasks
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Dict, Any, Optional
 import uvicorn
-from pydantic import BaseModel
 from base import SingletonMeta, ServiceManager
-from modules.command_handler.command_processor import get_command_processor_instance
+from api import setup_routes
 from modules.vision_agent import get_vision_service_instance
 from modules.action_prediction import get_language_service_instance
 from modules.action_execution import get_action_service_instance
@@ -23,116 +21,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize components using singleton getters
-command_processor = get_command_processor_instance()
-
-# Store active websocket connections
-active_connections: Dict[int, WebSocket] = {}
-
-# Store current operation status
-current_status = {
-    "operation": None,
-    "status": "idle",
-    "message": "",
-    "progress": 0
-}
-
-class Command(BaseModel):
-    text: str
-
-class Status(BaseModel):
-    operation: Optional[str]
-    status: str
-    message: str
-    progress: int
-
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
-
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    connection_id = id(websocket)
-    active_connections[connection_id] = websocket
-    
-    try:
-        while True:
-            data = await websocket.receive_json()
-            
-            # Handle different types of messages
-            if data["type"] == "command":
-                # Process AI command
-                result = await command_processor.process_command(data["command"])
-                await websocket.send_json({
-                    "type": "command_response",
-                    "data": result
-                })
-                
-            elif data["type"] == "status_request":
-                # Get service instances
-                vision_service = get_vision_service_instance()
-                language_service = get_language_service_instance()
-                command_processor = get_command_processor_instance()
-                
-                # Send current AI system status
-                status = {
-                    "vision": vision_service.get_status() if hasattr(vision_service, 'get_status') else "running",
-                    "language": language_service.get_status() if hasattr(language_service, 'get_status') else "running",
-                    "command": command_processor.get_status() if hasattr(command_processor, 'get_status') else "running"
-                }
-                await websocket.send_json({
-                    "type": "status_update",
-                    "data": status
-                })
-    
-    except Exception as e:
-        print(f"WebSocket error: {e}")
-    finally:
-        del active_connections[connection_id]
-
-@app.get("/api/status")
-async def get_status():
-    return current_status
-
-@app.post("/api/execute_command")
-async def execute_command(command: Command, background_tasks: BackgroundTasks):
-    global current_status
-    current_status = {
-        "operation": "command_execution",
-        "status": "running",
-        "message": f"Processing command: {command.text}",
-        "progress": 0
-    }
-    
-    # Process command in background
-    background_tasks.add_task(process_command, command.text)
-    return {"message": "Command execution started"}
-
-async def process_command(command_text: str):
-    global current_status
-    try:
-        # Process command using existing modules
-        result = command_processor.process_command(command_text)
-        current_status = {
-            "operation": "command_execution",
-            "status": "completed",
-            "message": "Command executed successfully",
-            "progress": 100
-        }
-    except Exception as e:
-        current_status = {
-            "operation": "command_execution",
-            "status": "error",
-            "message": str(e),
-            "progress": 0
-        }
-
-@app.get("/api/screenshot")
-async def get_screenshot():
-    vision_service = get_vision_service_instance()
-    screenshot = await vision_service.capture_screen()
-    return {"screenshot": screenshot}
+# Setup routes
+setup_routes(app)
 
 class AssistantOrchestrator(metaclass=SingletonMeta):
     def __init__(self, model_paths: dict):
