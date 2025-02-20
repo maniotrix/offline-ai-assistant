@@ -3,8 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import CanvasEditor from "./components/CanvasEditor/CanvasEditor";
 import ClassSelector from "./components/ClassSelector/ClassSelector";
 import Header from "./components/Header/Header";
-import Homepage from "./components/home/Homepage";
-import { fetchAnnotations, subscribeToStatus } from "./api/api";
+import Homepage from "./components/Home/Homepage";
+import { fetchAnnotations } from "./api/api";
 import useAnnotationStore from "./stores/annotationStore";
 import { Box } from "@mui/material";
 import { websocketService } from "./api/websocket";
@@ -26,12 +26,6 @@ const App: React.FC = () => {
   useEffect(() => {
     // Initialize WebSocket connection
     websocketService.connect();
-
-    // Subscribe to status updates
-    subscribeToStatus((status) => {
-      console.log('Status update received:', status);
-      // Handle status updates here
-    });
 
     // Cleanup on unmount
     return () => {

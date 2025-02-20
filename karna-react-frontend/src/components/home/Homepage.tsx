@@ -1,38 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Paper, Typography, LinearProgress, TextField, Button } from '@mui/material';
-import { executeCommand, getStatus, getScreenshot, Status } from '../../api/api';
+import { Box, Paper, Typography, TextField, Button } from '@mui/material';
+import { executeCommand, getScreenshot, Status, subscribeToStatus } from '../../api/api';
 import { useNavigate } from 'react-router-dom';
 import './Homepage.css';
 
 const Homepage: React.FC = () => {
   const [status, setStatus] = useState<Status>({ 
-    operation: null, 
-    status: 'idle', 
-    message: '', 
-    progress: 0 
+    vision: '',
+    language: '',
+    command: ''
   });
   const [command, setCommand] = useState('');
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  // Poll status every 2 seconds
   useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const currentStatus = await getStatus();
-        setStatus(currentStatus);
-        
-        // Fetch new screenshot when status changes
-        if (currentStatus.status === 'completed') {
-          const newScreenshot = await getScreenshot();
-          setScreenshot(newScreenshot);
-        }
-      } catch (error) {
-        console.error('Failed to fetch status:', error);
-      }
-    }, 2000);
-
-    return () => clearInterval(interval);
+    // Subscribe to status updates directly
+    subscribeToStatus((newStatus) => {
+      console.log('Status update received:', newStatus);
+      setStatus(newStatus);
+      
+      // Fetch new screenshot when there's a command status
+      // if (newStatus.command) {
+      //   getScreenshot().then(setScreenshot).catch(console.error);
+      // }
+    });
   }, []);
 
   const handleCommandSubmit = async () => {
@@ -50,17 +42,14 @@ const Homepage: React.FC = () => {
         <Typography variant="h5" gutterBottom>AI Assistant Status</Typography>
         <Box sx={{ mb: 2 }}>
           <Typography variant="body1">
-            Operation: {status.operation || 'None'}
+            Vision Status: {status.vision || 'Idle'}
           </Typography>
           <Typography variant="body1">
-            Status: {status.status}
+            Language Status: {status.language || 'Idle'}
           </Typography>
           <Typography variant="body1" gutterBottom>
-            {status.message}
+            Command Status: {status.command || 'No active command'}
           </Typography>
-          {status.status === 'running' && (
-            <LinearProgress variant="determinate" value={status.progress} />
-          )}
         </Box>
 
         <Box sx={{ mt: 3 }}>
@@ -74,7 +63,7 @@ const Homepage: React.FC = () => {
           <Button 
             variant="contained" 
             onClick={handleCommandSubmit}
-            disabled={status.status === 'running'}
+            disabled={!!status.command} // Disable when there's an active command
           >
             Execute Command
           </Button>
