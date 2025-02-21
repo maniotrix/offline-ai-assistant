@@ -29,6 +29,18 @@ current_status = {
 async def health_check():
     return {"status": "healthy"}
 
+@router.on_event("startup")
+async def startup_event():
+    # Initialize services
+    command_processor = get_command_processor_instance()
+    await command_processor.initialize()
+
+@router.on_event("shutdown")
+async def shutdown_event():
+    # Cleanup services
+    command_processor = get_command_processor_instance()
+    await command_processor.shutdown()
+
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket_manager.connect(websocket)
@@ -73,9 +85,9 @@ async def process_command(command_text: str):
             "operation": "command_execution",
             "status": "completed",
             "message": "Command executed successfully",
-            "progress": 100
+            "progress": 100,
+            "result": result
         }
-        # Broadcast status update to all connected WebSocket clients
         await websocket_manager.broadcast({
             "type": "status_update",
             "data": current_status

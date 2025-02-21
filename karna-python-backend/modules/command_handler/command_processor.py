@@ -3,24 +3,24 @@ from .command_keys import CommandKeys
 import logging
 import json
 import os
+import asyncio
 
 _LOGTAG_ = "[Command-Module]" 
-logger = GlobalLogger(_LOGTAG_, level=logging.DEBUG).logger  # <-- Use module name as tag
+logger = GlobalLogger(_LOGTAG_, level=logging.DEBUG).logger
 
 class _BaseCommandProcessor:
-
-    def validate(self, data):
+    async def validate(self, data):
         """Validate the input data."""
         raise NotImplementedError("Subclasses should implement this method")
 
-    def preprocess(self, data):
+    async def preprocess(self, data):
         """Preprocess the input data before processing."""
         raise NotImplementedError("Subclasses should implement this method")
     
-    def process(self, data):
+    async def process_command(self, data):
         raise NotImplementedError("Subclasses should implement this method")
 
-    def postprocess(self, data):
+    async def postprocess(self, data):
         """Postprocess the data after processing."""
         raise NotImplementedError("Subclasses should implement this method")
 
@@ -29,36 +29,52 @@ class _CommandProcessor(_BaseCommandProcessor, metaclass=SingletonMeta):
         if not hasattr(self, '_initialized'):
             super(_CommandProcessor, self).__init__(*args, **kwargs)
             self._initialized = True
-            # Load stored commands
+            self._request_queue = asyncio.Queue()
             self.commands_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
                                             'data', 'commands-store.json')
-    
-    def preprocess(self, data):
-        # Preprocess the input data before processing
-        # Clean and extract relevant information from the string
-        # Parse a string to dict without argparse using command_keys
-        data_dict = {}
-        parts = data.split(",")
-        for part in parts:
-            part = part.strip()
-            if part.lower().startswith('domain'):
-                # Extract domain value
-                tokens = part.split(' ', 1)
-                if len(tokens) > 1:
-                    data_dict[CommandKeys.TASK_DOMAIN_ID.value] = tokens[1].strip()
-            elif part.lower().startswith('use keys'):
-                # Instruction segment to use keys from command_keys; can be ignored
-                continue
+            self._resources = {}
+
+    async def initialize(self) -> None:
+        """Initialize command processor resources"""
+        try:
+            # Load commands file
+            if os.path.exists(self.commands_file):
+                with open(self.commands_file, 'r') as f:
+                    self._resources['commands'] = json.load(f)
             else:
-                # Assume remaining part is the user command
-                data_dict[CommandKeys.USER_COMMAND.value] = part
+                self._resources['commands'] = {'commands': []}
+                
+        except Exception as e:
+            logger.error(f"Failed to initialize command processor: {str(e)}")
+            raise
+
+    async def shutdown(self) -> None:
+        """Clean up resources"""
+        self._resources.clear()
+    
+    async def preprocess(self, data):
+        # Clean and extract relevant information from the string
+        data_dict = {}
+        if isinstance(data, str):
+            parts = data.split(",")
+            for part in parts:
+                part = part.strip()
+                if part.lower().startswith('domain'):
+                    tokens = part.split(' ', 1)
+                    if len(tokens) > 1:
+                        data_dict[CommandKeys.TASK_DOMAIN_ID.value] = tokens[1].strip()
+                elif part.lower().startswith('use keys'):
+                    continue
+                else:
+                    data_dict[CommandKeys.USER_COMMAND.value] = part
+        else:
+            data_dict = data
         return data_dict
 
-    def validate(self, data):
+    async def validate(self, data):
         """Validate the input data against available commands"""
         try:
-            with open(self.commands_file, 'r') as f:
-                available_commands = json.load(f)
+            available_commands = self._resources.get('commands', {'commands': []})
             
             command = data.get(CommandKeys.USER_COMMAND.value, '').lower()
             domain = data.get(CommandKeys.TASK_DOMAIN_ID.value, '').lower()
@@ -66,12 +82,12 @@ class _CommandProcessor(_BaseCommandProcessor, metaclass=SingletonMeta):
             # Check if command exists
             for cmd in available_commands['commands']:
                 if cmd['name'].lower() == command and cmd['domain'].lower() == domain:
-                    data[CommandKeys.IS_IN_CACHE.value] = cmd['is_in_cache']  # Get is_in_cache from stored command
+                    data[CommandKeys.IS_IN_CACHE.value] = cmd['is_in_cache']
                     data[CommandKeys.UUID.value] = cmd['uuid']
                     return data
             
             data[CommandKeys.IS_IN_CACHE.value] = False
-            data[CommandKeys.UUID.value] = None  # Set UUID to None if command not found
+            data[CommandKeys.UUID.value] = None
             return data
             
         except Exception as e:
@@ -80,50 +96,44 @@ class _CommandProcessor(_BaseCommandProcessor, metaclass=SingletonMeta):
             data[CommandKeys.UUID.value] = None
             return data
 
-    def process(self, data):
+    async def process_command(self, data):
         """
-        Gets the instance of the command processor.
+        Process a command asynchronously.
 
-        Receives:
-            str: A string input (description of the string input can be added here).
+        Args:
+            data: String or dict containing command information
 
         Returns:
-            dict: A dictionary with keys from command keys.
+            dict: A dictionary with processed command data
         """
         logger.debug("Processing data: %s", data)
-        preprocessed_data = self.preprocess(data)
-        processed_data = self.validate(preprocessed_data)
+        preprocessed_data = await self.preprocess(data)
+        processed_data = await self.validate(preprocessed_data)
+        if processed_data[CommandKeys.IS_IN_CACHE.value]:
+            processed_data = await self.postprocess(processed_data)
         return processed_data
 
-    def postprocess(self, data):
-        # Postprocess the data after processing
-        # Example: format the response
-        raise NotImplementedError("Not implemented yet")
+    async def postprocess(self, data):
+        """Post process the command data"""
+        # Add any post-processing logic here
+        return data
 
-# Singleton instance of CommandProcessor
-_command_processor_instance = _CommandProcessor()
+# Singleton instance management
+_command_processor_instance = None
 
 def get_command_processor_instance():
+    global _command_processor_instance
+    if _command_processor_instance is None:
+        _command_processor_instance = _CommandProcessor()
     return _command_processor_instance
 
 if __name__ == "__main__":
-    # Test use case without argparse
-    test_command = "Search cats on youtube, domain youtube.com , use keys from command_keys"
-    command_processor = get_command_processor_instance()
-    processed_command = command_processor.process(test_command)
-    try:
-        logger.info(command_processor.postprocess(processed_command))
-    except Exception as e:
-        logger.info(processed_command)
+    async def test():
+        command_processor = get_command_processor_instance()
+        await command_processor.initialize()
+        test_command = "Search cats on youtube, domain youtube.com , use keys from command_keys"
+        result = await command_processor.process_command(test_command)
+        logger.info(result)
+        await command_processor.shutdown()
 
-    # Example usage with argparse:
-    # import argparse
-    # parser = argparse.ArgumentParser(description="Command Processor for Offline AI Assistant")
-    # parser.add_argument("--command", type=str, required=True, help="The command to process")
-    # args = parser.parse_args()
-    # processed_command = command_processor.process(args.command)
-    # logger.debug(command_processor.postprocess(processed_command))
-
-    # Example usage:
-    # python command_processor.py --command "open browser"
-    # Output: Processed command: Action triggered for intent: example_intent
+    asyncio.run(test())

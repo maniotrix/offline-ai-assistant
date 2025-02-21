@@ -1,0 +1,17 @@
+{
+  "action_predictions": {
+    "uuid": "1",
+    "command_id": "1",
+    "actions": [
+      {
+        "type": "click",
+        "coordinates": { "x": 100, "y": 200 }
+      },
+      {
+        "type": "enter_text",
+        "coordinates": { "x": 300, "y": 400 },
+        "text": "sample text"
+      }
+    ]
+  }
+}

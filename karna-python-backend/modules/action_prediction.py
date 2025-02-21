@@ -5,13 +5,19 @@ import json
 from pathlib import Path
 import asyncio
 from dataclasses import dataclass
+import os
 
 @dataclass
-class Intent:
-    action_type: str
-    confidence: float
-    parameters: Dict
-    raw_output: Dict
+class Action:
+    type: str  # click, enter_text, etc.
+    coordinates: Dict[str, int]  # x, y coordinates
+    text: Optional[str] = None  # for enter_text actions
+
+@dataclass
+class ActionPrediction:
+    uuid: str
+    command_id: str
+    actions: List[Action]
 
 class LanguageService(BaseService, metaclass=SingletonMeta):
     def __init__(self, model_path: str, config_path: str, tokenizer_path: str):
@@ -24,6 +30,11 @@ class LanguageService(BaseService, metaclass=SingletonMeta):
             self.tokenizer = None
             self._request_queue = asyncio.Queue()
             self._batch_size = 4  # Configurable batch size for efficient processing
+            # Add cache file path
+            self.cache_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 
+                                         'data', 'intents-cache.json')
+            self._cache = {}
+            self._load_cache()
             self._initialized = True
         
     async def initialize(self) -> None:
@@ -62,6 +73,60 @@ class LanguageService(BaseService, metaclass=SingletonMeta):
         # This is a placeholder - replace with actual tokenizer initialization
         return None  # Replace with actual tokenizer
 
+    def _load_cache(self):
+        """Load cached commands and their actions from file"""
+        try:
+            if os.path.exists(self.cache_file):
+                with open(self.cache_file, 'r') as f:
+                    self._cache = json.load(f)
+            else:
+                self._cache = {}
+        except Exception as e:
+            self.logger.error(f"Failed to load intent cache: {str(e)}")
+            self._cache = {}
+
+    def _save_cache(self):
+        """Save cache to file"""
+        try:
+            os.makedirs(os.path.dirname(self.cache_file), exist_ok=True)
+            with open(self.cache_file, 'w') as f:
+                json.dump(self._cache, f, indent=2)
+        except Exception as e:
+            self.logger.error(f"Failed to save intent cache: {str(e)}")
+
+    def _convert_cached_to_prediction(self, cached_data: Dict) -> ActionPrediction:
+        """Convert cached JSON data to ActionPrediction object"""
+        actions = []
+        for action_data in cached_data.get('actions', []):
+            actions.append(Action(
+                type=action_data['type'],
+                coordinates=action_data['coordinates'],
+                text=action_data.get('text')
+            ))
+        
+        return ActionPrediction(
+            uuid=cached_data['uuid'],
+            command_id=cached_data['command_id'],
+            actions=actions
+        )
+
+    def _convert_prediction_to_json(self, prediction: ActionPrediction) -> Dict:
+        """Convert ActionPrediction to JSON format"""
+        return {
+            "action_predictions": {
+                "uuid": prediction.uuid,
+                "command_id": prediction.command_id,
+                "actions": [
+                    {
+                        "type": action.type,
+                        "coordinates": action.coordinates,
+                        **({"text": action.text} if action.text is not None else {})
+                    }
+                    for action in prediction.actions
+                ]
+            }
+        }
+
     async def shutdown(self) -> None:
         """Clean up resources"""
         if hasattr(self, '_batch_processor_task'):
@@ -75,11 +140,41 @@ class LanguageService(BaseService, metaclass=SingletonMeta):
         self.tokenizer = None
         self._resources.clear()
 
-    async def recognize_intent(self, text: str) -> Intent:
-        """Queue the intent recognition request and return result"""
+    async def recognize_intent(self, command_id: str, uuid: str = None) -> ActionPrediction:
+        """
+        Recognize intent by first checking cache for the command_id.
+        If found in cache, return cached actions, otherwise use model inference.
+        """
+        # Check cache first
+        cache_key = command_id
+        if cache_key in self._cache:
+            self.logger.debug(f"Found cached actions for command {command_id}")
+            cached_data = self._cache[cache_key]
+            if uuid:  # Update UUID if provided
+                cached_data['uuid'] = uuid
+            return self._convert_cached_to_prediction(cached_data)
+
+        # If not in cache, queue request for model inference
         future = asyncio.Future()
-        await self._request_queue.put((text, future))
-        return await future
+        await self._request_queue.put((command_id, uuid, future))
+        result = await future
+        
+        # Cache the result
+        self._cache[cache_key] = {
+            'uuid': result.uuid,
+            'command_id': result.command_id,
+            'actions': [
+                {
+                    'type': action.type,
+                    'coordinates': action.coordinates,
+                    **({"text": action.text} if action.text is not None else {})
+                }
+                for action in result.actions
+            ]
+        }
+        self._save_cache()
+        
+        return result
 
     async def _process_batch(self) -> None:
         """Background task to process requests in batches for efficiency"""
@@ -102,10 +197,10 @@ class LanguageService(BaseService, metaclass=SingletonMeta):
 
                 # Process batch
                 texts = [item[0] for item in batch]
-                futures = [item[1] for item in batch]
+                futures = [item[2] for item in batch]
                 
                 try:
-                    results = await self._batch_inference(texts)
+                    results = await self._batch_inference(batch)
                     # Set results for all futures
                     for future, result in zip(futures, results):
                         if not future.done():
@@ -118,17 +213,21 @@ class LanguageService(BaseService, metaclass=SingletonMeta):
                             
             except asyncio.CancelledError:
                 # Handle cancellation
-                for _, future in batch:
+                for _, _, future in batch:
                     if not future.done():
                         future.cancel()
                 raise
 
-    async def _batch_inference(self, texts: List[str]) -> List[Intent]:
+    async def _batch_inference(self, requests: List[tuple]) -> List[ActionPrediction]:
         """Run batch inference on the model"""
         if self.model is None:
             raise RuntimeError("Language model not initialized")
 
         with torch.no_grad():
+            # Unpack requests
+            texts = [req[0] for req in requests]
+            uuids = [req[1] for req in requests]
+            
             # Tokenize
             inputs = self.tokenizer(
                 texts,
@@ -143,18 +242,17 @@ class LanguageService(BaseService, metaclass=SingletonMeta):
             # Run inference
             outputs = self.model(**inputs)
             
-            # Process outputs into Intent objects
+            # Process outputs into ActionPrediction objects
             results = []
-            for output in outputs:
-                # Convert model output to Intent object
+            for text, uuid, output in zip(texts, uuids, outputs):
+                # Convert model output to ActionPrediction object
                 # This is a placeholder - implement based on your model's output format
-                intent = Intent(
-                    action_type="",  # Extract from output
-                    confidence=0.0,  # Extract from output
-                    parameters={},   # Extract from output
-                    raw_output={}    # Store raw output
+                prediction = ActionPrediction(
+                    uuid=uuid or "generated_uuid",  # Use provided UUID or generate one
+                    command_id=text,  # Use command_id from request
+                    actions=[]  # Extract actions from model output
                 )
-                results.append(intent)
+                results.append(prediction)
                 
             return results
 
