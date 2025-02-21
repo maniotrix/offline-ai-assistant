@@ -1,0 +1,8 @@
+{
+    "commands": [
+        {
+            "name": "search cats on youtube",
+            "domain": "youtube.com"
+        }
+    ]
+}

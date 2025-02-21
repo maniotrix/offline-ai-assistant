@@ -1,6 +1,8 @@
 from base import SingletonMeta, GlobalLogger
 from .command_keys import CommandKeys
 import logging
+import json
+import os
 
 _LOGTAG_ = "[Command-Module]" 
 logger = GlobalLogger(_LOGTAG_, level=logging.DEBUG).logger  # <-- Use module name as tag
@@ -27,6 +29,9 @@ class _CommandProcessor(_BaseCommandProcessor, metaclass=SingletonMeta):
         if not hasattr(self, '_initialized'):
             super(_CommandProcessor, self).__init__(*args, **kwargs)
             self._initialized = True
+            # Load available commands
+            self.commands_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
+                                            'data', 'available-commands.json')
     
     def preprocess(self, data):
         # Preprocess the input data before processing
@@ -50,8 +55,27 @@ class _CommandProcessor(_BaseCommandProcessor, metaclass=SingletonMeta):
         return data_dict
 
     def validate(self, data):
-        # Validate the input data
-        raise NotImplementedError("Not implemented yet")
+        """Validate the input data against available commands"""
+        try:
+            with open(self.commands_file, 'r') as f:
+                available_commands = json.load(f)
+            
+            command = data.get(CommandKeys.USER_COMMAND.value, '').lower()
+            domain = data.get(CommandKeys.TASK_DOMAIN_ID.value, '').lower()
+            
+            # Check if command exists
+            for cmd in available_commands['commands']:
+                if cmd['name'].lower() == command and cmd['domain'].lower() == domain:
+                    data[CommandKeys.IS_IN_CACHE.value] = True
+                    return data
+            
+            data[CommandKeys.IS_IN_CACHE.value] = False
+            return data
+            
+        except Exception as e:
+            logger.error(f"Error validating command: {str(e)}")
+            data[CommandKeys.IS_IN_CACHE.value] = False
+            return data
 
     def process(self, data):
         """
@@ -65,11 +89,7 @@ class _CommandProcessor(_BaseCommandProcessor, metaclass=SingletonMeta):
         """
         logger.debug("Processing data: %s", data)
         preprocessed_data = self.preprocess(data)
-        processed_data = preprocessed_data
-        try:
-            processed_data = self.validate(preprocessed_data)
-        except NotImplementedError as e:
-            logger.debug("Error while validating data: %s", str(e))
+        processed_data = self.validate(preprocessed_data)
         return processed_data
 
     def postprocess(self, data):

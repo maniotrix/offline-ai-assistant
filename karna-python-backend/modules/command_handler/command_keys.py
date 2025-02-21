@@ -11,5 +11,6 @@ class CommandKeys(Enum):
     """
     USER_COMMAND = 'user-command'
     TASK_DOMAIN_ID = 'task-domain-id'
+    IS_IN_CACHE = False
     # Add more keys as needed
     # Example: NEW_KEY = 'new-key'
