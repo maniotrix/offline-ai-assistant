@@ -29,9 +29,9 @@ class _CommandProcessor(_BaseCommandProcessor, metaclass=SingletonMeta):
         if not hasattr(self, '_initialized'):
             super(_CommandProcessor, self).__init__(*args, **kwargs)
             self._initialized = True
-            # Load available commands
+            # Load stored commands
             self.commands_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
-                                            'data', 'available-commands.json')
+                                            'data', 'commands-store.json')
     
     def preprocess(self, data):
         # Preprocess the input data before processing
@@ -66,15 +66,18 @@ class _CommandProcessor(_BaseCommandProcessor, metaclass=SingletonMeta):
             # Check if command exists
             for cmd in available_commands['commands']:
                 if cmd['name'].lower() == command and cmd['domain'].lower() == domain:
-                    data[CommandKeys.IS_IN_CACHE.value] = True
+                    data[CommandKeys.IS_IN_CACHE.value] = cmd['is_in_cache']  # Get is_in_cache from stored command
+                    data[CommandKeys.UUID.value] = cmd['uuid']
                     return data
             
             data[CommandKeys.IS_IN_CACHE.value] = False
+            data[CommandKeys.UUID.value] = None  # Set UUID to None if command not found
             return data
             
         except Exception as e:
             logger.error(f"Error validating command: {str(e)}")
             data[CommandKeys.IS_IN_CACHE.value] = False
+            data[CommandKeys.UUID.value] = None
             return data
 
     def process(self, data):

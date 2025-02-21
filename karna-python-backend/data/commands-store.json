@@ -1,0 +1,10 @@
+{
+    "commands": [
+        {
+            "uuid": "1",
+            "name": "search cats on youtube",
+            "domain": "youtube.com",
+            "is_in_cache": false
+        }
+    ]
+}
