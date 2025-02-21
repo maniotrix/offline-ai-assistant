@@ -1,9 +1,12 @@
 from fastapi import APIRouter, WebSocket, BackgroundTasks
 from pydantic import BaseModel
 from typing import Optional
+import logging
 from .websocket import WebSocketManager
 from modules.command_handler.command_processor import get_command_processor_instance
 from modules.vision_agent import get_vision_service_instance
+from modules.action_prediction import get_language_service_instance
+from modules.action_execution import get_action_service_instance
 
 router = APIRouter()
 websocket_manager = WebSocketManager()
@@ -31,7 +34,8 @@ async def health_check():
 
 @router.on_event("startup")
 async def startup_event():
-    # Initialize services
+    # Initialize services and logging
+    logging.basicConfig(level=logging.INFO)
     command_processor = get_command_processor_instance()
     await command_processor.initialize()
 
@@ -78,21 +82,80 @@ async def get_screenshot():
 
 async def process_command(command_text: str):
     global current_status
+    logger = logging.getLogger(__name__)
     try:
+        logger.info(f"Processing command: {command_text}")
+        
+        # Step 1: Process command through command processor
         command_processor = get_command_processor_instance()
-        result = await command_processor.process_command(command_text)
+        command_result = await command_processor.process_command(command_text)
+        logger.info("Command processed through command processor")
+        
+        # Update status for command processing
+        current_status.update({
+            "status": "processing",
+            "message": "Command processed, predicting actions...",
+            "progress": 33
+        })
+        logger.info(f"Status update: {current_status}")
+        await websocket_manager.broadcast({
+            "type": "status_update",
+            "data": current_status
+        })
+
+        # Step 2: Get action predictions
+        language_service = get_language_service_instance()
+        action_predictions = await language_service.recognize_intent(command_text)
+        logger.info(f"Action predictions received: {len(action_predictions.actions)} actions")
+        
+        # Update status for action prediction
+        current_status.update({
+            "status": "processing",
+            "message": "Actions predicted, executing...",
+            "progress": 66
+        })
+        logger.info(f"Status update: {current_status}")
+        await websocket_manager.broadcast({
+            "type": "status_update",
+            "data": current_status
+        })
+
+        # Step 3: Execute predicted actions
+        action_service = get_action_service_instance()
+        final_results = []
+        
+        for i, action in enumerate(action_predictions.actions, 1):
+            logger.info(f"Executing action {i}/{len(action_predictions.actions)}: {action.type}")
+            params = {
+                "coordinates": action.coordinates,
+                "text": action.text
+            }
+            result = await action_service.execute_action(action.type, params)
+            logger.info(f"Action {i} result: {result}")
+            final_results.append(result)
+
+        # Update final status
+        success = all(result.success for result in final_results)
         current_status = {
             "operation": "command_execution",
-            "status": "completed",
-            "message": "Command executed successfully",
+            "status": "completed" if success else "error",
+            "message": "Command executed successfully" if success else "Some actions failed",
             "progress": 100,
-            "result": result
+            "result": {
+                "command_result": command_result,
+                "actions_executed": [
+                    {"type": action.type, "success": result.success, "message": result.message}
+                    for action, result in zip(action_predictions.actions, final_results)
+                ]
+            }
         }
+        logger.info(f"Final status update: {current_status}")
         await websocket_manager.broadcast({
             "type": "status_update",
             "data": current_status
         })
     except Exception as e:
+        logger.error(f"Error during command execution: {str(e)}", exc_info=True)
         current_status = {
             "operation": "command_execution",
             "status": "error",
