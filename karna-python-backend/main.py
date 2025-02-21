@@ -9,6 +9,8 @@ from api import setup_routes
 from modules.vision_agent import get_vision_service_instance
 from modules.action_prediction import get_language_service_instance
 from modules.action_execution import get_action_service_instance
+from modules.command_handler.command_processor import get_command_service_instance
+from api.websocket import WebSocketManager
 
 app = FastAPI()
 
@@ -42,21 +44,28 @@ class AssistantOrchestrator(metaclass=SingletonMeta):
                 model_paths['tokenizer']
             )
             
+            command_service = get_command_service_instance()
             action_service = get_action_service_instance()
             
             # Register services
             self.service_manager.register_service('vision', vision_service)
             self.service_manager.register_service('language', language_service)
+            self.service_manager.register_service('command', command_service)
             self.service_manager.register_service('action', action_service)
             self._initialized = True
+            self.logger.info("AssistantOrchestrator initialized with all core services")
 
     async def start(self):
         """Start all services"""
+        self.logger.info("Starting all services...")
         await self.service_manager.start_all()
+        self.logger.info("All services started successfully")
 
     async def stop(self):
         """Stop all services"""
+        self.logger.info("Stopping all services...")
         await self.service_manager.stop_all()
+        self.logger.info("All services stopped successfully")
 
     async def process_command(self, command: str):
         """Process a user command through the pipeline"""
@@ -64,13 +73,26 @@ class AssistantOrchestrator(metaclass=SingletonMeta):
             # Get services
             vision_service = self.service_manager.get_service('vision')
             language_service = self.service_manager.get_service('language')
+            command_service = self.service_manager.get_service('command')
             action_service = self.service_manager.get_service('action')
+
+            if not all([vision_service, language_service, command_service, action_service]):
+                self.logger.error("One or more required services are not available")
+                raise RuntimeError("Required services not available")
+
+            # Process the command
+            command_result = await command_service.process_command(command)
+            if not command_result:
+                self.logger.warning("Command processing returned no result")
+                return None
 
             # Capture current screen state
             screen = await vision_service.capture_screen()
+            self.logger.debug("Screen captured successfully")
             
             # Detect UI elements
             ui_elements = await vision_service.detect_ui_elements(screen)
+            self.logger.debug(f"Detected {len(ui_elements) if ui_elements else 0} UI elements")
             
             # Recognize intent
             intent = await language_service.recognize_intent(command)
@@ -83,7 +105,7 @@ class AssistantOrchestrator(metaclass=SingletonMeta):
                 )
                 return result
             
-            return None
+            return command_result
 
         except Exception as e:
             self.logger.error(f"Command processing error: {str(e)}")
@@ -128,4 +150,4 @@ async def shutdown_event():
     await assistant.stop()
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

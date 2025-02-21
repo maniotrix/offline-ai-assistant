@@ -1,61 +1,53 @@
-from base import SingletonMeta, GlobalLogger
+from base import SingletonMeta, BaseService
 from .command_keys import CommandKeys
 import logging
 import json
 import os
 import asyncio
-import uuid  # Add UUID import
+import uuid
 
-_LOGTAG_ = "[Command-Module]" 
-logger = GlobalLogger(_LOGTAG_, level=logging.DEBUG).logger
-
-class _BaseCommandProcessor:
-    async def validate(self, data):
-        """Validate the input data."""
-        raise NotImplementedError("Subclasses should implement this method")
-
-    async def preprocess(self, data):
-        """Preprocess the input data before processing."""
-        raise NotImplementedError("Subclasses should implement this method")
-    
-    async def process_command(self, data):
-        raise NotImplementedError("Subclasses should implement this method")
-
-    async def postprocess(self, data):
-        """Postprocess the data after processing."""
-        raise NotImplementedError("Subclasses should implement this method")
-
-class _CommandProcessor(_BaseCommandProcessor, metaclass=SingletonMeta):
+class CommandService(BaseService, metaclass=SingletonMeta):
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_initialized'):
-            super(_CommandProcessor, self).__init__(*args, **kwargs)
-            self._initialized = True
+            super().__init__()
             self._request_queue = asyncio.Queue()
             self.commands_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
                                             'data', 'commands-store.json')
-            self._resources = {}
+            self._resources = {} # TODO use sqlite and always query instead of validating from object memory
+            self._initialized = True
+            self.logger.info("CommandService instance created")
 
     async def initialize(self) -> None:
-        """Initialize command processor resources"""
+        """Initialize command service resources"""
         try:
+            self.logger.info("Initializing CommandService...")
             # Load commands file
             if os.path.exists(self.commands_file):
                 with open(self.commands_file, 'r') as f:
                     self._resources['commands'] = json.load(f)
+                    self.logger.debug(f"Loaded {len(self._resources['commands'].get('commands', []))} commands from storage")
             else:
                 self._resources['commands'] = {'commands': []}
+                self.logger.info("Created new commands storage")
+            
+            print("Store Resources: ", self._resources)
+            self.logger.info("CommandService initialized successfully")
                 
         except Exception as e:
-            logger.error(f"Failed to initialize command processor: {str(e)}")
+            self.logger.error(f"Failed to initialize CommandService: {str(e)}")
             raise
 
     async def shutdown(self) -> None:
         """Clean up resources"""
+        self.logger.info("Shutting down CommandService...")
         self._resources.clear()
-    
+        self.logger.info("CommandService shutdown complete")
+
     async def preprocess(self, data):
-        # Clean and extract relevant information from the string
+        """Preprocess the command data"""
+        self.logger.debug(f"Preprocessing command data: {data}")
         data_dict = {}
+        
         if isinstance(data, str):
             parts = data.split(",")
             for part in parts:
@@ -70,22 +62,25 @@ class _CommandProcessor(_BaseCommandProcessor, metaclass=SingletonMeta):
                     data_dict[CommandKeys.USER_COMMAND.value] = part
         else:
             data_dict = data
+            
+        self.logger.debug(f"Preprocessed data: {data_dict}")
         return data_dict
 
     async def validate(self, data):
         """Validate and store command data if not already present"""
         try:
+            self.logger.debug(f"Validating command data: {data}")
             command = data.get(CommandKeys.USER_COMMAND.value, '').lower()
             domain = data.get(CommandKeys.TASK_DOMAIN_ID.value, '').lower()
             uuid_value = data.get(CommandKeys.UUID.value)
 
             if not command or command == domain:
-                logger.error("Invalid command: Command cannot be empty or equal to domain")
+                self.logger.error("Invalid command: Command cannot be empty or equal to domain")
                 return None
 
             available_commands = self._resources.get('commands', {'commands': []})
             
-            # Try to find existing command by UUID or content
+            # Try to find existing command
             existing_command = next(
                 (cmd for cmd in available_commands['commands'] 
                  if (uuid_value and cmd['uuid'] == uuid_value) or 
@@ -93,6 +88,7 @@ class _CommandProcessor(_BaseCommandProcessor, metaclass=SingletonMeta):
                 ), None)
 
             if existing_command:
+                self.logger.info(f"Found existing command: {command}")
                 return {
                     CommandKeys.USER_COMMAND.value: command,
                     CommandKeys.TASK_DOMAIN_ID.value: domain,
@@ -100,7 +96,7 @@ class _CommandProcessor(_BaseCommandProcessor, metaclass=SingletonMeta):
                     CommandKeys.UUID.value: existing_command['uuid']
                 }
 
-            # Create new command if not found
+            # Create new command
             new_command = {
                 'name': command,
                 'domain': domain,
@@ -108,6 +104,7 @@ class _CommandProcessor(_BaseCommandProcessor, metaclass=SingletonMeta):
                 'uuid': str(uuid.uuid4())
             }
             
+            self.logger.info(f"Creating new command: {command}")
             available_commands['commands'].append(new_command)
             with open(self.commands_file, 'w') as f:
                 json.dump(available_commands, f, indent=4)
@@ -120,47 +117,43 @@ class _CommandProcessor(_BaseCommandProcessor, metaclass=SingletonMeta):
             }
 
         except Exception as e:
-            logger.error(f"Error validating command: {str(e)}")
+            self.logger.error(f"Error validating command: {str(e)}")
             return None
 
     async def process_command(self, data):
-        """
-        Process a command asynchronously.
-
-        Args:
-            data: String or dict containing command information
-
-        Returns:
-            dict: A dictionary with processed command data
-        """
-        logger.debug("Processing data: %s", data)
-        preprocessed_data = await self.preprocess(data)
-        processed_data = await self.validate(preprocessed_data)
-        if processed_data[CommandKeys.IS_IN_CACHE.value]:
-            processed_data = await self.postprocess(processed_data)
-        return processed_data
+        """Process a command asynchronously"""
+        self.logger.info(f"Processing command: {data}")
+        try:
+            preprocessed_data = await self.preprocess(data)
+            processed_data = await self.validate(preprocessed_data)
+            if processed_data and processed_data[CommandKeys.IS_IN_CACHE.value]:
+                processed_data = await self.postprocess(processed_data)
+            return processed_data
+        except Exception as e:
+            self.logger.error(f"Error processing command: {str(e)}")
+            raise
 
     async def postprocess(self, data):
         """Post process the command data"""
-        # Add any post-processing logic here
+        self.logger.debug(f"Post-processing command data: {data}")
         return data
 
 # Singleton instance management
-_command_processor_instance = None
+_command_service_instance = None
 
-def get_command_processor_instance():
-    global _command_processor_instance
-    if _command_processor_instance is None:
-        _command_processor_instance = _CommandProcessor()
-    return _command_processor_instance
+def get_command_service_instance():
+    global _command_service_instance
+    if _command_service_instance is None:
+        _command_service_instance = CommandService()
+    return _command_service_instance
 
 if __name__ == "__main__":
     async def test():
-        command_processor = get_command_processor_instance()
-        await command_processor.initialize()
-        test_command = "Search cats on youtube, domain youtube.com , use keys from command_keys"
-        result = await command_processor.process_command(test_command)
-        logger.info(result)
-        await command_processor.shutdown()
+        command_service = get_command_service_instance()
+        await command_service.initialize()
+        test_command = "Search cats on youtube, domain youtube.com"
+        result = await command_service.process_command(test_command)
+        print(result)
+        await command_service.shutdown()
 
     asyncio.run(test())

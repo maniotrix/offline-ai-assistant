@@ -74,15 +74,16 @@ class LanguageService(BaseService, metaclass=SingletonMeta):
         return None  # Replace with actual tokenizer
 
     def _load_cache(self):
-        """Load cached commands and their actions from file"""
+        """Load cache from file"""
         try:
             if os.path.exists(self.cache_file):
                 with open(self.cache_file, 'r') as f:
                     cache_data = json.load(f)
-                    # Extract action_predictions from the cache structure
-                    self._cache = cache_data.get('action_predictions', {})
-            else:
-                self._cache = {}
+                    # Convert list format to dictionary for faster lookups
+                    self._cache = {
+                        pred['command_id']: pred 
+                        for pred in cache_data.get('action_predictions', [])
+                    }
         except Exception as e:
             self.logger.error(f"Failed to load intent cache: {str(e)}")
             self._cache = {}
@@ -91,8 +92,15 @@ class LanguageService(BaseService, metaclass=SingletonMeta):
         """Save cache to file"""
         try:
             os.makedirs(os.path.dirname(self.cache_file), exist_ok=True)
-            # Wrap cache data in action_predictions structure
-            cache_data = {'action_predictions': self._cache}
+            cache_data = {
+                'action_predictions': [
+                    {
+                        'uuid': data['uuid'],
+                        'command_id': data['command_id'],
+                        'actions': data['actions']
+                    } for data in self._cache.values()
+                ]
+            }
             with open(self.cache_file, 'w') as f:
                 json.dump(cache_data, f, indent=2)
         except Exception as e:
@@ -144,7 +152,7 @@ class LanguageService(BaseService, metaclass=SingletonMeta):
         self.tokenizer = None
         self._resources.clear()
 
-    async def recognize_intent(self, command_id: str, uuid: str = None) -> ActionPrediction:
+    async def recognize_intent(self, command_id: str) -> ActionPrediction:
         """
         Recognize intent by first checking cache for the command_id.
         If found in cache, return cached actions, otherwise use model inference.
@@ -153,13 +161,11 @@ class LanguageService(BaseService, metaclass=SingletonMeta):
         if command_id in self._cache:
             self.logger.debug(f"Found cached actions for command {command_id}")
             cached_data = self._cache[command_id]
-            if uuid:  # Update UUID if provided
-                cached_data['uuid'] = uuid
             return self._convert_cached_to_prediction(cached_data)
 
         # If not in cache, queue request for model inference
         future = asyncio.Future()
-        await self._request_queue.put((command_id, uuid, future))
+        await self._request_queue.put((command_id, future))
         result = await future
         
         # Cache the result

@@ -4,7 +4,7 @@ import json
 import logging
 from dataclasses import dataclass, asdict
 from enum import Enum
-from modules.command_handler.command_processor import get_command_processor_instance
+from modules.command_handler.command_processor import get_command_service_instance
 from modules.vision_agent import get_vision_service_instance
 from modules.action_prediction import get_language_service_instance
 from modules.action_execution import get_action_service_instance
@@ -53,7 +53,7 @@ class CommandExecutionContext:
 class WebSocketManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
-        self.command_processor = get_command_processor_instance()
+        self.command_processor = get_command_service_instance()
         self.logger = logging.getLogger(__name__)
         self._initialize_status()
         self._setup_message_handlers()
@@ -144,7 +144,8 @@ class WebSocketManager:
             if not context.command_result.get(CommandKeys.IS_IN_CACHE.value):
                 await self._handle_command_not_in_cache(context)
                 return
-
+            
+            print("moving to next step predict actions")
             await self._predict_actions(context)
             
             if not context.action_prediction or not context.action_prediction.actions:
@@ -169,20 +170,31 @@ class WebSocketManager:
 
     async def _process_command(self, context: CommandExecutionContext) -> None:
         """Process command through command processor"""
+        await self._update_status({
+            StatusKeys.STATUS.value: StatusStates.PROCESSING.value,
+            StatusKeys.MESSAGE.value: "Processing command through command service...",
+            StatusKeys.PROGRESS.value: 20
+        })
         context.command_result = await self.command_processor.process_command(context.command_text)
         self.logger.info(f"Command processed: {context.command_result}")
+        await self._update_status({
+            StatusKeys.STATUS.value: StatusStates.PROCESSING.value,
+            StatusKeys.MESSAGE.value: "Command processed, checking cache...",
+            StatusKeys.PROGRESS.value: 30
+        })
 
     async def _handle_command_not_in_cache(self, context: CommandExecutionContext) -> None:
         """Handle case when command is not found in cache"""
         self.logger.info("Command not found in cache")
         await self._update_status({
             StatusKeys.STATUS.value: StatusStates.COMPLETED.value,
-            StatusKeys.MESSAGE.value: "Command not found in cache",
+            StatusKeys.MESSAGE.value: "Command not found in cache, needs training data collection",
             StatusKeys.PROGRESS.value: 100,
             StatusKeys.RESULT.value: {
                 CommandKeys.USER_COMMAND.value: context.command_result.get(CommandKeys.USER_COMMAND.value),
                 CommandKeys.TASK_DOMAIN_ID.value: context.command_result.get(CommandKeys.TASK_DOMAIN_ID.value),
-                CommandKeys.UUID.value: context.command_result.get(CommandKeys.UUID.value)
+                CommandKeys.UUID.value: context.command_result.get(CommandKeys.UUID.value),
+                "needs_training": True
             }
         })
 
@@ -191,14 +203,19 @@ class WebSocketManager:
         await self._update_status({
             StatusKeys.STATUS.value: StatusStates.PROCESSING.value,
             StatusKeys.MESSAGE.value: "Command found in cache, predicting actions...",
-            StatusKeys.PROGRESS.value: 33
+            StatusKeys.PROGRESS.value: 40
         })
 
         language_service = get_language_service_instance()
         context.action_prediction = await language_service.recognize_intent(
-            command_id=context.command_result[CommandKeys.UUID.value],
-            uuid=context.command_result[CommandKeys.UUID.value]
+            command_id=context.command_result[CommandKeys.UUID.value]
         )
+
+        await self._update_status({
+            StatusKeys.STATUS.value: StatusStates.PROCESSING.value,
+            StatusKeys.MESSAGE.value: "Actions predicted, preparing execution...",
+            StatusKeys.PROGRESS.value: 50
+        })
 
     async def _handle_no_actions(self, context: CommandExecutionContext) -> None:
         """Handle case when no actions are found"""
@@ -216,18 +233,22 @@ class WebSocketManager:
 
     async def _execute_actions(self, context: CommandExecutionContext) -> None:
         """Execute predicted actions"""
-        self.logger.info(f"Executing {len(context.action_prediction.actions)} actions")
-        await self._update_status({
-            StatusKeys.STATUS.value: StatusStates.PROCESSING.value,
-            StatusKeys.MESSAGE.value: "Actions found in cache, executing...",
-            StatusKeys.PROGRESS.value: 66
-        })
-
+        total_actions = len(context.action_prediction.actions)
+        self.logger.info(f"Executing {total_actions} actions")
+        
         action_service = get_action_service_instance()
         context.final_results = []
 
         for i, action in enumerate(context.action_prediction.actions, 1):
-            self.logger.info(f"Executing action {i}/{len(context.action_prediction.actions)}: {action.type}")
+            progress = 50 + (i / total_actions * 40)  # Progress from 50% to 90%
+            self.logger.info(f"Executing action {i}/{total_actions}: {action.type}")
+            
+            await self._update_status({
+                StatusKeys.STATUS.value: StatusStates.PROCESSING.value,
+                StatusKeys.MESSAGE.value: f"Executing action {i}/{total_actions}: {action.type}",
+                StatusKeys.PROGRESS.value: int(progress)
+            })
+
             params = {
                 'x': action.coordinates.get('x'),
                 'y': action.coordinates.get('y'),

@@ -3,7 +3,6 @@ from pydantic import BaseModel
 from typing import Optional, Dict
 import logging
 from .websocket import WebSocketManager
-from modules.command_handler.command_processor import get_command_processor_instance
 from modules.vision_agent import get_vision_service_instance
 from modules.action_prediction import get_language_service_instance
 from modules.action_execution import get_action_service_instance
@@ -27,14 +26,10 @@ async def health_check():
 async def startup_event():
     # Initialize services and logging
     logging.basicConfig(level=logging.INFO)
-    command_processor = get_command_processor_instance()
-    await command_processor.initialize()
 
 @router.on_event("shutdown")
 async def shutdown_event():
-    # Cleanup services
-    command_processor = get_command_processor_instance()
-    await command_processor.shutdown()
+    pass
 
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
