@@ -267,10 +267,15 @@ class WebSocketManager:
             vision_service = get_vision_service_instance()
             language_service = get_language_service_instance()
             
+            # Get command status based on current operation state
+            command_status = ""
+            if self.current_status[StatusKeys.OPERATION.value] == OperationTypes.COMMAND_EXECUTION.value:
+                command_status = "running"
+            
             status = {
                 "vision": vision_service.get_status() if hasattr(vision_service, 'get_status') else "running",
                 "language": language_service.get_status() if hasattr(language_service, 'get_status') else "running",
-                "command": self.command_processor.get_status() if hasattr(self.command_processor, 'get_status') else "running"
+                "command": command_status
             }
             await websocket.send_json(WebSocketMessage(
                 type=WebSocketMessageType.STATUS_UPDATE,

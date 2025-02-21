@@ -73,44 +73,55 @@ class _CommandProcessor(_BaseCommandProcessor, metaclass=SingletonMeta):
         return data_dict
 
     async def validate(self, data):
-        """Validate the input data against available commands"""
+        """Validate and store command data if not already present"""
         try:
-            available_commands = self._resources.get('commands', {'commands': []})
-            
             command = data.get(CommandKeys.USER_COMMAND.value, '').lower()
             domain = data.get(CommandKeys.TASK_DOMAIN_ID.value, '').lower()
+            uuid_value = data.get(CommandKeys.UUID.value)
+
+            if not command or command == domain:
+                logger.error("Invalid command: Command cannot be empty or equal to domain")
+                return None
+
+            available_commands = self._resources.get('commands', {'commands': []})
             
-            # Check if command exists
-            for cmd in available_commands['commands']:
-                if cmd['name'].lower() == command and cmd['domain'].lower() == domain:
-                    data[CommandKeys.IS_IN_CACHE.value] = cmd['is_in_cache']
-                    data[CommandKeys.UUID.value] = cmd['uuid']
-                    return data
-            
-            # If command not found, generate a new UUID
-            data[CommandKeys.IS_IN_CACHE.value] = False
-            data[CommandKeys.UUID.value] = str(uuid.uuid4())
-            
-            # Add the new command to the available commands
+            # Try to find existing command by UUID or content
+            existing_command = next(
+                (cmd for cmd in available_commands['commands'] 
+                 if (uuid_value and cmd['uuid'] == uuid_value) or 
+                    (cmd['name'].lower() == command and cmd['domain'].lower() == domain)
+                ), None)
+
+            if existing_command:
+                return {
+                    CommandKeys.USER_COMMAND.value: command,
+                    CommandKeys.TASK_DOMAIN_ID.value: domain,
+                    CommandKeys.IS_IN_CACHE.value: existing_command['is_in_cache'],
+                    CommandKeys.UUID.value: existing_command['uuid']
+                }
+
+            # Create new command if not found
             new_command = {
                 'name': command,
                 'domain': domain,
                 'is_in_cache': False,
-                'uuid': data[CommandKeys.UUID.value]
+                'uuid': str(uuid.uuid4())
             }
-            available_commands['commands'].append(new_command)
             
-            # Save updated commands to file
+            available_commands['commands'].append(new_command)
             with open(self.commands_file, 'w') as f:
                 json.dump(available_commands, f, indent=4)
-            
-            return data
-            
+
+            return {
+                CommandKeys.USER_COMMAND.value: command,
+                CommandKeys.TASK_DOMAIN_ID.value: domain,
+                CommandKeys.IS_IN_CACHE.value: False,
+                CommandKeys.UUID.value: new_command['uuid']
+            }
+
         except Exception as e:
             logger.error(f"Error validating command: {str(e)}")
-            data[CommandKeys.IS_IN_CACHE.value] = False
-            data[CommandKeys.UUID.value] = str(uuid.uuid4())  # Still generate UUID even in error case
-            return data
+            return None
 
     async def process_command(self, data):
         """

@@ -5,6 +5,12 @@
             "name": "search cats on youtube",
             "domain": "youtube.com",
             "is_in_cache": false
+        },
+        {
+            "name": "youtube.com",
+            "domain": "",
+            "is_in_cache": false,
+            "uuid": "d54f7653-2bcf-45d3-8026-ce7ee1bc4a29"
         }
     ]
 }
