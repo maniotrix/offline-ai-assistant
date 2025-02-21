@@ -78,7 +78,9 @@ class LanguageService(BaseService, metaclass=SingletonMeta):
         try:
             if os.path.exists(self.cache_file):
                 with open(self.cache_file, 'r') as f:
-                    self._cache = json.load(f)
+                    cache_data = json.load(f)
+                    # Extract action_predictions from the cache structure
+                    self._cache = cache_data.get('action_predictions', {})
             else:
                 self._cache = {}
         except Exception as e:
@@ -89,8 +91,10 @@ class LanguageService(BaseService, metaclass=SingletonMeta):
         """Save cache to file"""
         try:
             os.makedirs(os.path.dirname(self.cache_file), exist_ok=True)
+            # Wrap cache data in action_predictions structure
+            cache_data = {'action_predictions': self._cache}
             with open(self.cache_file, 'w') as f:
-                json.dump(self._cache, f, indent=2)
+                json.dump(cache_data, f, indent=2)
         except Exception as e:
             self.logger.error(f"Failed to save intent cache: {str(e)}")
 
@@ -146,10 +150,9 @@ class LanguageService(BaseService, metaclass=SingletonMeta):
         If found in cache, return cached actions, otherwise use model inference.
         """
         # Check cache first
-        cache_key = command_id
-        if cache_key in self._cache:
+        if command_id in self._cache:
             self.logger.debug(f"Found cached actions for command {command_id}")
-            cached_data = self._cache[cache_key]
+            cached_data = self._cache[command_id]
             if uuid:  # Update UUID if provided
                 cached_data['uuid'] = uuid
             return self._convert_cached_to_prediction(cached_data)
@@ -160,7 +163,7 @@ class LanguageService(BaseService, metaclass=SingletonMeta):
         result = await future
         
         # Cache the result
-        self._cache[cache_key] = {
+        self._cache[command_id] = {
             'uuid': result.uuid,
             'command_id': result.command_id,
             'actions': [
