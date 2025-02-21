@@ -104,18 +104,18 @@ class ActionService(BaseService, metaclass=SingletonMeta):
             if action_type == "click":
                 x, y = params['x'], params['y']
                 # Move mouse smoothly
-                pyautogui.moveTo(x, y, duration=0.2)
-                pyautogui.click()
+                # pyautogui.moveTo(x, y, duration=0.2)
+                # pyautogui.click()
                 return ActionResult(True, "Click successful", coordinates=(x, y))
                 
             elif action_type == "type":
                 text = params['text']
-                pyautogui.write(text)
+                # pyautogui.write(text)
                 return ActionResult(True, "Text input successful")
                 
             elif action_type == "scroll":
                 amount = params['amount']
-                pyautogui.scroll(amount)
+                # pyautogui.scroll(amount)
                 return ActionResult(True, "Scroll successful")
                 
             return ActionResult(False, f"Unknown action type: {action_type}")

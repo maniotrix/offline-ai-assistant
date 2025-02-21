@@ -4,6 +4,7 @@ import logging
 import json
 import os
 import asyncio
+import uuid  # Add UUID import
 
 _LOGTAG_ = "[Command-Module]" 
 logger = GlobalLogger(_LOGTAG_, level=logging.DEBUG).logger
@@ -86,14 +87,29 @@ class _CommandProcessor(_BaseCommandProcessor, metaclass=SingletonMeta):
                     data[CommandKeys.UUID.value] = cmd['uuid']
                     return data
             
+            # If command not found, generate a new UUID
             data[CommandKeys.IS_IN_CACHE.value] = False
-            data[CommandKeys.UUID.value] = None
+            data[CommandKeys.UUID.value] = str(uuid.uuid4())
+            
+            # Add the new command to the available commands
+            new_command = {
+                'name': command,
+                'domain': domain,
+                'is_in_cache': False,
+                'uuid': data[CommandKeys.UUID.value]
+            }
+            available_commands['commands'].append(new_command)
+            
+            # Save updated commands to file
+            with open(self.commands_file, 'w') as f:
+                json.dump(available_commands, f, indent=4)
+            
             return data
             
         except Exception as e:
             logger.error(f"Error validating command: {str(e)}")
             data[CommandKeys.IS_IN_CACHE.value] = False
-            data[CommandKeys.UUID.value] = None
+            data[CommandKeys.UUID.value] = str(uuid.uuid4())  # Still generate UUID even in error case
             return data
 
     async def process_command(self, data):
