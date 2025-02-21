@@ -63,7 +63,7 @@ const Homepage: React.FC = () => {
           <Button 
             variant="contained" 
             onClick={handleCommandSubmit}
-            disabled={!!status.command} // Disable when there's an active command
+            // disabled={!!status.command} // Disable when there's an active command
           >
             Execute Command
           </Button>
