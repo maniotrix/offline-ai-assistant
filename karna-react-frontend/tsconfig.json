@@ -3,9 +3,9 @@
       "target": "ESNext",
       "useDefineForClassFields": true,
       "lib": ["DOM", "DOM.Iterable", "ESNext"],
-      "allowJs": false,
+      "allowJs": true,
       "skipLibCheck": true,
-      "esModuleInterop": false,
+      "esModuleInterop": true,
       "allowSyntheticDefaultImports": true,
       "strict": true,
       "forceConsistentCasingInFileNames": true,
@@ -13,9 +13,14 @@
       "moduleResolution": "Node",
       "resolveJsonModule": true,
       "isolatedModules": true,
-      "jsx": "react-jsx"
+      "jsx": "react-jsx",
+      "baseUrl": ".",
+      "paths": {
+        "protobufjs/*": ["node_modules/protobufjs/*"]
+      },
+      "outDir": "./dist"
     },
     "include": ["src"],
+    "exclude": ["src/generated/**/*.js"],
     "references": [{ "path": "./tsconfig.node.json" }]
   }
-  

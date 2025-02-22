@@ -11,28 +11,35 @@ const Homepage: React.FC = () => {
     command: ''
   });
   const [command, setCommand] = useState('');
+  const [domain, setDomain] = useState('default');
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Subscribe to status updates directly
-    subscribeToStatus((newStatus) => {
+    const unsubscribe = subscribeToStatus((newStatus) => {
       console.log('Status update received:', newStatus);
       setStatus(newStatus);
-      
-      // Fetch new screenshot when there's a command status
-      // if (newStatus.command) {
-      //   getScreenshot().then(setScreenshot).catch(console.error);
-      // }
     });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
   }, []);
 
   const handleCommandSubmit = async () => {
+    if (!command.trim()) return;
+    
     try {
-      await executeCommand(command);
+      await executeCommand(command.trim(), domain.trim() || 'default');
       setCommand('');
     } catch (error) {
       console.error('Failed to execute command:', error);
+    }
+  };
+
+  const handleKeyPress = (event: React.KeyboardEvent) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      handleCommandSubmit();
     }
   };
 
@@ -55,15 +62,28 @@ const Homepage: React.FC = () => {
         <Box sx={{ mt: 3 }}>
           <TextField
             fullWidth
+            label="Domain (optional)"
+            value={domain}
+            onChange={(e) => setDomain(e.target.value)}
+            margin="normal"
+            placeholder="e.g., youtube.com, default"
+          />
+          <TextField
+            fullWidth
+            multiline
+            rows={2}
             label="Enter command"
             value={command}
             onChange={(e) => setCommand(e.target.value)}
+            onKeyPress={handleKeyPress}
             margin="normal"
+            placeholder="Type your command here..."
           />
           <Button 
             variant="contained" 
             onClick={handleCommandSubmit}
-            // disabled={!!status.command} // Disable when there's an active command
+            disabled={!command.trim()}
+            sx={{ mt: 2 }}
           >
             Execute Command
           </Button>

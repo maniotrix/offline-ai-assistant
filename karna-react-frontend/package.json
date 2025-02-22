@@ -16,6 +16,8 @@
     "easy-peasy": "^6.0.5",
     "fabric": "^5.2.4",
     "konva": "^9.3.18",
+    "protobufjs": "^7.2.5",
+    "protobufjs-cli": "^1.1.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-draggable": "^4.4.6",

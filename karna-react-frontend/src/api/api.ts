@@ -1,5 +1,6 @@
 import { BoundingBox, ImageDataResponse } from '../types/types';
 import { websocketService } from './websocket';
+import { karna } from '../generated/messages';
 
 // REST APIs for non-real-time operations
 export const fetchAnnotations = async (): Promise<ImageDataResponse> => {
@@ -28,31 +29,27 @@ export const saveAnnotations = async (imageUrl: string, annotations: BoundingBox
     return response.json();
 };
 
-// Match the Status interface from websocket.ts
-export interface Status {
-    vision: string;
-    language: string;
-    command: string;
-}
+// Use the generated protobuf Status interface
+export type Status = karna.IStatus;
 
 // Using WebSocket for real-time command execution
-export const executeCommand = async (command: string): Promise<any> => {
-    return websocketService.sendCommand(command);
+export const executeCommand = async (command: string, domain: string = 'default'): Promise<karna.ICommandResult> => {
+    return websocketService.sendCommand(command, domain);
 };
 
 // Using WebSocket for status updates
 export const getStatus = async (): Promise<Status> => {
-    try {
-        await websocketService.requestStatus();
-        // The actual status will be received through the status update subscription
-        return { vision: '', language: '', command: '' };
-    } catch (error) {
-        throw new Error('Failed to fetch status');
-    }
+    await websocketService.requestStatus();
+    // The actual status will be received through the status update subscription
+    return { vision: '', language: '', command: '' };
 };
 
-export const subscribeToStatus = (callback: (status: Status) => void) => {
-    websocketService.onStatusUpdate(callback);
+export const subscribeToStatus = (callback: (status: Status) => void): () => void => {
+    return websocketService.onStatusUpdate(callback);
+};
+
+export const subscribeToErrors = (callback: (error: Error) => void): () => void => {
+    return websocketService.onError(callback);
 };
 
 export const getScreenshot = async (): Promise<string> => {

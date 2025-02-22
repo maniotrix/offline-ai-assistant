@@ -48,12 +48,12 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket_manager.connect(websocket)
     try:
         while True:
-            data = await websocket.receive_json()
+            # Receive binary data instead of JSON
+            data = await websocket.receive_bytes()
             await websocket_manager.handle_message(websocket, data)
     except Exception as e:
-        print(f"WebSocket error: {e}")
+        logging.error(f"WebSocket error: {e}")
     finally:
-        await websocket.close()
         websocket_manager.disconnect(websocket)
 
 @router.get("/api/status")

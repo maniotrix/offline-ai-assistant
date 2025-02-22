@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package karna;
+
+// Request message types
+message RPCRequest {
+  oneof method {
+    CommandRequest execute_command = 1;
+    StatusRequest get_status = 2;
+  }
+}
+
+message CommandRequest {
+  string command = 1;
+  string domain = 2;
+}
+
+message StatusRequest {} // Empty message for status requests
+
+// Response message types
+message RPCResponse {
+  oneof type {
+    CommandResult command_response = 1;
+    Status status_update = 2;
+    string error = 3;
+  }
+}
+
+message CommandResult {
+  string command_text = 1;
+  TaskStatus status = 2;
+  string message = 3;
+  repeated Action actions = 4;
+}
+
+message Status {
+  string vision = 1;
+  string language = 2;
+  string command = 3;
+}
+
+message Action {
+  string type = 1;
+  map<string, string> coordinates = 2;
+  optional string text = 3;
+}
+
+enum TaskStatus {
+  PENDING = 0;
+  IN_PROGRESS = 1;
+  COMPLETED = 2;
+  FAILED = 3;
+}

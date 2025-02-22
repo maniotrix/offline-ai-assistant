@@ -1,38 +1,21 @@
-interface Status {
-    vision: string;
-    language: string;
-    command: string;
-}
+import { karna } from '../generated/messages';
 
-interface RPCRequest {
-    method: 'execute_command' | 'get_status';
-    params: {
-        command?: string;
-        [key: string]: any;
-    };
-}
-
-interface RPCResponse {
-    type: 'command_response' | 'status_update' | 'error';
-    data: Status | string | any;
-}
-
-interface SocketError {
-    message?: string;
-    code?: string;
-}
+type MessageHandler<T> = (data: T) => void;
+type ErrorHandler = (error: Error) => void;
 
 class WebSocketService {
     private socket: WebSocket | null = null;
-    private messageHandlers: Map<string, (data: any) => void> = new Map();
+    private messageHandlers: Map<string, Set<MessageHandler<any>>> = new Map();
+    private errorHandlers: Set<ErrorHandler> = new Set();
     private reconnectAttempts = 0;
     private maxReconnectAttempts = 5;
     private reconnectDelay = 1000;
+    private pendingRequests: Map<string, { resolve: (value: any) => void, reject: (error: Error) => void }> = new Map();
 
     connect(): void {
-        // Use window.location.hostname to get the current host (either localhost or IP address)
         const wsUrl = `ws://${window.location.hostname}:8000/ws`;
         this.socket = new WebSocket(wsUrl);
+        this.socket.binaryType = 'arraybuffer';
         
         this.socket.onopen = () => {
             console.log('WebSocket Connected');
@@ -42,25 +25,46 @@ class WebSocketService {
 
         this.socket.onmessage = (event) => {
             try {
-                const response: RPCResponse = JSON.parse(event.data);
-                const handler = this.messageHandlers.get(response.type);
-                if (handler) {
-                    handler(response.data);
+                if (!(event.data instanceof ArrayBuffer)) {
+                    throw new Error('Expected binary message');
                 }
+                const response = karna.RPCResponse.decode(new Uint8Array(event.data));
+                
+                if (response.error) {
+                    this.notifyError(new Error(response.error));
+                    return;
+                }
+
+                const type = response.type;
+                if (!type) {
+                    throw new Error('Missing response type');
+                }
+
+                const data = response[type];
+                if (!data) {
+                    throw new Error(`Missing data for type: ${type}`);
+                }
+
+                this.notifyHandlers(type, data);
             } catch (error) {
                 console.error('Failed to parse WebSocket message:', error);
+                this.notifyError(error instanceof Error ? error : new Error(String(error)));
             }
         };
 
         this.socket.onerror = (error) => {
             console.error('WebSocket error:', error);
-            this.messageHandlers.forEach(handler => 
-                handler({ error: 'WebSocket error occurred' })
-            );
+            this.notifyError(new Error('WebSocket error occurred'));
         };
 
         this.socket.onclose = () => {
             console.log('WebSocket disconnected');
+            // Reject all pending requests
+            this.pendingRequests.forEach(({ reject }) => {
+                reject(new Error('WebSocket disconnected'));
+            });
+            this.pendingRequests.clear();
+
             if (this.reconnectAttempts < this.maxReconnectAttempts) {
                 setTimeout(() => {
                     this.reconnectAttempts++;
@@ -71,27 +75,65 @@ class WebSocketService {
         };
     }
 
-    async sendCommand(command: string): Promise<any> {
+    private notifyHandlers<T>(type: string, data: T): void {
+        const handlers = this.messageHandlers.get(type);
+        if (handlers) {
+            handlers.forEach(handler => handler(data));
+        }
+    }
+
+    private notifyError(error: Error): void {
+        this.errorHandlers.forEach(handler => handler(error));
+        // Also reject any pending requests
+        this.pendingRequests.forEach(({ reject }) => reject(error));
+        this.pendingRequests.clear();
+    }
+
+    async sendCommand(command: string, domain: string = 'default'): Promise<karna.ICommandResult> {
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
             throw new Error('WebSocket is not connected');
         }
         
-        const request: RPCRequest = {
-            method: 'execute_command',
-            params: { command }
-        };
+        const request = karna.RPCRequest.create({
+            executeCommand: {
+                command,
+                domain
+            }
+        });
         
-        this.socket.send(JSON.stringify(request));
+        const buffer = karna.RPCRequest.encode(request).finish();
+        this.socket.send(buffer);
         
-        return new Promise((resolve, reject) => {
-            const handler = (response: any) => {
-                if (response.error) {
-                    reject(new Error(response.error));
-                } else {
-                    resolve(response);
-                }
+        return new Promise<karna.ICommandResult>((resolve, reject) => {
+            const requestId = Math.random().toString(36).substring(7);
+            this.pendingRequests.set(requestId, { resolve, reject });
+
+            const cleanup = () => {
+                this.pendingRequests.delete(requestId);
+                this.removeHandler('commandResponse', responseHandler);
+                this.removeHandler('error', errorHandler);
             };
-            this.messageHandlers.set('command_response', handler);
+
+            const responseHandler = (response: karna.ICommandResult) => {
+                cleanup();
+                resolve(response);
+            };
+
+            const errorHandler = (error: Error) => {
+                cleanup();
+                reject(error);
+            };
+            
+            this.addHandler('commandResponse', responseHandler);
+            this.addHandler('error', errorHandler);
+
+            // Timeout after 30 seconds
+            setTimeout(() => {
+                if (this.pendingRequests.has(requestId)) {
+                    cleanup();
+                    reject(new Error('Command timed out'));
+                }
+            }, 30000);
         });
     }
 
@@ -100,20 +142,46 @@ class WebSocketService {
             throw new Error('WebSocket is not connected');
         }
 
-        const request: RPCRequest = {
-            method: 'get_status',
-            params: {}
-        };
+        const request = karna.RPCRequest.create({
+            getStatus: {}
+        });
         
-        this.socket.send(JSON.stringify(request));
+        const buffer = karna.RPCRequest.encode(request).finish();
+        this.socket.send(buffer);
     }
 
-    onStatusUpdate(handler: (status: Status) => void): void {
-        this.messageHandlers.set('status_update', handler);
+    private addHandler<T>(type: string, handler: MessageHandler<T>): void {
+        let handlers = this.messageHandlers.get(type);
+        if (!handlers) {
+            handlers = new Set();
+            this.messageHandlers.set(type, handlers);
+        }
+        handlers.add(handler);
     }
 
-    onCommandResponse(handler: (response: any) => void): void {
-        this.messageHandlers.set('command_response', handler);
+    private removeHandler<T>(type: string, handler: MessageHandler<T>): void {
+        const handlers = this.messageHandlers.get(type);
+        if (handlers) {
+            handlers.delete(handler);
+            if (handlers.size === 0) {
+                this.messageHandlers.delete(type);
+            }
+        }
+    }
+
+    onStatusUpdate(handler: MessageHandler<karna.IStatus>): () => void {
+        this.addHandler('statusUpdate', handler);
+        return () => this.removeHandler('statusUpdate', handler);
+    }
+
+    onCommandResponse(handler: MessageHandler<karna.ICommandResult>): () => void {
+        this.addHandler('commandResponse', handler);
+        return () => this.removeHandler('commandResponse', handler);
+    }
+
+    onError(handler: ErrorHandler): () => void {
+        this.errorHandlers.add(handler);
+        return () => this.errorHandlers.delete(handler);
     }
 
     disconnect(): void {
@@ -121,6 +189,10 @@ class WebSocketService {
             this.socket.close();
             this.socket = null;
         }
+        // Clear all handlers and pending requests
+        this.messageHandlers.clear();
+        this.errorHandlers.clear();
+        this.pendingRequests.clear();
     }
 }
 

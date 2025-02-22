@@ -3,27 +3,22 @@ from typing import Dict, List, Optional, Any, Union
 import json
 import logging
 import time
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from enum import Enum
 from datetime import datetime
-# from modules.vision_agent import get_vision_service_instance
 from modules.action_prediction import get_language_service_instance
 from modules.command_handler.command_processor import get_command_service_instance
+from modules.vision_agent import get_vision_service_instance
 from services.task_execution_service import TaskExecutorService
 from domain.task import TaskContext, TaskStatus
 from domain.command import Command, CommandResult
 from domain.action import Action, ActionResult
-from pydantic import BaseModel, ValidationError
-
-class WebSocketMessageType(str, Enum):
-    COMMAND = 'execute_command'
-    STATUS = 'get_status'
-    STATUS_UPDATE = 'status_update'
-    ERROR = 'error'
-
-class MessageParams(BaseModel):
-    command: Optional[str] = None
-    domain: Optional[str] = None
+from google.protobuf.message import Message
+from generated.messages_pb2 import (
+    RPCRequest, RPCResponse, CommandRequest, StatusRequest, 
+    Status, CommandResult as ProtoCommandResult, Action as ProtoAction,
+    TaskStatus as ProtoTaskStatus
+)
 
 class RateLimit:
     def __init__(self, max_requests: int = 10, time_window: int = 60):
@@ -59,7 +54,7 @@ def datetime_handler(obj):
 
 @dataclass
 class WebSocketMessage:
-    type: WebSocketMessageType
+    type: str
     data: Union[str, Dict, TaskContext, CommandResult, ActionResult]
 
     def to_dict(self) -> dict:
@@ -79,23 +74,9 @@ class WebSocketManager:
     def _setup_message_handlers(self) -> None:
         """Set up message type handlers"""
         self.message_handlers = {
-            WebSocketMessageType.COMMAND: self._handle_command_execution,
-            WebSocketMessageType.STATUS: self._handle_status_request
+            'execute_command': self._handle_command_execution,
+            'get_status': self._handle_status_request
         }
-
-    def _validate_message(self, data: dict) -> Optional[str]:
-        """Validate incoming message structure"""
-        required_fields = ['method']
-        if not all(field in data for field in required_fields):
-            return "Missing required fields in message"
-        
-        try:
-            if 'params' in data:
-                MessageParams(**data['params'])
-        except ValidationError as e:
-            return f"Invalid message parameters: {str(e)}"
-        
-        return None
 
     async def connect(self, websocket: WebSocket) -> None:
         """Handle new WebSocket connection"""
@@ -114,16 +95,24 @@ class WebSocketManager:
             client_id = str(id(websocket))
             if client_id in self.active_connections:
                 del self.active_connections[client_id]
+                # Clean up rate limiter store
+                if client_id in self.rate_limiter.requests:
+                    del self.rate_limiter.requests[client_id]
                 self.logger.info(f"WebSocket connection closed: {client_id}")
         except Exception as e:
             self.logger.warning(f"Error during disconnect: {e}")
 
-    async def broadcast(self, message: WebSocketMessage) -> None:
-        """Broadcast message to all connected clients"""
+    async def broadcast(self, response: RPCResponse) -> None:
+        """Broadcast protobuf message to all connected clients"""
+        if not isinstance(response, RPCResponse):
+            self.logger.error("Invalid response type for broadcast")
+            return
+            
+        message = response.SerializeToString()
         disconnected = []
         for client_id, connection in self.active_connections.items():
             try:
-                await connection.send_json(message.to_dict())
+                await connection.send_bytes(message)
             except WebSocketDisconnect:
                 disconnected.append(client_id)
             except Exception as e:
@@ -135,83 +124,108 @@ class WebSocketManager:
             if client_id in self.active_connections:
                 self.disconnect(self.active_connections[client_id])
 
-    async def handle_message(self, websocket: WebSocket, data: dict) -> None:
-        """Route incoming messages to appropriate handlers"""
+    async def handle_message(self, websocket: WebSocket, data: bytes) -> None:
+        """Route incoming protobuf messages to appropriate handlers"""
         client_id = str(id(websocket))
         
         try:
-            # Rate limiting check
             if not self.rate_limiter.is_allowed(client_id):
-                await self._handle_error("Rate limit exceeded. Please try again later.", websocket)
+                response = RPCResponse()
+                response.error = "Rate limit exceeded. Please try again later."
+                await websocket.send_bytes(response.SerializeToString())
                 return
 
-            # Message validation
-            validation_error = self._validate_message(data)
-            if validation_error:
-                await self._handle_error(validation_error, websocket)
-                return
-
-            method = data.get('method')
-            if not method or method not in WebSocketMessageType.__members__.values():
-                await self._handle_error(f"Unknown message type: {method}", websocket)
+            try:
+                request = RPCRequest()
+                request.ParseFromString(data)
+            except Exception as e:
+                response = RPCResponse()
+                response.error = f"Invalid protobuf message format: {str(e)}"
+                await websocket.send_bytes(response.SerializeToString())
                 return
             
-            handler = self.message_handlers.get(method)
-            await handler(websocket, data.get('params', {}))
+            method = request.WhichOneof('method')
+            if not method or method not in self.message_handlers:
+                response = RPCResponse()
+                response.error = f"Unknown message type: {method}"
+                await websocket.send_bytes(response.SerializeToString())
+                return
+            
+            handler = self.message_handlers[method]
+            await handler(websocket, getattr(request, method))
             
         except Exception as e:
-            await self._handle_error(f"Error processing message: {str(e)}", websocket)
+            self.logger.error(f"Error processing message: {e}", exc_info=True)
+            response = RPCResponse()
+            response.error = f"Error processing message: {str(e)}"
+            await websocket.send_bytes(response.SerializeToString())
 
-    async def _handle_command_execution(self, websocket: WebSocket, params: dict) -> None:
-        """Handle command execution by delegating to TaskExecutorService"""
+    def _task_status_to_proto(self, status: TaskStatus) -> ProtoTaskStatus:
+        """Convert domain TaskStatus to protobuf TaskStatus"""
+        status_map = {
+            TaskStatus.PENDING: ProtoTaskStatus.PENDING,
+            TaskStatus.IN_PROGRESS: ProtoTaskStatus.IN_PROGRESS,
+            TaskStatus.COMPLETED: ProtoTaskStatus.COMPLETED,
+            TaskStatus.FAILED: ProtoTaskStatus.FAILED
+        }
+        return status_map.get(status, ProtoTaskStatus.FAILED)
+
+    def _action_to_proto(self, action: Action) -> ProtoAction:
+        """Convert domain Action to protobuf Action"""
+        proto_action = ProtoAction()
+        proto_action.type = action.type
+        for k, v in action.coordinates.items():
+            proto_action.coordinates[k] = str(v)
+        if action.text:
+            proto_action.text = action.text
+        return proto_action
+
+    async def _handle_command_execution(self, websocket: WebSocket, command_request: CommandRequest) -> None:
+        """Handle command execution using protobuf"""
         try:
-            command = params.get('command')
-            if not command:
-                raise ValueError("Command parameter is required")
-                
-            context = await self.task_exec_service.execute_command(command)
-            await self.broadcast(WebSocketMessage(
-                type=WebSocketMessageType.STATUS_UPDATE,
-                data=context
-            ))
+            context = await self.task_exec_service.execute_command(command_request.command)
+            
+            response = RPCResponse()
+            command_result = ProtoCommandResult()
+            command_result.command_text = context.command_text
+            command_result.status = self._task_status_to_proto(context.status)
+            command_result.message = context.message or ""
+            
+            if hasattr(context, 'actions') and context.actions:
+                for action in context.actions:
+                    proto_action = command_result.actions.add()
+                    proto_action.CopyFrom(self._action_to_proto(action))
+            
+            response.command_response.CopyFrom(command_result)
+            await self.broadcast(response)
+            
         except Exception as e:
-            await self._handle_error(str(e), websocket)
+            self.logger.error(f"Command execution error: {e}", exc_info=True)
+            response = RPCResponse()
+            response.error = str(e)
+            await websocket.send_bytes(response.SerializeToString())
 
-    async def _handle_status_request(self, websocket: WebSocket, params: dict) -> None:
-        """Handle status request"""
+    async def _handle_status_request(self, websocket: WebSocket, status_request: StatusRequest) -> None:
+        """Handle status request using protobuf"""
         try:
             services_status = {
-                # "vision": get_vision_service_instance().get_status(),
+                "vision": get_vision_service_instance().get_status(),
                 "language": get_language_service_instance().get_status(),
                 "command": get_command_service_instance().get_status(),
                 "task_execution": self.task_exec_service.get_current_status()
             }
-            await self.broadcast(WebSocketMessage(
-                type=WebSocketMessageType.STATUS_UPDATE,
-                data=services_status
-            ))
+            
+            response = RPCResponse()
+            status = Status()
+            status.vision = services_status["vision"] or ""
+            status.language = services_status["language"] or ""
+            status.command = services_status["command"] or ""
+            
+            response.status_update.CopyFrom(status)
+            await self.broadcast(response)
+            
         except Exception as e:
-            await self._handle_error(f"Error getting status: {str(e)}", websocket)
-
-    async def _handle_error(self, error_message: str, websocket: Optional[WebSocket] = None) -> None:
-        """Handle and broadcast errors"""
-        self.logger.error(f"Error during execution: {error_message}", exc_info=True)
-        error_msg = WebSocketMessage(
-            type=WebSocketMessageType.ERROR,
-            data={"message": error_message}
-        )
-        
-        if websocket:
-            # Send error only to the affected client
-            try:
-                await websocket.send_json(error_msg.to_dict())
-            except Exception as e:
-                self.logger.error(f"Failed to send error message: {e}")
-        else:
-            # Broadcast error to all clients
-            await self.broadcast(error_msg)
-
-    @property
-    def current_status(self) -> TaskContext:
-        """Get current task execution status"""
-        return self.task_exec_service.get_current_status()
+            self.logger.error(f"Status request error: {e}", exc_info=True)
+            response = RPCResponse()
+            response.error = f"Error getting status: {str(e)}"
+            await websocket.send_bytes(response.SerializeToString())
