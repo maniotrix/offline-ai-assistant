@@ -53,6 +53,8 @@ def datetime_handler(obj):
         return obj.isoformat()
     if isinstance(obj, Enum):
         return obj.value
+    if hasattr(obj, '__dict__'):
+        return {k: v for k, v in obj.__dict__.items() if v is not None}
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
 @dataclass
@@ -61,11 +63,6 @@ class WebSocketMessage:
     data: Union[str, Dict, TaskContext, CommandResult, ActionResult]
 
     def to_dict(self) -> dict:
-        if isinstance(self.data, (TaskContext, Command, Action)):
-            return {
-                "type": self.type,
-                "data": json.loads(json.dumps(asdict(self.data), default=datetime_handler))
-            }
         return {
             "type": self.type,
             "data": json.loads(json.dumps(self.data, default=datetime_handler))
