@@ -100,11 +100,11 @@ class TaskExecutorService:
                     Action(
                         type=action.type,
                         coordinates=ActionCoordinates(
-                            x=action.coordinates.get('x'),
-                            y=action.coordinates.get('y')
+                            x=action.coordinates.x,
+                            y=action.coordinates.y
                         ),
                         text=action.text if hasattr(action, 'text') else None
-                    ) for action in prediction.actions
+                    ) for action in prediction.intent.actions
                 ]
 
             context.message = "Actions predicted, preparing execution..."
@@ -147,21 +147,12 @@ class TaskExecutorService:
             context.progress = int(progress)
             self._update_status(context)
 
-            params = {
-                'x': action.coordinates.x,
-                'y': action.coordinates.y,
-                'text': action.text
-            }
-            result = await action_service.execute_action(action.type, params)
+            # Pass the Action object directly
+            result = await action_service.execute_action(action)
             
-            # Convert to ActionResult domain model
-            action_result = ActionResult(
-                action=action,
-                success=result.get('success', False),
-                message=result.get('message', '')
-            )
-            context.action_results.append(action_result)
-            self.logger.info(f"Action {i} result: {action_result}")
+            # Result is already an ActionResult, no need to convert
+            context.action_results.append(result)
+            self.logger.info(f"Action {i} result: {result}")
 
     async def _finalize_command_execution(self, context: TaskContext) -> TaskContext:
         success = all(result.success for result in context.action_results)
