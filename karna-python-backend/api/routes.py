@@ -2,7 +2,7 @@ from fastapi import APIRouter, WebSocket, BackgroundTasks
 from pydantic import BaseModel
 from typing import Optional, Dict, List
 import logging
-from .websocket import WebSocketManager
+from .websocket import get_websocket_manager_instance
 # from modules.vision_agent import get_vision_service_instance
 from modules.action_prediction import get_language_service_instance
 from modules.action_execution import get_action_service_instance
@@ -11,7 +11,7 @@ from domain.command import Command
 from domain.action import Action, ActionCoordinates
 
 router = APIRouter()
-websocket_manager = WebSocketManager()
+websocket_manager = get_websocket_manager_instance()
 
 class ActionRequest(BaseModel):
     type: str

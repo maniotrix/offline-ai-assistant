@@ -4,8 +4,6 @@
     Do not use dict for communication within the backend
     use separate executor module for processing different stuff in backend pipeline or as required
     look out for improvement in websocket
-    use protobuf
-    use sqlite
 
 Okay, here's a comprehensive summary detailing the design and implementation of our personal, vision-based offline AI assistant project. This includes the progression of our architectural choices and the reasoning behind them:
 

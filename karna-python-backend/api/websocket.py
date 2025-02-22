@@ -8,7 +8,7 @@ from enum import Enum
 from datetime import datetime
 from modules.action_prediction import get_language_service_instance
 from modules.command_handler.command_processor import get_command_service_instance
-# from modules.vision_agent import get_vision_service_instance
+from base import SingletonMeta  # Add this import
 from services.task_execution_service import TaskExecutorService
 from domain.task import TaskContext, TaskStatus
 from domain.command import Command, CommandResult
@@ -68,13 +68,15 @@ class WebSocketMessage:
             "data": json.loads(json.dumps(self.data, default=datetime_handler))
         }
 
-class WebSocketManager:
+class WebSocketManager(metaclass=SingletonMeta):
     def __init__(self):
-        self.active_connections: Dict[str, WebSocket] = {}
-        self.task_exec_service = TaskExecutorService()
-        self.logger = logging.getLogger(__name__)
-        self.rate_limiter = RateLimit()
-        self._setup_message_handlers()
+        if not hasattr(self, '_initialized'):
+            self.active_connections: Dict[str, WebSocket] = {}
+            self.task_exec_service = TaskExecutorService()
+            self.logger = logging.getLogger(__name__)
+            self.rate_limiter = RateLimit()
+            self._setup_message_handlers()
+            self._initialized = True
 
     def _setup_message_handlers(self) -> None:
         """Set up message type handlers"""
@@ -242,3 +244,12 @@ class WebSocketManager:
             response = RPCResponse()
             response.error = f"Error getting status: {str(e)}"
             await websocket.send_bytes(response.SerializeToString())
+
+# Singleton instance getter
+_websocket_manager_instance = None
+
+def get_websocket_manager_instance():
+    global _websocket_manager_instance
+    if _websocket_manager_instance is None:
+        _websocket_manager_instance = WebSocketManager()
+    return _websocket_manager_instance
