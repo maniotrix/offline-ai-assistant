@@ -8,7 +8,7 @@ from enum import Enum
 from datetime import datetime
 from modules.action_prediction import get_language_service_instance
 from modules.command_handler.command_processor import get_command_service_instance
-from modules.vision_agent import get_vision_service_instance
+# from modules.vision_agent import get_vision_service_instance
 from services.task_execution_service import TaskExecutorService
 from domain.task import TaskContext, TaskStatus
 from domain.command import Command, CommandResult
@@ -151,6 +151,10 @@ class WebSocketManager:
                 await websocket.send_bytes(response.SerializeToString())
                 return
             
+            message_content = getattr(request, method)
+            self.logger.info(f"Received message from client {client_id}:")
+            self.logger.info(f"Method: {method}")
+            self.logger.info(f"Content: {message_content}")
             handler = self.message_handlers[method]
             await handler(websocket, getattr(request, method))
             
@@ -209,7 +213,7 @@ class WebSocketManager:
         """Handle status request using protobuf"""
         try:
             services_status = {
-                "vision": get_vision_service_instance().get_status(),
+                # "vision": get_vision_service_instance().get_status(),
                 "language": get_language_service_instance().get_status(),
                 "command": get_command_service_instance().get_status(),
                 "task_execution": self.task_exec_service.get_current_status()
@@ -217,7 +221,8 @@ class WebSocketManager:
             
             response = RPCResponse()
             status = Status()
-            status.vision = services_status["vision"] or ""
+            # status.vision = services_status["vision"] or ""
+            status.vision = ""
             status.language = services_status["language"] or ""
             status.command = services_status["command"] or ""
             
