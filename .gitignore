@@ -48,6 +48,7 @@ models/*.pth
 *.log
 *.sqlite3
 *.db
+!cache.db
 
 # Environment variables
 .env
