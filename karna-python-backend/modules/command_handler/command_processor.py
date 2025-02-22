@@ -116,6 +116,13 @@ class CommandService(BaseService, metaclass=SingletonMeta):
         """Post process the command result"""
         self.logger.debug(f"Post-processing command result: {result}")
         return result
+    
+    def get_status(self) -> str:
+        """Get service status"""
+        if not self._initialized:
+            return "not_initialized"
+
+        return "running"
 
 # Singleton instance management
 _command_service_instance = None

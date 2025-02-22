@@ -51,6 +51,8 @@ class RateLimit:
 def datetime_handler(obj):
     if isinstance(obj, datetime):
         return obj.isoformat()
+    if isinstance(obj, Enum):
+        return obj.value
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
 @dataclass

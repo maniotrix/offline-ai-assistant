@@ -1,5 +1,6 @@
 from typing import Dict, Any, Optional
 import logging
+from uuid import UUID
 from modules.command_handler.command_processor import get_command_service_instance
 from modules.action_prediction import get_language_service_instance
 from modules.action_execution import get_action_service_instance
@@ -82,27 +83,45 @@ class TaskExecutorService:
         context.progress = 40
         self._update_status(context)
 
-        language_service = get_language_service_instance()
-        prediction = await language_service.recognize_intent(
-            command_uuid=str(context.command.uuid)
-        )
-        
-        if prediction:
-            # Convert prediction actions to domain model
-            context.actions = [
-                Action(
-                    type=action.type,
-                    coordinates=ActionCoordinates(
-                        x=action.coordinates.get('x'),
-                        y=action.coordinates.get('y')
-                    ),
-                    text=action.text if hasattr(action, 'text') else None
-                ) for action in prediction.actions
-            ]
+        try:
+            # Validate UUID before passing to recognize_intent
+            command_uuid = str(context.command.uuid)
+            try:
+                UUID(command_uuid)
+            except ValueError:
+                raise ValueError(f"Invalid command UUID format: {command_uuid}")
 
-        context.message = "Actions predicted, preparing execution..."
-        context.progress = 50
-        self._update_status(context)
+            language_service = get_language_service_instance()
+            prediction = await language_service.recognize_intent(command_uuid)
+            
+            if prediction:
+                # Convert prediction actions to domain model
+                context.actions = [
+                    Action(
+                        type=action.type,
+                        coordinates=ActionCoordinates(
+                            x=action.coordinates.get('x'),
+                            y=action.coordinates.get('y')
+                        ),
+                        text=action.text if hasattr(action, 'text') else None
+                    ) for action in prediction.actions
+                ]
+
+            context.message = "Actions predicted, preparing execution..."
+            context.progress = 50
+            self._update_status(context)
+        except ValueError as ve:
+            self.logger.error(f"UUID validation error: {str(ve)}")
+            context.status = TaskStatus.ERROR
+            context.message = f"Invalid command format: {str(ve)}"
+            context.progress = 0
+            self._update_status(context)
+        except Exception as e:
+            self.logger.error(f"Error predicting actions: {str(e)}")
+            context.status = TaskStatus.ERROR
+            context.message = f"Error predicting actions: {str(e)}"
+            context.progress = 0
+            self._update_status(context)
 
     async def _handle_no_actions(self, context: TaskContext) -> TaskContext:
         self.logger.info("No actions found in prediction cache")
