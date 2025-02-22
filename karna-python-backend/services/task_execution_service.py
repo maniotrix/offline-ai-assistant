@@ -8,9 +8,12 @@ from domain.command import Command, CommandResult
 from domain.task import TaskContext, TaskStatus
 from domain.action import Action, ActionResult, ActionCoordinates
 from domain.intent import Intent, IntentPrediction
+from base.base_observer import Observable
+from services.task_observer import TaskProgressObserver
 
-class TaskExecutorService:
+class TaskExecutorService(Observable[TaskContext]):
     def __init__(self):
+        super().__init__()
         self.command_processor = get_command_service_instance()
         self.logger = logging.getLogger(__name__)
         self._initialize_status()
@@ -169,7 +172,9 @@ class TaskExecutorService:
         return self.current_status
 
     def _update_status(self, context: TaskContext) -> None:
+        """Update current status and notify observers"""
         self.current_status = context
+        self.notify_observers(context)
 
     def get_current_status(self) -> TaskContext:
         return self.current_status

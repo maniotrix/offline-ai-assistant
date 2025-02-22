@@ -24,6 +24,7 @@ from generated.messages_pb2 import (
     Action as ProtoAction,
     TaskStatus as ProtoTaskStatus
 )
+from base.base_observer import AsyncCapableObserver
 
 class RateLimit:
     def __init__(self, max_requests: int = 10, time_window: int = 60):
@@ -95,6 +96,12 @@ class WebSocketManager(metaclass=SingletonMeta):
         except Exception as e:
             self.logger.error(f"Failed to establish WebSocket connection: {e}")
             raise
+
+    def register_websocket_task_observer(self, client_id: str):
+        pass
+        
+    def remove_websocket_task_observer(self, client_id: str):
+        pass
 
     def disconnect(self, websocket: WebSocket) -> None:
         """Handle WebSocket disconnection"""
@@ -195,29 +202,31 @@ class WebSocketManager(metaclass=SingletonMeta):
     async def _handle_command_execution(self, websocket: WebSocket, command_request: CommandRequest) -> None:
         """Handle command execution using protobuf"""
         try:
-            context = await self.task_exec_service.execute_command(
+            await self.task_exec_service.execute_command(
                 command_request.command + ", domain " + command_request.domain
                 )
-            
-            response = RPCResponse()
-            command_result = ProtoCommandResult()
-            command_result.command_text = context.command_text
-            command_result.status = self._task_status_to_proto(context.status)
-            command_result.message = context.message or ""
-            
-            if hasattr(context, 'actions') and context.actions:
-                for action in context.actions:
-                    proto_action = command_result.actions.add()
-                    proto_action.CopyFrom(self._action_to_proto(action))
-            
-            response.command_response.CopyFrom(command_result)
-            await self.broadcast(response)
             
         except Exception as e:
             self.logger.error(f"Command execution error: {e}", exc_info=True)
             response = RPCResponse()
             response.error = str(e)
             await websocket.send_bytes(response.SerializeToString())
+
+    async def broadcast_task_status(self, context : TaskContext):
+        self.logger.info(f"Broadcasting task status: {context.status}")
+        response = RPCResponse()
+        command_result = ProtoCommandResult()
+        command_result.command_text = context.command_text
+        command_result.status = self._task_status_to_proto(context.status)
+        command_result.message = context.message or ""
+            
+        if hasattr(context, 'actions') and context.actions:
+            for action in context.actions:
+                proto_action = command_result.actions.add()
+                proto_action.CopyFrom(self._action_to_proto(action))
+            
+        response.command_response.CopyFrom(command_result)
+        await self.broadcast(response)
 
     async def _handle_status_request(self, websocket: WebSocket, status_request: StatusRequest) -> None:
         """Handle status request using protobuf"""
@@ -253,3 +262,20 @@ def get_websocket_manager_instance():
     if _websocket_manager_instance is None:
         _websocket_manager_instance = WebSocketManager()
     return _websocket_manager_instance
+
+class TaskExecutionObserver(AsyncCapableObserver[TaskContext]):
+    """_summary_
+
+    Websocket observer for task execution status updates.
+    Args:
+        AsyncCapableObserver (_type_): _description_
+    """
+    def __init__(self, websocket_manager: WebSocketManager):
+        super().__init__()
+        self.websocket_manager = websocket_manager
+            
+    def update(self, context: TaskContext) -> None:
+        self._schedule_async(self._handle_update(context))
+        
+    async def _handle_update(self, context: TaskContext) -> None:
+        await self.websocket_manager.broadcast_task_status(context)
