@@ -1,16 +1,9 @@
 from base import BaseService, SingletonMeta
 import pyautogui
-from typing import Dict, Tuple, Optional
+from typing import Dict, Optional
 import asyncio
-from dataclasses import dataclass
 import logging
-
-@dataclass
-class ActionResult:
-    success: bool
-    message: str
-    coordinates: Optional[Tuple[int, int]] = None
-    element_id: Optional[str] = None
+from domain.action import Action, ActionResult, ActionCoordinates
 
 class ActionService(BaseService, metaclass=SingletonMeta):
     def __init__(self):
@@ -18,7 +11,7 @@ class ActionService(BaseService, metaclass=SingletonMeta):
             super().__init__()
             self._action_queue = asyncio.Queue()
             self._running_actions = set()
-            pyautogui.FAILSAFE = True  # Enable failsafe
+            pyautogui.FAILSAFE = True
             self._initialized = True
         
     async def initialize(self) -> None:
@@ -38,36 +31,44 @@ class ActionService(BaseService, metaclass=SingletonMeta):
         self._running_actions.clear()
         self._resources.clear()
 
-    async def execute_action(self, action_type: str, params: Dict) -> ActionResult:
+    async def execute_action(self, action: Action) -> ActionResult:
         """Queue an action for execution"""
         try:
-            if not self._is_action_safe(action_type, params):
-                return ActionResult(False, "Action validation failed")
+            if not self._is_action_safe(action):
+                return ActionResult(
+                    action=action,
+                    success=False,
+                    message="Action validation failed"
+                )
 
             future = asyncio.Future()
-            await self._action_queue.put((action_type, params, future))
+            await self._action_queue.put((action, future))
             return await future
             
         except Exception as e:
             self.logger.error(f"Action execution error: {str(e)}")
-            return ActionResult(False, f"Execution error: {str(e)}")
+            return ActionResult(
+                action=action,
+                success=False,
+                message=f"Execution error: {str(e)}"
+            )
 
-    def _is_action_safe(self, action_type: str, params: Dict) -> bool:
+    def _is_action_safe(self, action: Action) -> bool:
         """Validate action safety"""
         try:
-            if action_type == "click":
-                x, y = params.get('x'), params.get('y')
-                if not (isinstance(x, (int, float)) and isinstance(y, (int, float))):
+            if action.type == "click":
+                if not isinstance(action.coordinates, ActionCoordinates):
                     return False
                 # Ensure coordinates are within screen bounds
                 screen_width, screen_height = pyautogui.size()
-                return 0 <= x <= screen_width and 0 <= y <= screen_height
+                return (0 <= action.coordinates.x <= screen_width and 
+                       0 <= action.coordinates.y <= screen_height)
                 
-            elif action_type == "type":
-                return isinstance(params.get('text'), str)
+            elif action.type == "type":
+                return isinstance(action.text, str)
                 
-            elif action_type == "scroll":
-                return isinstance(params.get('amount'), (int, float))
+            elif action.type == "scroll":
+                return True  # Implement scroll validation if needed
                 
             return False  # Unknown action type
             
@@ -79,54 +80,79 @@ class ActionService(BaseService, metaclass=SingletonMeta):
         """Background worker to process queued actions"""
         while True:
             try:
-                action_type, params, future = await self._action_queue.get()
+                action, future = await self._action_queue.get()
                 
-                if action_type in self._running_actions:
-                    future.set_result(ActionResult(False, "Similar action already in progress"))
+                if action.type in self._running_actions:
+                    future.set_result(ActionResult(
+                        action=action,
+                        success=False,
+                        message="Similar action already in progress"
+                    ))
                     continue
                     
-                self._running_actions.add(action_type)
+                self._running_actions.add(action.type)
                 try:
-                    result = await self._execute_single_action(action_type, params)
+                    result = await self._execute_single_action(action)
                     if not future.done():
                         future.set_result(result)
                 finally:
-                    self._running_actions.remove(action_type)
+                    self._running_actions.remove(action.type)
                     
             except asyncio.CancelledError:
                 raise
             except Exception as e:
                 self.logger.error(f"Action worker error: {str(e)}")
 
-    async def _execute_single_action(self, action_type: str, params: Dict) -> ActionResult:
+    async def _execute_single_action(self, action: Action) -> ActionResult:
         """Execute a single action"""
         try:
-            if action_type == "click":
-                x, y = params['x'], params['y']
+            if action.type == "click":
                 # Move mouse smoothly
-                # pyautogui.moveTo(x, y, duration=0.2)
+                # pyautogui.moveTo(action.coordinates.x, action.coordinates.y, duration=0.2)
                 # pyautogui.click()
-                return ActionResult(True, "Click successful", coordinates=(x, y))
+                return ActionResult(
+                    action=action,
+                    success=True,
+                    message="Click successful"
+                )
                 
-            elif action_type == "type":
-                text = params['text']
-                # pyautogui.write(text)
-                return ActionResult(True, "Text input successful")
+            elif action.type == "type":
+                if not action.text:
+                    return ActionResult(
+                        action=action,
+                        success=False,
+                        message="No text provided for type action"
+                    )
+                # pyautogui.write(action.text)
+                return ActionResult(
+                    action=action,
+                    success=True,
+                    message="Text input successful"
+                )
                 
-            elif action_type == "scroll":
-                amount = params['amount']
+            elif action.type == "scroll":
                 # pyautogui.scroll(amount)
-                return ActionResult(True, "Scroll successful")
+                return ActionResult(
+                    action=action,
+                    success=True,
+                    message="Scroll successful"
+                )
                 
-            return ActionResult(False, f"Unknown action type: {action_type}")
+            return ActionResult(
+                action=action,
+                success=False,
+                message=f"Unknown action type: {action.type}"
+            )
             
         except Exception as e:
-            return ActionResult(False, f"Action execution failed: {str(e)}")
+            return ActionResult(
+                action=action,
+                success=False,
+                message=f"Action execution failed: {str(e)}"
+            )
 
-    async def validate_action_result(self, result: ActionResult, expected_state: Dict) -> bool:
-        """Validate action result against expected state"""
-        # Implement validation logic based on your requirements
-        # This is a placeholder implementation
+    async def validate_action_result(self, result: ActionResult) -> bool:
+        """Validate action result"""
         return result.success
 
 # Singleton instance getter

@@ -1,21 +1,34 @@
 from fastapi import APIRouter, WebSocket, BackgroundTasks
 from pydantic import BaseModel
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 import logging
 from .websocket import WebSocketManager
-from modules.vision_agent import get_vision_service_instance
+# from modules.vision_agent import get_vision_service_instance
 from modules.action_prediction import get_language_service_instance
 from modules.action_execution import get_action_service_instance
-from modules.command_handler.command_keys import CommandKeys
+from domain.task import TaskContext, TaskStatus
+from domain.command import Command
+from domain.action import Action, ActionCoordinates
 
 router = APIRouter()
 websocket_manager = WebSocketManager()
 
-class Status(BaseModel):
-    operation: Optional[str]
-    status: str
+class ActionRequest(BaseModel):
+    type: str
+    coordinates: dict
+    text: Optional[str] = None
+
+class CommandRequest(BaseModel):
+    command: str
+    domain: str
+    uuid: Optional[str] = None
+
+class TaskStatusResponse(BaseModel):
+    command_text: str
+    status: TaskStatus
     message: str
     progress: int
+    actions: Optional[List[Action]] = None
 
 @router.get("/health")
 async def health_check():
@@ -44,11 +57,19 @@ async def websocket_endpoint(websocket: WebSocket):
         websocket_manager.disconnect(websocket)
 
 @router.get("/api/status")
-async def get_status():
-    return websocket_manager.current_status
+async def get_status() -> TaskStatusResponse:
+    context = websocket_manager.current_status
+    return TaskStatusResponse(
+        command_text=context.command_text,
+        status=context.status,
+        message=context.message,
+        progress=context.progress,
+        actions=context.actions if hasattr(context, 'actions') else None
+    )
 
 @router.get("/api/screenshot")
 async def get_screenshot():
-    vision_service = get_vision_service_instance()
-    screenshot = await vision_service.capture_screen()
-    return {"screenshot": screenshot}
+    # vision_service = get_vision_service_instance()
+    # screenshot = await vision_service.capture_screen()
+    # return {"screenshot": screenshot}
+    pass
