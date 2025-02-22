@@ -72,7 +72,7 @@ class WebSocketMessage:
 class WebSocketManager(metaclass=SingletonMeta):
     def __init__(self):
         if not hasattr(self, '_initialized'):
-            self.active_connections: Dict[str, WebSocket] = {} # TODO Implement Observer pattern
+            self.active_connections: Dict[str, Connection] = {}
             self.task_exec_service = TaskExecutorService()
             self.logger = logging.getLogger(__name__)
             self.rate_limiter = RateLimit()
@@ -91,34 +91,26 @@ class WebSocketManager(metaclass=SingletonMeta):
         try:
             await websocket.accept()
             client_id = str(id(websocket))
-            self.active_connections[client_id] = websocket
+            connection = Connection(websocket, client_id, TaskExecutionObserver(self))
+            self.active_connections[client_id] = connection
+            self.task_exec_service.add_observer(connection.observer)
             self.logger.info(f"New WebSocket connection established: {client_id}")
-            # add observer for task execution status updates 
-            # TODO: Implement
         except Exception as e:
             self.logger.error(f"Failed to establish WebSocket connection: {e}")
             raise
-
-    def register_websocket_task_observer(self, client_id: str):
-        # TODO: Implement
-        pass
-        
-    def remove_websocket_task_observer(self, client_id: str):
-        # TODO: Implement
-        pass
 
     def disconnect(self, websocket: WebSocket) -> None:
         """Handle WebSocket disconnection"""
         try:
             client_id = str(id(websocket))
             if (client_id in self.active_connections):
+                self.task_exec_service.remove_observer(self.active_connections[client_id].observer)
                 del self.active_connections[client_id]
                 # Clean up rate limiter store
                 if client_id in self.rate_limiter.requests:
                     del self.rate_limiter.requests[client_id]
                 self.logger.info(f"WebSocket connection closed: {client_id}")
-                # remove observer for task execution status updates 
-                # TODO: Implement
+
         except Exception as e:
             self.logger.warning(f"Error during disconnect: {e}")
 
@@ -132,7 +124,7 @@ class WebSocketManager(metaclass=SingletonMeta):
         disconnected = []
         for client_id, connection in self.active_connections.items():
             try:
-                await connection.send_bytes(message)
+                await connection.websocket.send_bytes(message)
             except WebSocketDisconnect:
                 disconnected.append(client_id)
             except Exception as e:
@@ -142,7 +134,7 @@ class WebSocketManager(metaclass=SingletonMeta):
         # Clean up disconnected clients
         for client_id in disconnected:
             if client_id in self.active_connections:
-                self.disconnect(self.active_connections[client_id])
+                self.disconnect(self.active_connections[client_id].websocket)
 
     async def handle_message(self, websocket: WebSocket, data: bytes) -> None:
         """Route incoming protobuf messages to appropriate handlers"""
@@ -285,3 +277,9 @@ class TaskExecutionObserver(AsyncCapableObserver[TaskContext]):
         
     async def _handle_update(self, context: TaskContext) -> None:
         await self.websocket_manager.broadcast_task_status(context)
+        
+@dataclass
+class Connection:
+    websocket: WebSocket
+    client_id: str
+    observer: TaskExecutionObserver
