@@ -98,7 +98,7 @@ class WebSocketManager:
         """Handle WebSocket disconnection"""
         try:
             client_id = str(id(websocket))
-            if client_id in self.active_connections:
+            if (client_id in self.active_connections):
                 del self.active_connections[client_id]
                 # Clean up rate limiter store
                 if client_id in self.rate_limiter.requests:
@@ -183,8 +183,9 @@ class WebSocketManager:
         """Convert domain Action to protobuf Action"""
         proto_action = ProtoAction()
         proto_action.type = action.type
-        for k, v in action.coordinates.items():
-            proto_action.coordinates[k] = str(v)
+        if action.coordinates:
+            proto_action.coordinates["x"] = str(action.coordinates.x)
+            proto_action.coordinates["y"] = str(action.coordinates.y)
         if action.text:
             proto_action.text = action.text
         return proto_action
