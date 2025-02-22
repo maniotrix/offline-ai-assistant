@@ -84,7 +84,7 @@ class TaskExecutorService:
 
         language_service = get_language_service_instance()
         prediction = await language_service.recognize_intent(
-            command_id=str(context.command.uuid)
+            command_uuid=str(context.command.uuid)
         )
         
         if prediction:

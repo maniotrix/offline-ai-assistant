@@ -5,6 +5,7 @@ import logging
 import time
 from dataclasses import dataclass, asdict
 from enum import Enum
+from datetime import datetime
 # from modules.vision_agent import get_vision_service_instance
 from modules.action_prediction import get_language_service_instance
 from modules.command_handler.command_processor import get_command_service_instance
@@ -47,6 +48,11 @@ class RateLimit:
         self.requests[client_id].append(now)
         return True
 
+def datetime_handler(obj):
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
 @dataclass
 class WebSocketMessage:
     type: WebSocketMessageType
@@ -56,11 +62,11 @@ class WebSocketMessage:
         if isinstance(self.data, (TaskContext, Command, Action)):
             return {
                 "type": self.type,
-                "data": asdict(self.data)
+                "data": json.loads(json.dumps(asdict(self.data), default=datetime_handler))
             }
         return {
             "type": self.type,
-            "data": self.data
+            "data": json.loads(json.dumps(self.data, default=datetime_handler))
         }
 
 class WebSocketManager:
