@@ -24,24 +24,9 @@ class CachedIntent(Base):
     uuid = Column(String, unique=True, index=True, default=lambda: str(uuid4()))
     command_uuid = Column(String, ForeignKey("cached_commands.uuid"))
     confidence = Column(Float, default=1.0)
-    meta_data = Column(JSON, default=dict)  # Renamed from metadata to meta_data
+    meta_data = Column(JSON, default=dict)
+    actions = Column(JSON, default=list)  # Store actions as JSON array
     created_at = Column(DateTime, default=datetime.now)
 
-    # Relationships
+    # Relationship with CachedCommand
     command = relationship("CachedCommand", back_populates="intents")
-    actions = relationship("CachedAction", back_populates="intent", cascade="all, delete-orphan")
-
-class CachedAction(Base):
-    __tablename__ = "cached_actions"
-
-    id = Column(Integer, primary_key=True, index=True)
-    uuid = Column(String, unique=True, index=True, default=lambda: str(uuid4()))
-    intent_id = Column(Integer, ForeignKey("cached_intents.id"))
-    type = Column(String)
-    coordinates_x = Column(Integer)
-    coordinates_y = Column(Integer)
-    text = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.now)
-
-    # Relationship
-    intent = relationship("CachedIntent", back_populates="actions")

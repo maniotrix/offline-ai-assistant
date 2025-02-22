@@ -5,12 +5,13 @@ import logging
 from pathlib import Path
 from sqlalchemy import inspect
 from typing import Dict, List, Any
+from uuid import uuid4
 
 # Add parent directory to path to import from database
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database.config import engine, SessionLocal
-from database.models import CachedCommand, CachedIntent, CachedAction
+from database.models import CachedCommand, CachedIntent
 from database.repositories.command_repository import CommandRepository
 from database.repositories.intent_repository import IntentRepository
 from alembic import command
@@ -23,20 +24,20 @@ BATCH_SIZE = 100  # Number of records to process in a batch
 
 def validate_command(cmd: Dict[str, Any]) -> bool:
     """Validate command data before insertion"""
-    required_fields = ['name', 'domain', 'uuid']
-    return all(field in cmd and cmd[field] for field in required_fields)
+    required_fields = ['uuid', 'name', 'domain']
+    return all(field in cmd for field in required_fields)
 
 def validate_intent(intent: Dict[str, Any]) -> bool:
     """Validate intent data before insertion"""
-    if not all(k in intent for k in ['uuid', 'command_id']):
+    if not all(field in intent for field in ['uuid', 'command_id', 'actions']):
         return False
-    if 'actions' not in intent or not isinstance(intent['actions'], list):
-        return False
-    for action in intent['actions']:
-        if not all(k in action for k in ['type', 'coordinates']):
+    
+    for action in intent.get('actions', []):
+        if not all(field in action for field in ['type', 'coordinates']):
             return False
-        if not isinstance(action['coordinates'], dict) or not all(k in action['coordinates'] for k in ['x', 'y']):
+        if not all(field in action['coordinates'] for field in ['x', 'y']):
             return False
+    
     return True
 
 def init_db():
@@ -122,24 +123,19 @@ def migrate_json_to_db():
                                     db, intent['command_id']
                                 )
                                 if not existing:
+                                    # Store actions directly in the intent as JSON
+                                    for action in intent.get('actions', []):
+                                        if 'uuid' not in action:
+                                            action['uuid'] = str(uuid4())
+                                            
                                     db_intent = CachedIntent(
                                         uuid=intent['uuid'],
                                         command_uuid=intent['command_id'],
-                                        confidence=1.0
+                                        confidence=1.0,
+                                        actions=intent['actions']  # Store actions as JSON
                                     )
                                     db.add(db_intent)
-                                    db.flush()
-                                    
-                                    for action in intent.get('actions', []):
-                                        db_action = CachedAction(
-                                            intent_id=db_intent.id,
-                                            type=action['type'],
-                                            coordinates_x=action['coordinates']['x'],
-                                            coordinates_y=action['coordinates']['y'],
-                                            text=action.get('text')
-                                        )
-                                        db.add(db_action)
-                                    
+                            
                             db.commit()
                             logger.info(f"Migrated intents batch {i//BATCH_SIZE + 1}")
                         except Exception as e:

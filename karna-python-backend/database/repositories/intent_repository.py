@@ -1,10 +1,10 @@
 from typing import Optional, List
 from sqlalchemy.orm import Session
 from .base_repository import BaseRepository
-from ..models import CachedIntent, CachedAction
+from ..models import CachedIntent
 from domain.intent import Intent, IntentPrediction
 from domain.action import Action, ActionCoordinates
-from uuid import UUID
+from uuid import UUID, uuid4
 
 class IntentRepository(BaseRepository[CachedIntent]):
     def __init__(self):
@@ -18,15 +18,15 @@ class IntentRepository(BaseRepository[CachedIntent]):
     def to_domain(self, db_intent: CachedIntent) -> IntentPrediction:
         """Convert database model to domain model"""
         actions = []
-        for db_action in db_intent.actions:
+        for action_data in db_intent.actions:
             action = Action(
-                type=db_action.type,
+                type=action_data['type'],
                 coordinates=ActionCoordinates(
-                    x=db_action.coordinates_x,
-                    y=db_action.coordinates_y
+                    x=action_data['coordinates']['x'],
+                    y=action_data['coordinates']['y']
                 ),
-                text=db_action.text,
-                uuid=UUID(db_action.uuid)
+                text=action_data.get('text'),
+                uuid=UUID(action_data.get('uuid', str(uuid4())))
             )
             actions.append(action)
 
@@ -45,35 +45,36 @@ class IntentRepository(BaseRepository[CachedIntent]):
 
     def from_domain(self, prediction: IntentPrediction) -> dict:
         """Convert domain model to database fields"""
+        actions_json = []
+        for action in prediction.intent.actions:
+            action_data = {
+                'type': action.type,
+                'coordinates': {
+                    'x': action.coordinates.x,
+                    'y': action.coordinates.y
+                },
+                'uuid': str(action.uuid)
+            }
+            if action.text:
+                action_data['text'] = action.text
+            actions_json.append(action_data)
+
         return {
             "uuid": str(prediction.intent.uuid),
             "command_uuid": str(prediction.intent.command_uuid),
             "confidence": prediction.confidence,
             "meta_data": prediction.metadata,
+            "actions": actions_json,
             "created_at": prediction.intent.created_at
         }
 
     def create_with_actions(self, db: Session, prediction: IntentPrediction) -> CachedIntent:
-        """Create intent with its associated actions in a single transaction"""
+        """Create intent with its associated actions"""
         try:
-            # Create intent
+            # Create intent with actions as JSON
             intent_data = self.from_domain(prediction)
             db_intent = super().create(db, **intent_data)
-
-            # Create associated actions
-            for action in prediction.intent.actions:
-                db_action = CachedAction(
-                    uuid=str(action.uuid),
-                    intent_id=db_intent.id,
-                    type=action.type,
-                    coordinates_x=action.coordinates.x,
-                    coordinates_y=action.coordinates.y,
-                    text=action.text
-                )
-                db.add(db_action)
-            
-            db.flush()  # Ensure all changes are ready but not committed
-            db.refresh(db_intent)  # Refresh to get the actions relationship
+            db.flush()
             return db_intent
         except Exception as e:
             db.rollback()

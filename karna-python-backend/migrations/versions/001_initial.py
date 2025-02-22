@@ -1,7 +1,7 @@
 """Initial migration
 
 Revision ID: 001
-Create Date: 2023-10-20
+Create Date: 2025-02-20
 """
 from alembic import op
 import sqlalchemy as sa
@@ -27,35 +27,24 @@ def upgrade() -> None:
     op.create_index(op.f('ix_cached_commands_name'), 'cached_commands', ['name'], unique=False)
     op.create_index(op.f('ix_cached_commands_domain'), 'cached_commands', ['domain'], unique=False)
 
-    # Create cached_intents table
+    # Create cached_intents table with actions as JSON
     op.create_table('cached_intents',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('uuid', sa.String(), nullable=False),
         sa.Column('command_uuid', sa.String(), nullable=False),
         sa.Column('confidence', sa.Float(), nullable=False),
-        sa.Column('meta_data', sa.JSON(), nullable=True),  # Changed from metadata to meta_data
+        sa.Column('meta_data', sa.JSON(), nullable=True),
+        sa.Column('actions', sa.JSON(), nullable=False),  # New column for storing actions
         sa.Column('created_at', sa.DateTime(), nullable=False),
         sa.ForeignKeyConstraint(['command_uuid'], ['cached_commands.uuid'], ),
         sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_cached_intents_uuid'), 'cached_intents', ['uuid'], unique=True)
 
-    # Create cached_actions table
-    op.create_table('cached_actions',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('uuid', sa.String(), nullable=False),
-        sa.Column('intent_id', sa.Integer(), nullable=False),
-        sa.Column('type', sa.String(), nullable=False),
-        sa.Column('coordinates_x', sa.Integer(), nullable=False),
-        sa.Column('coordinates_y', sa.Integer(), nullable=False),
-        sa.Column('text', sa.String(), nullable=True),
-        sa.Column('created_at', sa.DateTime(), nullable=False),
-        sa.ForeignKeyConstraint(['intent_id'], ['cached_intents.id'], ),
-        sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_cached_actions_uuid'), 'cached_actions', ['uuid'], unique=True)
-
 def downgrade() -> None:
-    op.drop_table('cached_actions')
+    op.drop_index(op.f('ix_cached_intents_uuid'), table_name='cached_intents')
     op.drop_table('cached_intents')
+    op.drop_index(op.f('ix_cached_commands_domain'), table_name='cached_commands')
+    op.drop_index(op.f('ix_cached_commands_name'), table_name='cached_commands')
+    op.drop_index(op.f('ix_cached_commands_uuid'), table_name='cached_commands')
     op.drop_table('cached_commands')
