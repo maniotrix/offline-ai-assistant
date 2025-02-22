@@ -109,17 +109,17 @@ class LanguageService(BaseService, metaclass=SingletonMeta):
                     self.logger.debug(f"Found cached intent for command {command_uuid}")
                     return self.intent_repository.to_domain(cached_intent)
 
-            # If not in cache, queue request for model inference
-            future = asyncio.Future()
-            await self._request_queue.put((command_uuid, future))
-            result = await future
+            # # If not in cache, queue request for model inference
+            # future = asyncio.Future()
+            # await self._request_queue.put((command_uuid, future))
+            # result = await future
             
-            if result:
-                # Cache the result in database
-                with self.intent_repository.get_db() as db:
-                    self.intent_repository.create_with_actions(db, result)
+            # if result:
+            #     # Cache the result in database
+            #     with self.intent_repository.get_db() as db:
+            #         self.intent_repository.create_with_actions(db, result)
             
-            return result
+            # return result
         except Exception as e:
             self.logger.error(f"Error recognizing intent: {str(e)}")
             return None
