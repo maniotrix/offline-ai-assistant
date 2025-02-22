@@ -8,7 +8,6 @@ from domain.command import Command, CommandResult
 from domain.task import TaskContext, TaskStatus
 from domain.action import Action, ActionResult, ActionCoordinates
 from domain.intent import Intent, IntentPrediction
-from services.status_keys import StatusKeys, StatusStates, OperationTypes
 
 class TaskExecutorService:
     def __init__(self):
@@ -20,7 +19,7 @@ class TaskExecutorService:
         """Initialize the current status state"""
         self.current_status = TaskContext(
             command_text="",
-            status=TaskStatus.IDLE
+            status=TaskStatus.PENDING
         )
 
     async def execute_command(self, command_text: str) -> TaskContext:
@@ -47,13 +46,13 @@ class TaskExecutorService:
 
     async def _start_command_execution(self, context: TaskContext) -> None:
         self.logger.info(f"Processing command: {context.command_text}")
-        context.status = TaskStatus.RUNNING
+        context.status = TaskStatus.IN_PROGRESS
         context.message = f"Processing command: {context.command_text}"
         context.progress = 0
         self._update_status(context)
 
     async def _process_command(self, context: TaskContext) -> None:
-        context.status = TaskStatus.PROCESSING
+        context.status = TaskStatus.IN_PROGRESS
         context.message = "Processing command through command service..."
         context.progress = 20
         self._update_status(context)
@@ -78,7 +77,7 @@ class TaskExecutorService:
         return self.current_status
 
     async def _predict_actions(self, context: TaskContext) -> None:
-        context.status = TaskStatus.PROCESSING
+        context.status = TaskStatus.IN_PROGRESS
         context.message = "Command found in cache, predicting actions..."
         context.progress = 40
         self._update_status(context)
@@ -112,13 +111,13 @@ class TaskExecutorService:
             self._update_status(context)
         except ValueError as ve:
             self.logger.error(f"UUID validation error: {str(ve)}")
-            context.status = TaskStatus.ERROR
+            context.status = TaskStatus.FAILED
             context.message = f"Invalid command format: {str(ve)}"
             context.progress = 0
             self._update_status(context)
         except Exception as e:
             self.logger.error(f"Error predicting actions: {str(e)}")
-            context.status = TaskStatus.ERROR
+            context.status = TaskStatus.FAILED
             context.message = f"Error predicting actions: {str(e)}"
             context.progress = 0
             self._update_status(context)
@@ -142,7 +141,7 @@ class TaskExecutorService:
             progress = 50 + (i / total_actions * 40)
             self.logger.info(f"Executing action {i}/{total_actions}: {action.type}")
             
-            context.status = TaskStatus.PROCESSING
+            context.status = TaskStatus.IN_PROGRESS
             context.message = f"Executing action {i}/{total_actions}: {action.type}"
             context.progress = int(progress)
             self._update_status(context)
@@ -156,7 +155,7 @@ class TaskExecutorService:
 
     async def _finalize_command_execution(self, context: TaskContext) -> TaskContext:
         success = all(result.success for result in context.action_results)
-        context.status = TaskStatus.COMPLETED if success else TaskStatus.ERROR
+        context.status = TaskStatus.COMPLETED if success else TaskStatus.FAILED
         context.message = "Cached actions executed successfully" if success else "Some cached actions failed"
         context.progress = 100
         self._update_status(context)
@@ -164,7 +163,7 @@ class TaskExecutorService:
 
     def _handle_error(self, error_message: str) -> TaskContext:
         self.logger.error(f"Error during execution: {error_message}", exc_info=True)
-        self.current_status.status = TaskStatus.ERROR
+        self.current_status.status = TaskStatus.FAILED
         self.current_status.message = error_message
         self.current_status.progress = 0
         return self.current_status
