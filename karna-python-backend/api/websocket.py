@@ -193,7 +193,7 @@ class WebSocketManager:
         """Handle command execution using protobuf"""
         try:
             context = await self.task_exec_service.execute_command(
-                command_request.command + " " + command_request.domain
+                command_request.command + ", domain " + command_request.domain
                 )
             
             response = RPCResponse()
