@@ -14,17 +14,18 @@ def generate_python_proto():
         # Create output directory if it doesn't exist
         output_dir.mkdir(parents=True, exist_ok=True)
         
-        # Generate Python code
+        # Generate Python code and type stubs
         subprocess.run([
             sys.executable,
             '-m',
             'grpc_tools.protoc',
             f'--proto_path={proto_dir}',
             f'--python_out={output_dir}',
+            f'--mypy_out={output_dir}',
             str(proto_file)
         ], check=True)
         
-        print(f"Successfully generated Python protobuf code in {output_dir}")
+        print(f"Successfully generated Python protobuf code and type stubs in {output_dir}")
         
         # Create __init__.py
         init_file = output_dir / '__init__.py'

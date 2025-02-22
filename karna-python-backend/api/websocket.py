@@ -15,8 +15,13 @@ from domain.command import Command, CommandResult
 from domain.action import Action, ActionResult
 from google.protobuf.message import Message
 from generated.messages_pb2 import (
-    RPCRequest, RPCResponse, CommandRequest, StatusRequest, 
-    Status, CommandResult as ProtoCommandResult, Action as ProtoAction,
+    RPCRequest, 
+    RPCResponse, 
+    CommandRequest, 
+    StatusRequest, 
+    Status, 
+    CommandResult as ProtoCommandResult, 
+    Action as ProtoAction,
     TaskStatus as ProtoTaskStatus
 )
 
@@ -187,7 +192,9 @@ class WebSocketManager:
     async def _handle_command_execution(self, websocket: WebSocket, command_request: CommandRequest) -> None:
         """Handle command execution using protobuf"""
         try:
-            context = await self.task_exec_service.execute_command(command_request.command)
+            context = await self.task_exec_service.execute_command(
+                command_request.command + " " + command_request.domain
+                )
             
             response = RPCResponse()
             command_result = ProtoCommandResult()
