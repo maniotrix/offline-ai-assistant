@@ -9,7 +9,6 @@ from domain.task import TaskContext, TaskStatus
 from domain.action import Action, ActionResult, ActionCoordinates
 from domain.intent import Intent, IntentPrediction
 from base.base_observer import Observable
-from services.task_observer import TaskProgressObserver
 
 class TaskExecutorService(Observable[TaskContext]):
     def __init__(self):

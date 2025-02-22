@@ -72,7 +72,7 @@ class WebSocketMessage:
 class WebSocketManager(metaclass=SingletonMeta):
     def __init__(self):
         if not hasattr(self, '_initialized'):
-            self.active_connections: Dict[str, WebSocket] = {}
+            self.active_connections: Dict[str, WebSocket] = {} # TODO Implement Observer pattern
             self.task_exec_service = TaskExecutorService()
             self.logger = logging.getLogger(__name__)
             self.rate_limiter = RateLimit()
@@ -93,14 +93,18 @@ class WebSocketManager(metaclass=SingletonMeta):
             client_id = str(id(websocket))
             self.active_connections[client_id] = websocket
             self.logger.info(f"New WebSocket connection established: {client_id}")
+            # add observer for task execution status updates 
+            # TODO: Implement
         except Exception as e:
             self.logger.error(f"Failed to establish WebSocket connection: {e}")
             raise
 
     def register_websocket_task_observer(self, client_id: str):
+        # TODO: Implement
         pass
         
     def remove_websocket_task_observer(self, client_id: str):
+        # TODO: Implement
         pass
 
     def disconnect(self, websocket: WebSocket) -> None:
@@ -113,6 +117,8 @@ class WebSocketManager(metaclass=SingletonMeta):
                 if client_id in self.rate_limiter.requests:
                     del self.rate_limiter.requests[client_id]
                 self.logger.info(f"WebSocket connection closed: {client_id}")
+                # remove observer for task execution status updates 
+                # TODO: Implement
         except Exception as e:
             self.logger.warning(f"Error during disconnect: {e}")
 
