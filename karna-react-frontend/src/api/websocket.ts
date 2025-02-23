@@ -11,8 +11,23 @@ class WebSocketService {
     private maxReconnectAttempts = 5;
     private reconnectDelay = 1000;
     private pendingRequests: Map<string, { resolve: (value: any) => void, reject: (error: Error) => void }> = new Map();
+    private isConnecting = false;
 
     connect(): void {
+        if (this.isConnecting) {
+            console.log('Connection attempt already in progress');
+            return;
+        }
+
+        if (this.socket?.readyState === WebSocket.OPEN) {
+            console.log('WebSocket already connected');
+            return;
+        }
+
+        // Clean up existing socket if any
+        this.disconnect();
+
+        this.isConnecting = true;
         const wsUrl = `ws://${window.location.hostname}:8000/ws`;
         this.socket = new WebSocket(wsUrl);
         this.socket.binaryType = 'arraybuffer';
@@ -20,6 +35,7 @@ class WebSocketService {
         this.socket.onopen = () => {
             console.log('WebSocket Connected');
             this.reconnectAttempts = 0;
+            this.isConnecting = false;
             this.requestStatus().catch(console.error);
         };
 
@@ -54,11 +70,14 @@ class WebSocketService {
 
         this.socket.onerror = (error) => {
             console.error('WebSocket error:', error);
+            this.isConnecting = false;
             this.notifyError(new Error('WebSocket error occurred'));
         };
 
         this.socket.onclose = () => {
             console.log('WebSocket disconnected');
+            this.isConnecting = false;
+            
             // Reject all pending requests
             this.pendingRequests.forEach(({ reject }) => {
                 reject(new Error('WebSocket disconnected'));
@@ -70,7 +89,7 @@ class WebSocketService {
                     this.reconnectAttempts++;
                     console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
                     this.connect();
-                }, this.reconnectDelay);
+                }, this.reconnectDelay * Math.pow(2, this.reconnectAttempts)); // Exponential backoff
             }
         };
     }
@@ -186,9 +205,19 @@ class WebSocketService {
 
     disconnect(): void {
         if (this.socket) {
-            this.socket.close();
+            // Remove all event listeners before closing
+            this.socket.onopen = null;
+            this.socket.onmessage = null;
+            this.socket.onerror = null;
+            this.socket.onclose = null;
+            
+            if (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING) {
+                this.socket.close();
+            }
             this.socket = null;
         }
+        
+        this.isConnecting = false;
         // Clear all handlers and pending requests
         this.messageHandlers.clear();
         this.errorHandlers.clear();
