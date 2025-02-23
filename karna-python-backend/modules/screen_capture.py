@@ -64,6 +64,7 @@ class ScreenCaptureEvent:
     timestamp: datetime
     description: str
     screenshot_path: str  # This is now required since this event is only for captures
+    annotation_path: Optional[str] = None
     mouse_x: Optional[int] = None
     mouse_y: Optional[int] = None
     key_char: Optional[str] = None
@@ -368,9 +369,10 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
                 mouse_y=y
             )
 
-    def _annotate_screenshot(self, screenshot_path: str, x: Optional[int] = None, y: Optional[int] = None, 
+    def _annotate_screenshot(self, event: ScreenCaptureEvent, x: Optional[int] = None, y: Optional[int] = None, 
                            text: Optional[str] = None):
         """Create an annotated version of the screenshot"""
+        screenshot_path = event.screenshot_path
         if not self.current_session or not self.current_session.annotated_dir:
             logger.warning("Attempted to annotate screenshot without active session")
             return
@@ -400,6 +402,7 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
             annotated_path = os.path.join(self.current_session.annotated_dir, f'annotated_{filename}')
             image.save(annotated_path)
             logger.debug(f"Created annotated screenshot: {annotated_path}")
+            event.annotation_path = annotated_path
             
             # Create annotation event
             self._create_session_event(
@@ -571,9 +574,9 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
                 for event in self.current_session.events:
                     if isinstance(event, ScreenCaptureEvent) and event.screenshot_path:
                         if event.mouse_x is not None and event.mouse_y is not None:
-                            self._annotate_screenshot(event.screenshot_path, event.mouse_x, event.mouse_y, event.description)
+                            self._annotate_screenshot(event, event.mouse_x, event.mouse_y, event.description)
                         else:
-                            self._annotate_screenshot(event.screenshot_path, text=event.description)
+                            self._annotate_screenshot(event, text=event.description)
                 
                 # Create session summary
                 summary_path = self.create_session_summary()
