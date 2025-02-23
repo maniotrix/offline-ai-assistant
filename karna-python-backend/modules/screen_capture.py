@@ -262,13 +262,13 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
         if event:
             self.notify_observers(event)
         
-        screenshot_path = self._take_screenshot(event_desc)
-        
         # Stop capturing if escape is pressed
         if key == keyboard.Key.esc:
             logger.info("Escape key pressed, stopping capture")
             self.stop_capture()
             return False
+        
+        screenshot_path = self._take_screenshot(event_desc)
 
     def _on_click(self, x: int, y: int, button, pressed: bool):
         """Handle mouse click events"""
@@ -509,10 +509,6 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
                     stats.total_key_events = self._event_stats[EventType.KEY_PRESS]
                     stats.total_mouse_events = self._event_stats[EventType.MOUSE_CLICK]
                     self._session_history.append(stats)
-                
-                # Reset event stats for next session
-                self._event_stats.clear()
-                self.current_session = None
                 
             except Exception as e:
                 logger.error(f"Error during capture stop: {str(e)}")
