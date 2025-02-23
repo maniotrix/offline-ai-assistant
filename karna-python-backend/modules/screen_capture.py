@@ -166,8 +166,9 @@ class ScreenCaptureSession:
         """Add an event to the session's event list"""
         self.events.append(event)
 
-class ScreenCaptureService(Observable[ScreenshotEvent]):
-    """Service for capturing screen interactions with annotation capabilities"""
+class ScreenCaptureService(Observable[List[ScreenshotEvent]]):
+    """Service for capturing screen interactions with annotation capability.
+    Notifies observers about changes to the screenshot event list."""
     
     def __init__(self):
         super().__init__()
@@ -304,7 +305,8 @@ class ScreenCaptureService(Observable[ScreenshotEvent]):
                 is_special_key=is_special_key
             )
             if event:
-                self.notify_observers(event)
+                # Instead of notifying for each event, notify about the updated list
+                self.notify_observers(self.current_session.events)
             
             return filepath
         except Exception as e:
@@ -595,7 +597,7 @@ class ScreenCaptureService(Observable[ScreenshotEvent]):
                     description=event_desc
                 )
                 if event:
-                    self.notify_observers(event)
+                    self.notify_observers(self.current_session.events)
                     self.set_state('capturing', False)
                 
                 # Save session statistics before clearing
