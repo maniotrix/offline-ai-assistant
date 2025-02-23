@@ -33,13 +33,13 @@ class TestObserver(Observer[List[ScreenshotEvent]]):
         for event in events:
             # Print event-specific details
             if event.screenshot_path:
-                print(f"Screenshot: {os.path.basename(event.screenshot_path)}")
+                print(f"[Observer] - Screenshot: {os.path.basename(event.screenshot_path)}")
             if event.annotation_path:
-                print(f"Annotated: {os.path.basename(event.annotation_path)}")
+                print(f"[Observer] - Annotated: {os.path.basename(event.annotation_path)}")
             if event.key_char or event.key_code:
-                print(f"Key: {event.key_char or event.key_code} {'(Special)' if event.is_special_key else ''}")
+                print(f"[Observer] - Key: {event.key_char or event.key_code} {'(Special)' if event.is_special_key else ''}")
             if event.mouse_x is not None and event.mouse_y is not None:
-                print(f"Mouse Position: ({event.mouse_x}, {event.mouse_y})")
+                print(f"[Observer] - Mouse Position: ({event.mouse_x}, {event.mouse_y})")
             
 class TestScreenCapture(unittest.TestCase):
     def setUp(self):
