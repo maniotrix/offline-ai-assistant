@@ -98,7 +98,7 @@ class ScreenCaptureSession:
     annotated_dir: Optional[str] = None
     keyboard_listener: Optional[keyboard.Listener] = None
     mouse_listener: Optional[mouse.Listener] = None
-    events: List[ScreenshotEvent] = None  # Store all capture events
+    events: List[ScreenshotEvent] = [] # Store all capture events
     
     def __post_init__(self):
         """Initialize events list after dataclass initialization"""
@@ -306,7 +306,7 @@ class ScreenCaptureService(Observable[List[ScreenshotEvent]]):
             )
             if event:
                 # Instead of notifying for each event, notify about the updated list
-                self.notify_observers(self.current_session.events)
+                self.notify_session_observers()
             
             return filepath
         except Exception as e:
@@ -449,7 +449,7 @@ class ScreenCaptureService(Observable[List[ScreenshotEvent]]):
                     description=f"Screen capture started for project: {project_uuid}, command: {command_uuid}"
                 )
                 if event:
-                    self.notify_observers(event)
+                    self.notify_session_observers()
                     self.set_state('capturing', True)
                     
             except Exception as e:
@@ -595,7 +595,7 @@ class ScreenCaptureService(Observable[List[ScreenshotEvent]]):
                     description=event_desc
                 )
                 if event:
-                    self.notify_observers(self.current_session.events)
+                    self.notify_session_observers()
                     self.set_state('capturing', False)
                 
                 # Save session statistics before clearing
@@ -608,6 +608,9 @@ class ScreenCaptureService(Observable[List[ScreenshotEvent]]):
             except Exception as e:
                 logger.error(f"Error during capture stop: {str(e)}")
                 raise
+
+    def notify_session_observers(self):
+        self.notify_observers(self.current_session.events)
 
     def get_current_session_stats(self) -> Optional[SessionStatistics]:
         """Get statistics for the current session"""
