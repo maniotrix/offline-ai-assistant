@@ -97,14 +97,17 @@ class ScreenCaptureSession:
     raw_dir: Optional[str] = None
     annotated_dir: Optional[str] = None
     keyboard_listener: Optional[keyboard.Listener] = None
-    mouse_listener: Optional[mouse.Listener] = None
-    events: List[ScreenshotEvent] = [] # Store all capture events
+    mouse_listener: Optional[mouse.Listener] = None 
+    session_events: List[SessionEvent] = None  # For storing session events
+    screenshot_events: List[ScreenshotEvent] = None  # For storing screenshot events
     
     def __post_init__(self):
-        """Initialize events list after dataclass initialization"""
-        if self.events is None:
-            self.events = []
-    
+        """Initialize event lists after dataclass initialization"""
+        if self.session_events is None:
+            self.session_events = []
+        if self.screenshot_events is None:
+            self.screenshot_events = []
+
     @property
     def duration(self) -> Optional[float]:
         """Calculate session duration in seconds"""
@@ -113,6 +116,14 @@ class ScreenCaptureSession:
         elif self.start_time:
             return (datetime.now() - self.start_time).total_seconds()
         return None
+
+    def add_screenshot_event(self, event: ScreenshotEvent) -> None:
+        """Add a screenshot event to the session"""
+        self.screenshot_events.append(event)
+
+    def add_session_event(self, event: SessionEvent) -> None:
+        """Add a session event to the session"""
+        self.session_events.append(event)
 
     def get_statistics(self) -> SessionStatistics:
         """Get statistics for the current session based on captured events"""
@@ -123,20 +134,24 @@ class ScreenCaptureSession:
             end_time=self.end_time
         )
         
-        # Calculate statistics from events list
+        # Calculate statistics from both event lists
         screenshot_paths = set()
         annotated_paths = set()
         key_events = 0
         mouse_events = 0
         
-        for event in self.events:
-            if isinstance(event, ScreenshotEvent) and event.screenshot_path:
+        # Process screenshot events
+        for event in self.screenshot_events:
+            if event.screenshot_path:
                 screenshot_paths.add(event.screenshot_path)
-            if isinstance(event, SessionEvent) and event.type == EventType.ANNOTATION and event.annotated_path:
-                annotated_paths.add(event.annotated_path)
-            if isinstance(event, SessionEvent) and event.type == EventType.KEY_PRESS:
+                if event.annotation_path:
+                    annotated_paths.add(event.annotation_path)
+
+        # Process session events
+        for event in self.session_events:
+            if event.type == EventType.KEY_PRESS:
                 key_events += 1
-            if isinstance(event, SessionEvent) and event.type == EventType.MOUSE_CLICK:
+            elif event.type == EventType.MOUSE_CLICK:
                 mouse_events += 1
         
         # Update statistics
@@ -145,7 +160,7 @@ class ScreenCaptureSession:
         stats.total_key_events = key_events
         stats.total_mouse_events = mouse_events
         
-        # Calculate directory sizes from actual files
+        # Calculate directory sizes
         if self.raw_dir and os.path.exists(self.raw_dir):
             stats.raw_directory_size = sum(
                 os.path.getsize(path) for path in screenshot_paths if os.path.exists(path)
@@ -161,10 +176,6 @@ class ScreenCaptureSession:
             stats.duration_seconds = (end - self.start_time).total_seconds()
             
         return stats
-            
-    def add_event(self, event: ScreenshotEvent) -> None:
-        """Add an event to the session's event list"""
-        self.events.append(event)
 
 class ScreenCaptureService(Observable[List[ScreenshotEvent]]):
     """Service for capturing screen interactions with annotation capability.
@@ -254,7 +265,7 @@ class ScreenCaptureService(Observable[List[ScreenshotEvent]]):
         )
         
         # Add event to session's events list
-        self.current_session.add_event(event)
+        self.current_session.add_session_event(event)
         return event
 
     def _create_capture_event(self, description: str, screenshot_path: str, **kwargs) -> Optional[ScreenshotEvent]:
@@ -271,8 +282,8 @@ class ScreenCaptureService(Observable[List[ScreenshotEvent]]):
             **kwargs
         )
         
-        # Add event to session's events list
-        self.current_session.add_event(event)
+        # Add event to session's screenshots list
+        self.current_session.add_screenshot_event(event)
         return event
 
     def _take_screenshot(self, event_description: str, x: Optional[int] = None, y: Optional[int] = None, 
@@ -458,40 +469,25 @@ class ScreenCaptureService(Observable[List[ScreenshotEvent]]):
                 raise
 
     def create_session_summary(self, show_preview: bool = False) -> Optional[str]:
-        """Create a visual summary of all screenshots and annotations in the current session.
-        
-        Args:
-            show_preview: Whether to display the summary image immediately
-            
-        Returns:
-            str: Path to the generated summary image, or None if no screenshots exist
-        """
+        """Create a visual summary of all screenshots and annotations in the current session."""
         try:
             self._validate_session()
             
-            # Collect screenshots and their annotations from events
-            screenshots = []
-            raw_paths = set()
+            # Get screenshots with their annotations
+            screenshot_pairs = []
+            for event in self.current_session.screenshot_events:
+                if event.screenshot_path:
+                    screenshot_pairs.append((event.screenshot_path, event.annotation_path))
             
-            # First collect all screenshot paths
-            for event in self.current_session.events:
-                if isinstance(event, ScreenshotEvent) and event.screenshot_path:
-                    raw_paths.add(event.screenshot_path)
-            
-            # Then match them with their annotations
-            for event in self.current_session.events:
-                if isinstance(event, SessionEvent) and event.type == EventType.ANNOTATION and event.screenshot_path in raw_paths:
-                    screenshots.append((event.screenshot_path, event.annotation_path))
-            
-            if not screenshots:
+            if not screenshot_pairs:
                 logger.warning("No screenshots found for session summary")
                 return None
             
             # Sort screenshots by timestamp to maintain order
-            screenshots.sort(key=lambda x: os.path.basename(x[0]))
+            screenshot_pairs.sort(key=lambda x: os.path.basename(x[0]))
             
             # Create a grid layout
-            n_images = len(screenshots) * 2  # Both raw and annotated versions
+            n_images = len(screenshot_pairs) * 2  # Both raw and annotated versions
             grid_size = math.ceil(math.sqrt(n_images))
             
             # Calculate thumbnail size and create canvas
@@ -511,7 +507,7 @@ class ScreenCaptureService(Observable[List[ScreenshotEvent]]):
                 font = ImageFont.load_default()
             
             # Place images in grid
-            for idx, (raw_path, annotated_path) in enumerate(screenshots):
+            for idx, (raw_path, annotated_path) in enumerate(screenshot_pairs):
                 # Position for raw screenshot
                 row = (idx * 2) // grid_size
                 col = (idx * 2) % grid_size
@@ -571,7 +567,7 @@ class ScreenCaptureService(Observable[List[ScreenshotEvent]]):
                     logger.error(f"Error stopping listeners: {str(e)}")
                 
                 # Process all screenshots and create annotations
-                for event in self.current_session.events:
+                for event in self.current_session.screenshot_events:
                     if isinstance(event, ScreenshotEvent) and event.screenshot_path:
                         if event.mouse_x is not None and event.mouse_y is not None:
                             self._annotate_screenshot(event, event.mouse_x, event.mouse_y, event.description)
@@ -610,7 +606,9 @@ class ScreenCaptureService(Observable[List[ScreenshotEvent]]):
                 raise
 
     def notify_session_observers(self):
-        self.notify_observers(self.current_session.events)
+        """Notify observers with the current list of screenshots"""
+        if self.current_session:
+            self.notify_observers(self.current_session.screenshot_events)
 
     def get_current_session_stats(self) -> Optional[SessionStatistics]:
         """Get statistics for the current session"""
