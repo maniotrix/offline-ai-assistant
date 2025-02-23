@@ -43,15 +43,27 @@ class EventType(Enum):
     MOUSE_CLICK = auto()
 
 @dataclass
-class ScreenCaptureEvent:
-    """Represents a screen capture event with its metadata"""
+class SessionEvent:
+    """Represents events that occur during a screen capture session"""
     type: EventType
     project_uuid: str
     command_uuid: str
     timestamp: datetime
     description: str
-    screenshot_path: Optional[str] = None
-    annotated_path: Optional[str] = None
+    key_char: Optional[str] = None
+    key_code: Optional[str] = None
+    mouse_x: Optional[int] = None
+    mouse_y: Optional[int] = None
+    is_special_key: bool = False
+
+@dataclass
+class ScreenCaptureEvent:
+    """Represents a screen capture with its metadata"""
+    project_uuid: str
+    command_uuid: str
+    timestamp: datetime
+    description: str
+    screenshot_path: str  # This is now required since this event is only for captures
     mouse_x: Optional[int] = None
     mouse_y: Optional[int] = None
     key_char: Optional[str] = None
@@ -117,13 +129,13 @@ class ScreenCaptureSession:
         mouse_events = 0
         
         for event in self.events:
-            if event.type == EventType.SCREENSHOT and event.screenshot_path:
+            if isinstance(event, ScreenCaptureEvent) and event.screenshot_path:
                 screenshot_paths.add(event.screenshot_path)
-            if event.type == EventType.ANNOTATION and event.annotated_path:
+            if isinstance(event, SessionEvent) and event.type == EventType.ANNOTATION and event.annotated_path:
                 annotated_paths.add(event.annotated_path)
-            if event.type == EventType.KEY_PRESS:
+            if isinstance(event, SessionEvent) and event.type == EventType.KEY_PRESS:
                 key_events += 1
-            if event.type == EventType.MOUSE_CLICK:
+            if isinstance(event, SessionEvent) and event.type == EventType.MOUSE_CLICK:
                 mouse_events += 1
         
         # Update statistics
@@ -223,14 +235,14 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
         """Increment the count for a specific event type"""
         self._event_stats[event_type] += 1
 
-    def _create_event(self, event_type: EventType, description: str, **kwargs) -> Optional[ScreenCaptureEvent]:
-        """Create a screen capture event with current session context"""
+    def _create_session_event(self, event_type: EventType, description: str, **kwargs) -> Optional[SessionEvent]:
+        """Create a session event with current session context"""
         if not self.current_session or not self.current_session.is_active:
             return None
         
         self._increment_event_stat(event_type)
         
-        event = ScreenCaptureEvent(
+        event = SessionEvent(
             type=event_type,
             project_uuid=self.current_session.project_uuid,
             command_uuid=self.current_session.command_uuid,
@@ -243,8 +255,28 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
         self.current_session.add_event(event)
         return event
 
-    def _take_screenshot(self, event_description: str) -> str:
-        """Take a screenshot and save it in the raw directory"""
+    def _create_capture_event(self, description: str, screenshot_path: str, **kwargs) -> Optional[ScreenCaptureEvent]:
+        """Create a screen capture event"""
+        if not self.current_session or not self.current_session.is_active:
+            return None
+        
+        event = ScreenCaptureEvent(
+            project_uuid=self.current_session.project_uuid,
+            command_uuid=self.current_session.command_uuid,
+            timestamp=datetime.now(),
+            description=description,
+            screenshot_path=screenshot_path,
+            **kwargs
+        )
+        
+        # Add event to session's events list
+        self.current_session.add_event(event)
+        return event
+
+    def _take_screenshot(self, event_description: str, x: Optional[int] = None, y: Optional[int] = None, 
+                       key_char: Optional[str] = None, key_code: Optional[str] = None, 
+                       is_special_key: bool = False) -> str:
+        """Take a screenshot and create a capture event"""
         try:
             self._validate_session()
             
@@ -260,10 +292,15 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
             
             logger.debug(f"Screenshot saved: {filepath}")
             
-            event = self._create_event(
-                event_type=EventType.SCREENSHOT,
+            # Create capture event with any provided input context
+            event = self._create_capture_event(
                 description=event_description,
-                screenshot_path=filepath
+                screenshot_path=filepath,
+                mouse_x=x,
+                mouse_y=y,
+                key_char=key_char,
+                key_code=key_code,
+                is_special_key=is_special_key
             )
             if event:
                 self.notify_observers(event)
@@ -287,26 +324,28 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
         
         logger.debug(f"Key event: {event_desc}")
         
-        # Take screenshot first to capture the state when key was pressed
-        screenshot_path = self._take_screenshot(event_desc)
-        
-        # Create key press event
-        event = self._create_event(
+        # Create key press session event
+        self._create_session_event(
             event_type=EventType.KEY_PRESS,
             description=event_desc,
-            screenshot_path=screenshot_path,
             key_char=key_char,
             key_code=str(key),
             is_special_key=is_special
         )
-        if event:
-            self.notify_observers(event)
         
         # Stop capturing if escape is pressed
         if key == keyboard.Key.esc:
             logger.info("Escape key pressed, stopping capture")
             self.stop_capture()
             return False
+        
+        # Take screenshot with key context
+        self._take_screenshot(
+            event_description=event_desc,
+            key_char=key_char,
+            key_code=str(key),
+            is_special_key=is_special
+        )
 
     def _on_click(self, x: int, y: int, button, pressed: bool):
         """Handle mouse click events"""
@@ -314,24 +353,20 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
             event_desc = f"Mouse clicked at ({x}, {y}) with {button}"
             logger.debug(f"Mouse event: {event_desc}")
             
-            # Take screenshot first to capture the state when mouse was clicked
-            screenshot_path = self._take_screenshot(event_desc)
-            annotated_path = None
-            
-            # Create mouse click event
-            event = self._create_event(
+            # Create mouse click session event
+            self._create_session_event(
                 event_type=EventType.MOUSE_CLICK,
                 description=event_desc,
-                screenshot_path=screenshot_path,
                 mouse_x=x,
                 mouse_y=y
             )
-            if event:
-                self.notify_observers(event)
             
-            # Create annotation after the event is created
-            if screenshot_path:
-                self._annotate_screenshot(screenshot_path, x, y, event_desc)
+            # Take screenshot with mouse context
+            self._take_screenshot(
+                event_description=event_desc,
+                mouse_x=x,
+                mouse_y=y
+            )
 
     def _annotate_screenshot(self, screenshot_path: str, x: Optional[int] = None, y: Optional[int] = None, 
                            text: Optional[str] = None):
@@ -367,14 +402,12 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
             logger.debug(f"Created annotated screenshot: {annotated_path}")
             
             # Create annotation event
-            event = self._create_event(
+            self._create_session_event(
                 event_type=EventType.ANNOTATION,
-                description="Screenshot annotated",
+                description=f"Screenshot annotated: {os.path.basename(screenshot_path)}",
                 screenshot_path=screenshot_path,
                 annotated_path=annotated_path
             )
-            if event:
-                self.notify_observers(event)
                 
         except Exception as e:
             logger.error(f"Failed to annotate screenshot: {str(e)}")
@@ -407,7 +440,8 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
                 except Exception as e:
                     raise SessionError(f"Failed to initialize input listeners: {str(e)}")
                 
-                event = self._create_event(
+                # Create session start event
+                event = self._create_session_event(
                     event_type=EventType.CAPTURE_STARTED,
                     description=f"Screen capture started for project: {project_uuid}, command: {command_uuid}"
                 )
@@ -438,12 +472,12 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
             
             # First collect all screenshot paths
             for event in self.current_session.events:
-                if event.type == EventType.SCREENSHOT and event.screenshot_path:
+                if isinstance(event, ScreenCaptureEvent) and event.screenshot_path:
                     raw_paths.add(event.screenshot_path)
             
             # Then match them with their annotations
             for event in self.current_session.events:
-                if event.type == EventType.ANNOTATION and event.screenshot_path in raw_paths:
+                if isinstance(event, SessionEvent) and event.type == EventType.ANNOTATION and event.screenshot_path in raw_paths:
                     screenshots.append((event.screenshot_path, event.annotated_path))
             
             if not screenshots:
@@ -519,7 +553,7 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
             return None
 
     def stop_capture(self) -> None:
-        """Stop the current capture session"""
+        """Stop the current capture session and process annotations"""
         with self.lock:
             try:
                 self._validate_session()
@@ -533,7 +567,15 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
                 except Exception as e:
                     logger.error(f"Error stopping listeners: {str(e)}")
                 
-                # Create session summary before stopping
+                # Process all screenshots and create annotations
+                for event in self.current_session.events:
+                    if isinstance(event, ScreenCaptureEvent) and event.screenshot_path:
+                        if event.mouse_x is not None and event.mouse_y is not None:
+                            self._annotate_screenshot(event.screenshot_path, event.mouse_x, event.mouse_y, event.description)
+                        else:
+                            self._annotate_screenshot(event.screenshot_path, text=event.description)
+                
+                # Create session summary
                 summary_path = self.create_session_summary()
                 
                 self.current_session.is_active = False
@@ -544,7 +586,8 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
                 if summary_path:
                     event_desc += f"\nSummary available at: {summary_path}"
                 
-                event = self._create_event(
+                # Create session stop event
+                event = self._create_session_event(
                     event_type=EventType.CAPTURE_STOPPED,
                     description=event_desc
                 )
