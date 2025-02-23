@@ -54,6 +54,9 @@ class ScreenCaptureEvent:
     annotated_path: Optional[str] = None
     mouse_x: Optional[int] = None
     mouse_y: Optional[int] = None
+    key_char: Optional[str] = None
+    key_code: Optional[str] = None
+    is_special_key: bool = False
 
 @dataclass
 class SessionStatistics:
@@ -248,16 +251,28 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
     def _on_key_press(self, key):
         """Handle keyboard events"""
         try:
-            event_desc = f"Key pressed: {key.char}"
+            key_char = key.char
+            event_desc = f"Key pressed: {key_char}"
+            is_special = False
         except AttributeError:
-            event_desc = f"Special key pressed: {key}"
+            key_char = None
+            key_code = str(key)
+            event_desc = f"Special key pressed: {key_code}"
+            is_special = True
         
         logger.debug(f"Key event: {event_desc}")
+        
+        # Take screenshot first to capture the state when key was pressed
+        screenshot_path = self._take_screenshot(event_desc)
         
         # Create key press event
         event = self._create_event(
             event_type=EventType.KEY_PRESS,
-            description=event_desc
+            description=event_desc,
+            screenshot_path=screenshot_path,
+            key_char=key_char,
+            key_code=str(key),
+            is_special_key=is_special
         )
         if event:
             self.notify_observers(event)
@@ -267,8 +282,6 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
             logger.info("Escape key pressed, stopping capture")
             self.stop_capture()
             return False
-        
-        screenshot_path = self._take_screenshot(event_desc)
 
     def _on_click(self, x: int, y: int, button, pressed: bool):
         """Handle mouse click events"""
@@ -276,17 +289,22 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
             event_desc = f"Mouse clicked at ({x}, {y}) with {button}"
             logger.debug(f"Mouse event: {event_desc}")
             
+            # Take screenshot first to capture the state when mouse was clicked
+            screenshot_path = self._take_screenshot(event_desc)
+            annotated_path = None
+            
             # Create mouse click event
             event = self._create_event(
                 event_type=EventType.MOUSE_CLICK,
                 description=event_desc,
+                screenshot_path=screenshot_path,
                 mouse_x=x,
                 mouse_y=y
             )
             if event:
                 self.notify_observers(event)
             
-            screenshot_path = self._take_screenshot(event_desc)
+            # Create annotation after the event is created
             if screenshot_path:
                 self._annotate_screenshot(screenshot_path, x, y, event_desc)
 
