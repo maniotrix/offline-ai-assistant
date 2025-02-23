@@ -85,6 +85,12 @@ class ScreenCaptureSession:
     annotated_dir: Optional[str] = None
     keyboard_listener: Optional[keyboard.Listener] = None
     mouse_listener: Optional[mouse.Listener] = None
+    events: List[ScreenCaptureEvent] = None  # Store all capture events
+    
+    def __post_init__(self):
+        """Initialize events list after dataclass initialization"""
+        if self.events is None:
+            self.events = []
     
     @property
     def duration(self) -> Optional[float]:
@@ -96,7 +102,7 @@ class ScreenCaptureSession:
         return None
 
     def get_statistics(self) -> SessionStatistics:
-        """Get statistics for the current session"""
+        """Get statistics for the current session based on captured events"""
         stats = SessionStatistics(
             project_uuid=self.project_uuid,
             command_uuid=self.command_uuid,
@@ -104,33 +110,48 @@ class ScreenCaptureSession:
             end_time=self.end_time
         )
         
+        # Calculate statistics from events list
+        screenshot_paths = set()
+        annotated_paths = set()
+        key_events = 0
+        mouse_events = 0
+        
+        for event in self.events:
+            if event.type == EventType.SCREENSHOT and event.screenshot_path:
+                screenshot_paths.add(event.screenshot_path)
+            if event.type == EventType.ANNOTATION and event.annotated_path:
+                annotated_paths.add(event.annotated_path)
+            if event.type == EventType.KEY_PRESS:
+                key_events += 1
+            if event.type == EventType.MOUSE_CLICK:
+                mouse_events += 1
+        
+        # Update statistics
+        stats.total_screenshots = len(screenshot_paths)
+        stats.total_annotations = len(annotated_paths)
+        stats.total_key_events = key_events
+        stats.total_mouse_events = mouse_events
+        
+        # Calculate directory sizes from actual files
         if self.raw_dir and os.path.exists(self.raw_dir):
             stats.raw_directory_size = sum(
-                os.path.getsize(os.path.join(self.raw_dir, f))
-                for f in os.listdir(self.raw_dir)
-                if os.path.isfile(os.path.join(self.raw_dir, f))
+                os.path.getsize(path) for path in screenshot_paths if os.path.exists(path)
             )
-            stats.total_screenshots = len([
-                f for f in os.listdir(self.raw_dir)
-                if f.endswith('.png')
-            ])
-            
+        
         if self.annotated_dir and os.path.exists(self.annotated_dir):
             stats.annotated_directory_size = sum(
-                os.path.getsize(os.path.join(self.annotated_dir, f))
-                for f in os.listdir(self.annotated_dir)
-                if os.path.isfile(os.path.join(self.annotated_dir, f))
+                os.path.getsize(path) for path in annotated_paths if os.path.exists(path)
             )
-            stats.total_annotations = len([
-                f for f in os.listdir(self.annotated_dir)
-                if f.endswith('.png')
-            ])
             
         if self.start_time:
             end = self.end_time if self.end_time else datetime.now()
             stats.duration_seconds = (end - self.start_time).total_seconds()
             
         return stats
+            
+    def add_event(self, event: ScreenCaptureEvent) -> None:
+        """Add an event to the session's event list"""
+        self.events.append(event)
 
 class ScreenCaptureService(Observable[ScreenCaptureEvent]):
     """Service for capturing screen interactions with annotation capabilities"""
@@ -209,7 +230,7 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
         
         self._increment_event_stat(event_type)
         
-        return ScreenCaptureEvent(
+        event = ScreenCaptureEvent(
             type=event_type,
             project_uuid=self.current_session.project_uuid,
             command_uuid=self.current_session.command_uuid,
@@ -217,6 +238,10 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
             description=description,
             **kwargs
         )
+        
+        # Add event to session's events list
+        self.current_session.add_event(event)
+        return event
 
     def _take_screenshot(self, event_description: str) -> str:
         """Take a screenshot and save it in the raw directory"""
@@ -407,22 +432,27 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
         try:
             self._validate_session()
             
-            # Collect all screenshots and annotations
+            # Collect screenshots and their annotations from events
             screenshots = []
-            if self.current_session.raw_dir and self.current_session.annotated_dir:
-                raw_files = sorted([f for f in os.listdir(self.current_session.raw_dir) 
-                                  if f.endswith('.png')])
-                
-                for raw_file in raw_files:
-                    raw_path = os.path.join(self.current_session.raw_dir, raw_file)
-                    annotated_file = f'annotated_{raw_file}'
-                    annotated_path = os.path.join(self.current_session.annotated_dir, annotated_file)
-                    screenshots.append((raw_path, annotated_path if os.path.exists(annotated_path) else None))
+            raw_paths = set()
+            
+            # First collect all screenshot paths
+            for event in self.current_session.events:
+                if event.type == EventType.SCREENSHOT and event.screenshot_path:
+                    raw_paths.add(event.screenshot_path)
+            
+            # Then match them with their annotations
+            for event in self.current_session.events:
+                if event.type == EventType.ANNOTATION and event.screenshot_path in raw_paths:
+                    screenshots.append((event.screenshot_path, event.annotated_path))
             
             if not screenshots:
                 logger.warning("No screenshots found for session summary")
                 return None
-                
+            
+            # Sort screenshots by timestamp to maintain order
+            screenshots.sort(key=lambda x: os.path.basename(x[0]))
+            
             # Create a grid layout
             n_images = len(screenshots) * 2  # Both raw and annotated versions
             grid_size = math.ceil(math.sqrt(n_images))
@@ -452,14 +482,15 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
                 y = row * (thumb_height + padding)
                 
                 try:
-                    # Add raw screenshot
-                    raw_img = Image.open(raw_path)
-                    raw_thumb = raw_img.resize((thumb_width, thumb_height), Image.Resampling.LANCZOS)
-                    canvas.paste(raw_thumb, (x, y))
-                    draw.text((x + 5, y + 5), f"Raw #{idx + 1}", fill='red', font=font)
+                    if os.path.exists(raw_path):
+                        # Add raw screenshot
+                        raw_img = Image.open(raw_path)
+                        raw_thumb = raw_img.resize((thumb_width, thumb_height), Image.Resampling.LANCZOS)
+                        canvas.paste(raw_thumb, (x, y))
+                        draw.text((x + 5, y + 5), f"Raw #{idx + 1}", fill='red', font=font)
                     
                     # Add annotated version if it exists
-                    if annotated_path:
+                    if annotated_path and os.path.exists(annotated_path):
                         anno_img = Image.open(annotated_path)
                         anno_thumb = anno_img.resize((thumb_width, thumb_height), Image.Resampling.LANCZOS)
                         canvas.paste(anno_thumb, (x + thumb_width + padding, y))
