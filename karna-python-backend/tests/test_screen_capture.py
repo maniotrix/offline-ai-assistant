@@ -5,20 +5,20 @@ import time
 from datetime import datetime
 from modules.screen_capture import (
     ScreenCaptureService, 
-    ScreenCaptureEvent,
+    ScreenshotEvent,
     EventType,
     SessionError
 )
 from base.base_observer import Observer, Priority
 from PIL import Image
 
-class TestObserver(Observer[ScreenCaptureEvent]):
+class TestObserver(Observer[ScreenshotEvent]):
     """Observer to track and display screen capture events"""
     def __init__(self):
         super().__init__(Priority.NORMAL)
-        self.notifications: list[ScreenCaptureEvent] = []
+        self.notifications: list[ScreenshotEvent] = []
     
-    def update(self, data: ScreenCaptureEvent) -> None:
+    def update(self, data: ScreenshotEvent) -> None:
         self.notifications.append(data)
         # Print real-time feedback for the test user
         print(f"\nEvent: {data.type.name}")

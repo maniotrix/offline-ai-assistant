@@ -57,7 +57,7 @@ class SessionEvent:
     is_special_key: bool = False
 
 @dataclass
-class ScreenCaptureEvent:
+class ScreenshotEvent:
     """Represents a screen capture with its metadata"""
     project_uuid: str
     command_uuid: str
@@ -98,7 +98,7 @@ class ScreenCaptureSession:
     annotated_dir: Optional[str] = None
     keyboard_listener: Optional[keyboard.Listener] = None
     mouse_listener: Optional[mouse.Listener] = None
-    events: List[ScreenCaptureEvent] = None  # Store all capture events
+    events: List[ScreenshotEvent] = None  # Store all capture events
     
     def __post_init__(self):
         """Initialize events list after dataclass initialization"""
@@ -130,7 +130,7 @@ class ScreenCaptureSession:
         mouse_events = 0
         
         for event in self.events:
-            if isinstance(event, ScreenCaptureEvent) and event.screenshot_path:
+            if isinstance(event, ScreenshotEvent) and event.screenshot_path:
                 screenshot_paths.add(event.screenshot_path)
             if isinstance(event, SessionEvent) and event.type == EventType.ANNOTATION and event.annotated_path:
                 annotated_paths.add(event.annotated_path)
@@ -162,11 +162,11 @@ class ScreenCaptureSession:
             
         return stats
             
-    def add_event(self, event: ScreenCaptureEvent) -> None:
+    def add_event(self, event: ScreenshotEvent) -> None:
         """Add an event to the session's event list"""
         self.events.append(event)
 
-class ScreenCaptureService(Observable[ScreenCaptureEvent]):
+class ScreenCaptureService(Observable[ScreenshotEvent]):
     """Service for capturing screen interactions with annotation capabilities"""
     
     def __init__(self):
@@ -256,12 +256,12 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
         self.current_session.add_event(event)
         return event
 
-    def _create_capture_event(self, description: str, screenshot_path: str, **kwargs) -> Optional[ScreenCaptureEvent]:
+    def _create_capture_event(self, description: str, screenshot_path: str, **kwargs) -> Optional[ScreenshotEvent]:
         """Create a screen capture event"""
         if not self.current_session or not self.current_session.is_active:
             return None
         
-        event = ScreenCaptureEvent(
+        event = ScreenshotEvent(
             project_uuid=self.current_session.project_uuid,
             command_uuid=self.current_session.command_uuid,
             timestamp=datetime.now(),
@@ -369,7 +369,7 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
                 mouse_y=y
             )
 
-    def _annotate_screenshot(self, event: ScreenCaptureEvent, x: Optional[int] = None, y: Optional[int] = None, 
+    def _annotate_screenshot(self, event: ScreenshotEvent, x: Optional[int] = None, y: Optional[int] = None, 
                            text: Optional[str] = None):
         """Create an annotated version of the screenshot"""
         screenshot_path = event.screenshot_path
@@ -475,13 +475,13 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
             
             # First collect all screenshot paths
             for event in self.current_session.events:
-                if isinstance(event, ScreenCaptureEvent) and event.screenshot_path:
+                if isinstance(event, ScreenshotEvent) and event.screenshot_path:
                     raw_paths.add(event.screenshot_path)
             
             # Then match them with their annotations
             for event in self.current_session.events:
                 if isinstance(event, SessionEvent) and event.type == EventType.ANNOTATION and event.screenshot_path in raw_paths:
-                    screenshots.append((event.screenshot_path, event.annotated_path))
+                    screenshots.append((event.screenshot_path, event.annotation_path))
             
             if not screenshots:
                 logger.warning("No screenshots found for session summary")
@@ -572,7 +572,7 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
                 
                 # Process all screenshots and create annotations
                 for event in self.current_session.events:
-                    if isinstance(event, ScreenCaptureEvent) and event.screenshot_path:
+                    if isinstance(event, ScreenshotEvent) and event.screenshot_path:
                         if event.mouse_x is not None and event.mouse_y is not None:
                             self._annotate_screenshot(event, event.mouse_x, event.mouse_y, event.description)
                         else:
