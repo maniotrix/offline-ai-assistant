@@ -410,8 +410,6 @@ class ScreenCaptureService(Observable[List[ScreenshotEvent]]):
             self._create_session_event(
                 event_type=EventType.ANNOTATION,
                 description=f"Screenshot annotated: {os.path.basename(screenshot_path)}",
-                screenshot_path=screenshot_path,
-                annotated_path=annotated_path
             )
                 
         except Exception as e:
