@@ -122,6 +122,8 @@ class WebSocketManager(metaclass=SingletonMeta):
             
         message = response.SerializeToString()
         disconnected = []
+        # log current active connections
+        self.report_active_clients()
         for client_id, connection in self.active_connections.items():
             try:
                 await connection.websocket.send_bytes(message)
@@ -135,6 +137,11 @@ class WebSocketManager(metaclass=SingletonMeta):
         for client_id in disconnected:
             if client_id in self.active_connections:
                 self.disconnect(self.active_connections[client_id].websocket)
+
+    def report_active_clients(self):
+        self.logger.info(f"Number of active connections: {len(self.active_connections)}")
+        self.logger.info(f"Active client IDs: {list(self.active_connections.keys())}")
+        self.logger.info(f"Broadcasting to Active connections: {self.active_connections}")
 
     async def handle_message(self, websocket: WebSocket, data: bytes) -> None:
         """Route incoming protobuf messages to appropriate handlers"""

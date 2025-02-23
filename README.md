@@ -4,7 +4,7 @@
     Do not use dict for communication within the backend
     use separate executor module for processing different stuff in backend pipeline or as required
     look out for improvement in websocket
-    process user command on user phyiscal distance from ai machine within a radius, use phone gps for this
+    process user command on frontend user phyiscal distance from ai machine within a radius, use phone gps for this
 
 Okay, here's a comprehensive summary detailing the design and implementation of our personal, vision-based offline AI assistant project. This includes the progression of our architectural choices and the reasoning behind them:
 
