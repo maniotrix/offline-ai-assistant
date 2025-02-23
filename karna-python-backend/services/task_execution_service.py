@@ -48,7 +48,7 @@ class TaskExecutorService(Observable[TaskContext]):
 
     async def _start_command_execution(self, context: TaskContext) -> None:
         self.logger.info(f"Processing command: {context.command_text}")
-        context.status = TaskStatus.IN_PROGRESS
+        context.status = TaskStatus.PENDING
         context.message = f"Processing command: {context.command_text}"
         context.progress = 0
         self._update_status(context)
