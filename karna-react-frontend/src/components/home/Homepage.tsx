@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Paper, Typography, TextField, Button } from '@mui/material';
-import { executeCommand, getScreenshot, Status, subscribeToStatus } from '../../api/api';
+import { executeCommand, getScreenshot, Status, subscribeToStatus, subscribeToErrors, subscribeToCommandResponse } from '../../api/api';
 import { useNavigate } from 'react-router-dom';
+import { karna } from '../../generated/messages';
 import './Homepage.css';
 
 const Homepage: React.FC = () => {
@@ -13,26 +14,60 @@ const Homepage: React.FC = () => {
   const [command, setCommand] = useState('');
   const [domain, setDomain] = useState('default');
   const [screenshot, setScreenshot] = useState<string | null>(null);
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [commandResponse, setCommandResponse] = useState<karna.ICommandResult | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = subscribeToStatus((newStatus) => {
+    // Subscribe to status updates
+    const statusUnsubscribe = subscribeToStatus((newStatus) => {
       console.log('Status update received:', newStatus);
       setStatus(newStatus);
     });
 
-    // Cleanup subscription on unmount
-    return () => unsubscribe();
-  }, []);
+    // Subscribe to command responses through api layer
+    const commandUnsubscribe = subscribeToCommandResponse((response) => {
+      console.log('Command response received:', response);
+      setCommandResponse(response);
+      setIsExecuting(false);
+    });
+
+    // Subscribe to errors
+    const errorUnsubscribe = subscribeToErrors((error) => {
+      console.error('Error received:', error);
+      setCommandResponse({
+        commandText: command,
+        status: karna.TaskStatus.FAILED,
+        message: error.message,
+        actions: []
+      });
+      setIsExecuting(false);
+    });
+
+    // Cleanup subscriptions on unmount
+    return () => {
+      statusUnsubscribe();
+      commandUnsubscribe();
+      errorUnsubscribe();
+    };
+  }, [command]);
 
   const handleCommandSubmit = async () => {
     if (!command.trim()) return;
     
     try {
+      setIsExecuting(true);
       await executeCommand(command.trim(), domain.trim() || 'default');
       setCommand('');
     } catch (error) {
       console.error('Failed to execute command:', error);
+      setCommandResponse({
+        commandText: command,
+        status: karna.TaskStatus.FAILED,
+        message: error instanceof Error ? error.message : 'Failed to execute command',
+        actions: []
+      });
+      setIsExecuting(false);
     }
   };
 
@@ -42,6 +77,19 @@ const Homepage: React.FC = () => {
       handleCommandSubmit();
     }
   };
+
+  useEffect(() => {
+    // Fetch screenshot on mount
+    const fetchScreenshot = async () => {
+      try {
+        const screenshotData = await getScreenshot();
+        setScreenshot(screenshotData);
+      } catch (error) {
+        console.error('Failed to fetch screenshot:', error);
+      }
+    };
+    fetchScreenshot();
+  }, []);
 
   return (
     <Box sx={{ p: 3, maxWidth: '800px', margin: '0 auto' }}>
@@ -82,12 +130,44 @@ const Homepage: React.FC = () => {
           <Button 
             variant="contained" 
             onClick={handleCommandSubmit}
-            disabled={!command.trim()}
+            disabled={!command.trim() || isExecuting}
             sx={{ mt: 2 }}
           >
-            Execute Command
+            {isExecuting ? 'Executing...' : 'Execute Command'}
           </Button>
         </Box>
+
+        {commandResponse && (
+          <Box sx={{ mt: 3, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+            <Typography variant="h6" gutterBottom>
+              Command Response
+            </Typography>
+            <Typography 
+              color={commandResponse.status === karna.TaskStatus.COMPLETED 
+                ? "success.main" 
+                : commandResponse.status === karna.TaskStatus.FAILED 
+                  ? "error.main" 
+                  : "info.main"
+              }
+            >
+              {commandResponse.message || (
+                commandResponse.status === karna.TaskStatus.COMPLETED 
+                  ? 'Command executed successfully'
+                  : 'Command execution in progress'
+              )}
+            </Typography>
+            {commandResponse.actions && commandResponse.actions.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle1">Actions:</Typography>
+                {commandResponse.actions.map((action, index) => (
+                  <Typography key={index} variant="body2">
+                    {action.type}: {action.text ?? JSON.stringify(action.coordinates)}
+                  </Typography>
+                ))}
+              </Box>
+            )}
+          </Box>
+        )}
       </Paper>
 
       {screenshot && (

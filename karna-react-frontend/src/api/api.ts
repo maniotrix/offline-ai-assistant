@@ -48,6 +48,10 @@ export const subscribeToStatus = (callback: (status: Status) => void): () => voi
     return websocketService.onStatusUpdate(callback);
 };
 
+export const subscribeToCommandResponse = (callback: (response: karna.ICommandResult) => void): () => void => {
+    return websocketService.onCommandResponse(callback);
+};
+
 export const subscribeToErrors = (callback: (error: Error) => void): () => void => {
     return websocketService.onError(callback);
 };
