@@ -17,19 +17,6 @@ import math
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# Create handlers
-console_handler = logging.StreamHandler()
-file_handler = logging.FileHandler(os.path.join('data', 'logs', 'screen_capture.log'), mode='a')
-
-# Create formatters and add it to handlers
-log_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-console_handler.setFormatter(log_format)
-file_handler.setFormatter(log_format)
-
-# Add handlers to the logger
-logger.addHandler(console_handler)
-logger.addHandler(file_handler)
-
 class ScreenCaptureError(Exception):
     """Base exception for screen capture errors"""
     pass
@@ -151,6 +138,25 @@ class ScreenCaptureService(Observable[ScreenCaptureEvent]):
         self.lock = threading.Lock()
         self._event_stats: defaultdict[EventType, int] = defaultdict(int)
         self._session_history: List[SessionStatistics] = []
+        
+        # Setup logging
+        logs_dir = os.path.join('data', 'logs')
+        os.makedirs(logs_dir, exist_ok=True)
+        
+        # Create handlers
+        console_handler = logging.StreamHandler()
+        file_handler = logging.FileHandler(os.path.join(logs_dir, 'screen_capture.log'), mode='a')
+        
+        # Create formatters and add it to handlers
+        log_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        console_handler.setFormatter(log_format)
+        file_handler.setFormatter(log_format)
+        
+        # Add handlers to the logger if they haven't been added
+        if not logger.handlers:
+            logger.addHandler(console_handler)
+            logger.addHandler(file_handler)
+            
         logger.info("ScreenCaptureService initialized")
 
     def _validate_session(self) -> None:
