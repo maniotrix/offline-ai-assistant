@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Any
 from enum import Enum
+import copy
 from .action import Action, ActionResult
 from .command import Command, CommandResult
 
@@ -21,3 +22,8 @@ class TaskContext:
     status: TaskStatus = TaskStatus.PENDING
     progress: int = 0
     message: str = ""
+    needs_training: bool = False
+
+    def clone(self) -> 'TaskContext':
+        """Create a deep copy of the TaskContext"""
+        return copy.deepcopy(self)
