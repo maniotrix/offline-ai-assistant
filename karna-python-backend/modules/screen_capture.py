@@ -367,8 +367,8 @@ class ScreenCaptureService(Observable[List[ScreenshotEvent]]):
             # Take screenshot with mouse context
             self._take_screenshot(
                 event_description=event_desc,
-                mouse_x=x,
-                mouse_y=y
+                x=x,
+                y=y
             )
 
     def _annotate_screenshot(self, event: ScreenshotEvent, x: Optional[int] = None, y: Optional[int] = None, 
