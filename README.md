@@ -6,10 +6,14 @@
     look out for improvement in websocket
     process user command on frontend user phyiscal distance from ai machine within a radius, use phone gps for this
     manage websockets active and allowed connections in backend more robustly
+    we have agents which are analogus to projects, so domain youtube would be an agent which has own model separately trained, make sure the 
+    data generattion mechanism is well thought so that several agents can leverage the core of the karna
 
 Okay, here's a comprehensive summary detailing the design and implementation of our personal, vision-based offline AI assistant project. This includes the progression of our architectural choices and the reasoning behind them:
 
 **I. Project Overview:**
+
+As the ai landscape is constantly evolving, lets use online llms/vlms instead of additional hardcoding llm/vlms for now. eg. chatgpt release new model, leverage that , and so on.
 
 The goal is to develop a personal AI assistant that can automate tasks on a user's computer, operating offline and learning from user interactions. The assistant primarily relies on visual input (screenshots) to understand context and intent. It should be adaptable to a single website, transferrable across devices, and require minimal initial setup.
 
