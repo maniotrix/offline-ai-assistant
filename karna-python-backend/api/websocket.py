@@ -139,9 +139,11 @@ class WebSocketManager(metaclass=SingletonMeta):
                 self.disconnect(self.active_connections[client_id].websocket)
 
     def report_active_clients(self):
-        self.logger.info(f"Number of active connections: {len(self.active_connections)}")
-        self.logger.info(f"Active client IDs: {list(self.active_connections.keys())}")
-        self.logger.info(f"Broadcasting to Active connections: {self.active_connections}")
+        self.logger.info("====== WebSocket Connection Status ======")
+        self.logger.info(f"🔌 Active Connections Count: {len(self.active_connections)}")
+        self.logger.info(f"🆔 Connected Client IDs: {list(self.active_connections.keys())}")
+        self.logger.info(f"📡 Active Connection Details: {self.active_connections}")
+        self.logger.info("========================================")
 
     async def handle_message(self, websocket: WebSocket, data: bytes) -> None:
         """Route incoming protobuf messages to appropriate handlers"""
