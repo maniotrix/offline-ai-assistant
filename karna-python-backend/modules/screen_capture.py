@@ -460,8 +460,9 @@ class ScreenCaptureService(Observable[List[ScreenshotEvent]]):
                     description=f"Screen capture started for project: {project_uuid}, command: {command_uuid}"
                 )
                 if event:
-                    self.notify_session_observers()
                     self.set_state('capturing', True)
+                    
+                self.notify_session_observers()
                     
             except Exception as e:
                 self.current_session = None
@@ -591,7 +592,6 @@ class ScreenCaptureService(Observable[List[ScreenshotEvent]]):
                     description=event_desc
                 )
                 if event:
-                    self.notify_session_observers()
                     self.set_state('capturing', False)
                 
                 # Save session statistics before clearing
@@ -600,6 +600,8 @@ class ScreenCaptureService(Observable[List[ScreenshotEvent]]):
                     stats.total_key_events = self._event_stats[EventType.KEY_PRESS]
                     stats.total_mouse_events = self._event_stats[EventType.MOUSE_CLICK]
                     self._session_history.append(stats)
+                    
+                self.notify_session_observers()
                 
             except Exception as e:
                 logger.error(f"Error during capture stop: {str(e)}")
