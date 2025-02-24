@@ -191,7 +191,9 @@ class WebSocketManager(metaclass=SingletonMeta):
             TaskStatus.COMPLETED: ProtoTaskStatus.COMPLETED,
             TaskStatus.FAILED: ProtoTaskStatus.FAILED
         }
-        return status_map.get(status, ProtoTaskStatus.FAILED)
+        
+        proto_task_status : ProtoTaskStatus = status_map.get(status, ProtoTaskStatus.FAILED)
+        return proto_task_status
 
     def _action_to_proto(self, action: Action) -> ProtoAction:
         """Convert domain Action to protobuf Action"""
@@ -222,7 +224,7 @@ class WebSocketManager(metaclass=SingletonMeta):
         response = RPCResponse()
         command_result = ProtoCommandResult()
         command_result.command_text = context.command_text
-        command_result.status = self._task_status_to_proto(context.status)
+        command_result.status = self._task_status_to_proto(context.status) # type: ignore
         command_result.message = context.message or ""
             
         if hasattr(context, 'actions') and context.actions:
@@ -236,11 +238,11 @@ class WebSocketManager(metaclass=SingletonMeta):
     async def _handle_status_request(self, websocket: WebSocket, status_request: StatusRequest) -> None:
         """Handle status request using protobuf"""
         try:
-            services_status = {
+            services_status : Dict[str, str] = {
                 # "vision": get_vision_service_instance().get_status(),
                 "language": get_language_service_instance().get_status(),
                 "command": get_command_service_instance().get_status(),
-                "task_execution": self.task_exec_service.get_current_status()
+                "task_execution": self.task_exec_service.get_current_status().message
             }
             
             response = RPCResponse()
