@@ -1,9 +1,14 @@
 from typing import Generic, TypeVar, Type, Optional, List, Union, Generator
-from sqlalchemy.orm import Session, DeclarativeBase
-from ..config import Base, SessionLocal
+from sqlalchemy.orm import Session, DeclarativeBase, mapped_column, Mapped
+from sqlalchemy import select, Integer, String
+from ..config import SessionLocal
 from contextlib import contextmanager
 
-ModelType = TypeVar("ModelType", bound=DeclarativeBase)
+class BaseModel(DeclarativeBase):
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    uuid: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+
+ModelType = TypeVar("ModelType", bound=BaseModel)
 
 class BaseRepository(Generic[ModelType]):
     def __init__(self, model: Type[ModelType]):
@@ -18,13 +23,16 @@ class BaseRepository(Generic[ModelType]):
             db.close()
 
     def get_by_id(self, db: Session, id: int) -> Optional[ModelType]:
-        return db.query(self.model).filter(self.model.id == id).first()
+        stmt = select(self.model).where(self.model.id == id)
+        return db.scalars(stmt).first()
 
     def get_by_uuid(self, db: Session, uuid: str) -> Optional[ModelType]:
-        return db.query(self.model).filter(self.model.uuid == uuid).first()
+        stmt = select(self.model).where(self.model.uuid == uuid)
+        return db.scalars(stmt).first()
 
     def get_all(self, db: Session) -> List[ModelType]:
-        return db.query(self.model).all()
+        stmt = select(self.model)
+        return list(db.scalars(stmt).all())
 
     def create(self, db: Session, **kwargs) -> ModelType:
         db_obj = self.model(**kwargs)
@@ -41,9 +49,10 @@ class BaseRepository(Generic[ModelType]):
         return db_obj
 
     def delete(self, db: Session, id: Union[int, str]) -> bool:
-        db_obj = (db.query(self.model)
-                 .filter(self.model.id == id if isinstance(id, int) else self.model.uuid == id)
-                 .first())
+        stmt = select(self.model).where(
+            self.model.id == id if isinstance(id, int) else self.model.uuid == id
+        )
+        db_obj = db.scalars(stmt).first()
         if db_obj:
             db.delete(db_obj)
             db.commit()

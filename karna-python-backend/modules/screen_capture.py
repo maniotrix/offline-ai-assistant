@@ -4,11 +4,10 @@ from datetime import datetime, timedelta
 from pynput import keyboard, mouse
 import threading
 from PIL import Image, ImageDraw, ImageFont
-import re
 import logging
-from typing import Optional, Dict, Any, List, NamedTuple
+from typing import Optional, Dict, List
 from collections import defaultdict
-from base.base_observer import Observable, StateChange
+from base.base_observer import Observable
 import shutil
 from dataclasses import dataclass
 from enum import Enum, auto

@@ -2,14 +2,11 @@ import unittest
 import os
 import shutil
 import time
-from datetime import datetime
 from typing import List
 from modules.screen_capture import (
     ScreenCaptureService, 
     ScreenshotEvent,
-    EventType,
-    SessionError,
-    DirectoryError
+    SessionError
 )
 from base.base_observer import Observer, Priority
 from PIL import Image
@@ -24,13 +21,13 @@ class TestObserver(Observer[List[ScreenshotEvent]]):
     def __init__(self):
         super().__init__(Priority.NORMAL)
     
-    def update(self, events: List[ScreenshotEvent]) -> None:
+    def update(self, data: List[ScreenshotEvent]) -> None:
         """Handle list of screen capture events and provide detailed feedback.
         
         Args:
             events: List of screen capture events to process
         """
-        for event in events:
+        for event in data:
             # Print event-specific details
             if event.screenshot_path:
                 print(f"[Observer] - Screenshot: {os.path.basename(event.screenshot_path)}")

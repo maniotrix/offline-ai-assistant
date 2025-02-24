@@ -1,6 +1,6 @@
 import asyncio
 from abc import ABC, abstractmethod
-from typing import Dict, Set, TypeVar, Generic, Any, Optional, Callable
+from typing import Dict, TypeVar, Generic, Any, Optional, Callable
 from weakref import WeakSet
 from enum import IntEnum
 from dataclasses import dataclass
@@ -57,7 +57,7 @@ class Observable(Generic[T]):
     
     def __init__(self):
         """Initialize the observable with an empty set of observers."""
-        self._observers: Dict[Priority, Set[Observer[T]]] = {
+        self._observers: Dict[Priority, WeakSet[Observer[T]]] = {
             priority: WeakSet() for priority in Priority
         }
         self._state: Dict[str, Any] = {}

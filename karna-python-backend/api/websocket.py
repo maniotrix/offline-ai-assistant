@@ -279,8 +279,8 @@ class TaskExecutionObserver(AsyncCapableObserver[TaskContext]):
         super().__init__()
         self.websocket_manager = websocket_manager
             
-    def update(self, context: TaskContext) -> None:
-        self._schedule_async(self._handle_update(context))
+    def update(self, data: TaskContext) -> None:
+        self._schedule_async(self._handle_update(data))
         
     async def _handle_update(self, context: TaskContext) -> None:
         await self.websocket_manager.broadcast_task_status(context)

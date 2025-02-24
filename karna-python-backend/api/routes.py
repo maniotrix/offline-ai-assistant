@@ -1,14 +1,11 @@
-from fastapi import APIRouter, WebSocket, BackgroundTasks
+from fastapi import APIRouter, WebSocket
 from pydantic import BaseModel
-from typing import Optional, Dict, List
+from typing import Optional, List
 import logging
 from .websocket import get_websocket_manager_instance
 # from modules.vision_agent import get_vision_service_instance
-from modules.action_prediction import get_language_service_instance
-from modules.action_execution import get_action_service_instance
-from domain.task import TaskContext, TaskStatus
-from domain.command import Command
-from domain.action import Action, ActionCoordinates
+from domain.task import TaskStatus
+from domain.action import Action
 
 router = APIRouter()
 websocket_manager = get_websocket_manager_instance()
@@ -56,16 +53,16 @@ async def websocket_endpoint(websocket: WebSocket):
     finally:
         websocket_manager.disconnect(websocket)
 
-@router.get("/api/status")
-async def get_status() -> TaskStatusResponse:
-    context = websocket_manager.current_status
-    return TaskStatusResponse(
-        command_text=context.command_text,
-        status=context.status,
-        message=context.message,
-        progress=context.progress,
-        actions=context.actions if hasattr(context, 'actions') else None
-    )
+# @router.get("/api/status")
+# async def get_status() -> TaskStatusResponse:
+#     context = websocket_manager.current_status
+#     return TaskStatusResponse(
+#         command_text=context.command_text,
+#         status=context.status,
+#         message=context.message,
+#         progress=context.progress,
+#         actions=context.actions if hasattr(context, 'actions') else None
+#     )
 
 @router.get("/api/screenshot")
 async def get_screenshot():
