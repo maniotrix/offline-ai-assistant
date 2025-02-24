@@ -67,50 +67,50 @@ class AssistantOrchestrator(metaclass=SingletonMeta):
         await self.service_manager.stop_all()
         self.logger.info("All services stopped successfully")
 
-    async def process_command(self, command: str):
-        """Process a user command through the pipeline"""
-        try:
-            # Get services
-            # vision_service = self.service_manager.get_service('vision')
-            language_service = self.service_manager.get_service('language')
-            command_service = self.service_manager.get_service('command')
-            action_service = self.service_manager.get_service('action')
+    # async def process_command(self, command: str):
+    #     """Process a user command through the pipeline"""
+    #     try:
+    #         # Get services
+    #         # vision_service = self.service_manager.get_service('vision')
+    #         language_service = ()self.service_manager.get_service('language')
+    #         command_service = self.service_manager.get_service('command')
+    #         action_service = self.service_manager.get_service('action')
 
-            if not all([#vision_service, 
-                        language_service, command_service, action_service]):
-                self.logger.error("One or more required services are not available")
-                raise RuntimeError("Required services not available")
+    #         if not all([#vision_service, 
+    #                     language_service, command_service, action_service]):
+    #             self.logger.error("One or more required services are not available")
+    #             raise RuntimeError("Required services not available")
 
-            # Process the command
-            command_result = await command_service.process_command(command)
-            if not command_result:
-                self.logger.warning("Command processing returned no result")
-                return None
+    #         # Process the command
+    #         command_result = await command_service.process_command(command)
+    #         if not command_result:
+    #             self.logger.warning("Command processing returned no result")
+    #             return None
 
-            # # Capture current screen state
-            # screen = await vision_service.capture_screen()
-            # self.logger.debug("Screen captured successfully")
+    #         # # Capture current screen state
+    #         # screen = await vision_service.capture_screen()
+    #         # self.logger.debug("Screen captured successfully")
             
-            # # Detect UI elements
-            # ui_elements = await vision_service.detect_ui_elements(screen)
-            # self.logger.debug(f"Detected {len(ui_elements) if ui_elements else 0} UI elements")
+    #         # # Detect UI elements
+    #         # ui_elements = await vision_service.detect_ui_elements(screen)
+    #         # self.logger.debug(f"Detected {len(ui_elements) if ui_elements else 0} UI elements")
             
-            # Recognize intent
-            intent = await language_service.recognize_intent(command)
+    #         # Recognize intent
+    #         intent = await language_service.recognize_intent(command)
             
-            # Execute action based on intent
-            if intent and intent.action_type:
-                result = await action_service.execute_action(
-                    intent.action_type,
-                    intent.parameters
-                )
-                return result
+    #         # Execute action based on intent
+    #         if intent and intent.action_type:
+    #             result = await action_service.execute_action(
+    #                 intent.action_type,
+    #                 intent.parameters
+    #             )
+    #             return result
             
-            return command_result
+    #         return command_result
 
-        except Exception as e:
-            self.logger.error(f"Command processing error: {str(e)}")
-            raise
+    #     except Exception as e:
+    #         self.logger.error(f"Command processing error: {str(e)}")
+    #         raise
 
 # Singleton instance getter
 _orchestrator_instance = None

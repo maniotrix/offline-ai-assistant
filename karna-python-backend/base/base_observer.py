@@ -62,7 +62,7 @@ class Observable(Generic[T]):
         }
         self._state: Dict[str, Any] = {}
         self._state_history: list[StateChange] = []
-        self._conditions: Dict[str, Callable[[T], bool]] = {}
+        self._conditions: Dict[int, Callable[[T], bool]] = {}
 
     def add_observer(self, observer: Observer[T], condition: Optional[Callable[[T], bool]] = None) -> None:
         """Add an observer with optional notification condition.

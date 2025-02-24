@@ -605,7 +605,7 @@ class ScreenCaptureService(Observable[List[ScreenshotEvent]]):
                     
                 self.notify_session_observers()
                 # export screenshot events list to a json file
-                self.export_screenshot_events_to_json()
+                # self.export_screenshot_events_to_json()
                 
             except Exception as e:
                 logger.error(f"Error during capture stop: {str(e)}")
