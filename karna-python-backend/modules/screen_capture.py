@@ -295,7 +295,9 @@ class ScreenCaptureService(Observable[List[ScreenshotEvent]]):
             
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
             filename = f'screenshot_{timestamp}.png'
-            filepath = os.path.join(self.current_session.raw_dir, filename)
+            if not self.current_session or not self.current_session.raw_dir:
+                raise SessionError("Session raw directory not initialized")
+            filepath = os.path.join(str(self.current_session.raw_dir), filename)
             
             try:
                 screenshot = pyautogui.screenshot()
@@ -602,6 +604,8 @@ class ScreenCaptureService(Observable[List[ScreenshotEvent]]):
                     self._session_history.append(stats)
                     
                 self.notify_session_observers()
+                # export screenshot events list to a json file
+                self.export_screenshot_events_to_json()
                 
             except Exception as e:
                 logger.error(f"Error during capture stop: {str(e)}")

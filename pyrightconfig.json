@@ -1,0 +1,40 @@
+{
+    "typeCheckingMode": "standard",
+    "useLibraryCodeForTypes": true,
+    
+    // Critical type safety checks
+    "strictListInference": true,
+    "strictDictionaryInference": true,
+    "strictSetInference": true,
+    "reportUndefinedVariable": "error",
+    "reportMissingImports": "error",
+    "reportGeneralTypeIssues": "error",
+    "reportPropertyTypeMismatch": "error",
+    "reportFunctionMemberAccess": "error",
+    "reportAttributeAccessIssue": "error",
+    
+    // Warning level checks
+    "reportMissingTypeStubs": "warning",
+    "reportOptionalSubscript": "warning",
+    "reportOptionalMemberAccess": "warning",
+    "reportOptionalCall": "warning",
+    "reportPrivateUsage": "warning",
+    "reportAssignmentType": "warning",
+    "reportUnknownMemberType": "warning",
+    "reportArgumentType": "warning",
+    
+    // Code organization mode (can be disabled by changing to "none")
+    "reportUnusedImport": "information",
+    "reportUnusedClass": "information",
+    "reportUnusedFunction": "information",
+    "reportUnusedVariable": "information",
+    "reportDuplicateImport": "information",
+    "reportWildcardImportFromLibrary": "information",
+    
+    // Exclude patterns for code organization checks
+    // "ignore": [
+    //     "**/tests/**",
+    //     "**/test_*.py",
+    //     "**/__pycache__/**"
+    // ]
+}

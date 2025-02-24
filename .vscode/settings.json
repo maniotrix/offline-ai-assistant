@@ -1,0 +1,9 @@
+{
+    // "python.analysis.typeCheckingMode": "strict",
+    "python.analysis.diagnosticMode": "workspace",
+    // "python.analysis.diagnosticSeverityOverrides": {
+    //     "reportUndefinedVariable": "error",
+    //     "reportMissingImports": "error",
+    //     "reportMissingTypeStubs": "error"
+    // }
+}

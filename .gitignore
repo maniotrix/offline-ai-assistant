@@ -27,7 +27,7 @@ ENV/
 
 # IDE
 .idea/
-.vscode/
+# .vscode/
 *.swp
 *.swo
 .DS_Store
@@ -37,12 +37,12 @@ data/screenshots/*
 data/annotations/*
 !data/screenshots/.gitkeep
 !data/annotations/.gitkeep
-models/vision/*/*.pth
-models/language/*/*.pth
-models/*.pth
-*.onnx
-*.pt
-*.pth
+# models/vision/*/*.pth
+# models/language/*/*.pth
+# models/*.pth
+# *.onnx
+# *.pt
+# *.pth
 
 # Logs and databases
 *.log
