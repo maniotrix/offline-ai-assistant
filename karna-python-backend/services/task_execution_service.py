@@ -1,16 +1,14 @@
-from typing import Dict, Any, Optional
 import logging
 from uuid import UUID
 from modules.command_handler.command_processor import get_command_service_instance
 from modules.action_prediction import get_language_service_instance
 from modules.action_execution import get_action_service_instance
-from domain.command import Command, CommandResult
+from domain.command import CommandResult
 from domain.task import TaskContext, TaskStatus
-from domain.action import Action, ActionResult, ActionCoordinates
-from domain.intent import Intent, IntentPrediction
-from base.base_observer import Observable
+from domain.action import Action, ActionCoordinates
+from services.base_service import BaseService
 
-class TaskExecutorService(Observable[TaskContext]):
+class TaskExecutorService(BaseService[TaskContext]):
     def __init__(self):
         super().__init__()
         self.command_processor = get_command_service_instance()

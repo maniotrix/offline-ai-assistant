@@ -7,24 +7,33 @@ from api.websockets.base_models import Connection, RateLimit
 from google.protobuf.message import Message
 
 from base.base_observer import AsyncCapableObserver
+from services.base_service import BaseService
 
 T = TypeVar("T")
 
 
 class BaseWebSocketHandler(Generic[T], ABC):
-    def __init__(self):
+    def __init__(self, service: BaseService[T]):
+        self.service = service
         self.active_connections: Dict[str, Connection[T]] = {}
         self.logger = logging.getLogger(self.__class__.__name__)
         self.rate_limiter = RateLimit()
+        
+    async def default_observer_handle_update(self, data: T) -> None:
+        # Default implementation for handling updates
+        raise NotImplementedError("Default observer's handle_update not implemented")
 
+    def get_default_observer(self) -> AsyncCapableObserver[T]:
+        return AsyncCapableObserver[T](self.default_observer_handle_update)
+    
     async def connect(
-        self, websocket: WebSocket, observer: AsyncCapableObserver
+        self, websocket: WebSocket, observer: AsyncCapableObserver | None = None
     ) -> None:
         """Handle new WebSocket connection"""
         try:
             await websocket.accept()
             client_id = str(id(websocket))
-            connection = self._create_connection(websocket, client_id, observer) # type: ignore
+            connection = self._create_connection(websocket, client_id, observer)
             self.active_connections[client_id] = connection
             self.logger.info(f"New WebSocket connection established: {client_id}")
             await self._post_connect(connection)
@@ -35,14 +44,18 @@ class BaseWebSocketHandler(Generic[T], ABC):
     @abstractmethod
     def _create_connection(
         self, websocket: WebSocket, client_id: str, observer: AsyncCapableObserver
-    ) -> Connection[T]:
+    ) -> Connection:
         """Create a new connection instance - to be overridden by subclasses"""
         return Connection(websocket=websocket, client_id=client_id, observer=observer)
+
 
     @abstractmethod
     async def _post_connect(self, connection: Connection[T]) -> None:
         """Post-connection setup - to be overridden by subclasses"""
-        pass
+        observer = connection.observer
+        if observer is None:
+            observer = self.get_default_observer()
+        self.service.add_observer(observer)
 
     def disconnect(self, websocket: WebSocket) -> None:
         """Handle WebSocket disconnection"""
@@ -60,7 +73,7 @@ class BaseWebSocketHandler(Generic[T], ABC):
     @abstractmethod
     def _pre_disconnect(self, connection: Connection[T]) -> None:
         """Pre-disconnection cleanup - to be overridden by subclasses"""
-        pass
+        self.service.remove_observer(connection.observer)
 
     async def broadcast(self, message: Message) -> None:  #
         """Broadcast protobuf message to all connected clients"""

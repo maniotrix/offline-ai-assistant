@@ -10,8 +10,7 @@ from generated.status_pb2 import (
 )
 from modules.action_prediction import get_language_service_instance
 from modules.command_handler.command_processor import get_command_service_instance
-from base.base_observer import AsyncCapableObserver, Observable
-from api.websockets.base_models import Connection
+from services.base_service import BaseService
 
 
 @dataclass
@@ -22,7 +21,7 @@ class StatusContext:
     command: str = ""
 
 
-class StatusService(Observable[StatusContext]):
+class StatusService(BaseService[StatusContext]):
     async def update_system_status(self) -> None:
         context = StatusContext(
             language=get_language_service_instance().get_status(),
@@ -31,34 +30,16 @@ class StatusService(Observable[StatusContext]):
         self.notify_observers(context)
 
 
-class StatusWebSocketHandler(BaseWebSocketHandler):
+class StatusWebSocketHandler(BaseWebSocketHandler[StatusContext]):
+    service: StatusService  # Add type annotation to help type checker
     def __init__(self):
-        super().__init__()
-        self.status_service = StatusService()
+        super().__init__(service=StatusService())
         self.rate_limiter.max_requests = 20  # More permissive rate limit for status
         self.rate_limiter.time_window = 60  # 20 requests per minute
-
-    def _create_connection(
-        self, websocket: WebSocket, client_id: str, observer: AsyncCapableObserver
-    ) -> Connection[StatusContext]:
-        return Connection[StatusContext](
-            websocket=websocket, client_id=client_id, observer=observer
-        )
         
-    async def _post_connect(self, connection: Connection[StatusContext]) -> None:
-        """Post-connection setup - to be overridden by subclasses"""
-        observer = connection.observer
-        if observer is None:
-            observer = self.get_default_observer()
-        self.status_service.add_observer(observer)
-    
-    def _pre_disconnect(self, connection: Connection[StatusContext]) -> None:
-        """Pre-disconnection cleanup - to be overridden by subclasses"""
-        self.status_service.remove_observer(connection.observer)
-
-    def get_default_observer(self) -> AsyncCapableObserver[StatusContext]:
-        observer = AsyncCapableObserver[StatusContext](self.broadcast_system_status)
-        return observer
+    async def default_observer_handle_update(self, data: StatusContext) -> None:
+        # Default implementation for handling updates
+        await self.broadcast_system_status(data)
 
     async def handle_message(self, websocket: WebSocket, data: bytes) -> None:
         client_id = str(id(websocket))
@@ -91,7 +72,7 @@ class StatusWebSocketHandler(BaseWebSocketHandler):
         self, websocket: WebSocket, status_request: StatusRequest
     ) -> None:
         try:
-            await self.status_service.update_system_status()
+            await self.service.update_system_status()
 
         except Exception as e:
             self.logger.error(f"Status request error: {e}", exc_info=True)
