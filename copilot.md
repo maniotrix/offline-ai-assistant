@@ -809,3 +809,54 @@ Would you like me to proceed with the implementation starting with the base mode
 maniotrix: great, yes lets implement everything
 
 GitHub Copilot: 
+
+I've helped refactor the WebSocket implementation by separating it into distinct channels for commands and status updates. Here's a summary of the changes made:
+
+1. Architecture Overview:
+- Split WebSocket functionality into two separate channels: command and status
+- Implemented a base WebSocket handler with common functionality
+- Created type-safe models for each channel
+- Added proper rate limiting for each channel
+- Implemented observer pattern for command execution updates
+
+2. Key Components:
+
+a) Base Classes:
+- `Connection[T]`: Generic base connection class storing WebSocket and optional observer
+- `BaseWebSocketHandler[T]`: Generic base handler with common WebSocket operations
+- `RateLimit`: Rate limiting implementation for request throttling
+
+b) Command Channel:
+- `CommandConnection`: Specialized connection with required observer
+- `CommandObserver`: Observes task execution updates and broadcasts to clients
+- `CommandWebSocketHandler`: Handles command execution and status updates
+- `CommandModels`: Handles protobuf message conversion for commands
+
+c) Status Channel:
+- `StatusConnection`: Simplified connection without observer requirement
+- `StatusWebSocketHandler`: Handles system status updates
+- `StatusModels`: Handles protobuf message conversion for status updates
+
+d) Manager:
+- `WebSocketManager`: Central coordinator managing both channels
+- Implements singleton pattern
+- Routes connections to appropriate handlers
+- Provides unified interface for other services
+
+3. Key Features:
+- Type-safe implementations using generics
+- Channel-specific rate limiting
+- Proper error handling and logging
+- Clean separation of concerns
+- Protocol buffer message handling
+- Observer pattern for command execution updates
+- Graceful connection handling
+
+4. Design Patterns Used:
+- Observer Pattern: For command execution updates
+- Singleton Pattern: For WebSocket manager
+- Factory Pattern: For connection creation
+- Strategy Pattern: For message handling
+- Protocol Buffers: For message serialization
+
+The implementation provides a robust foundation for bidirectional communication between the frontend and backend, with proper separation of command execution and status monitoring functionalities.

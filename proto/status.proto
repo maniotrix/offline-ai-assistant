@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package karna.status;
+
+message StatusRequest {} // Empty message for status requests
+
+// Request message types
+message StatusRPCRequest {
+  oneof method {
+    StatusRequest get_status = 1;
+  }
+}
+
+message StatusResult {
+  string vision = 1;
+  string language = 2;
+  string command = 3;
+}
+
+// Response message types
+message StatusRPCResponse {
+  oneof type {
+    StatusResult status_update = 1;
+    string error = 2;
+  }
+}

@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package karna.command;
+
+message CommandRequest {
+  string command = 1;
+  string domain = 2;
+}
+
+// Request message types
+message CommandRPCRequest {
+  oneof method {
+    CommandRequest execute_command = 1;
+  }
+}
+
+message CommandAction {
+  string type = 1;
+  map<string, string> coordinates = 2;
+  optional string text = 3;
+}
+
+enum CommandExecutionStatus {
+  PENDING = 0;
+  IN_PROGRESS = 1;
+  COMPLETED = 2;
+  FAILED = 3;
+}
+
+message CommandResult {
+  string command_text = 1;
+  CommandExecutionStatus status = 2;
+  string message = 3;
+  repeated CommandAction actions = 4;
+}
+
+// Response message types
+message CommandRPCResponse {
+  oneof type {
+    CommandResult command_response = 1;
+    string error = 2;
+  }
+}
