@@ -5,6 +5,7 @@ from weakref import WeakSet
 from enum import IntEnum
 from dataclasses import dataclass
 from datetime import datetime
+import copy
 
 # Define generic types for Observable and Observer
 ObserverDataType = TypeVar('ObserverDataType')
@@ -106,7 +107,7 @@ class Observable(Generic[ObserverDataType]):
                 try:
                     condition = self._conditions.get(id(observer))
                     if condition is None or condition(data):
-                        observer.update(data)
+                        observer.update(copy.deepcopy(data))
                 except Exception as e:
                     print(f"Error notifying observer {observer}: {str(e)}")
 

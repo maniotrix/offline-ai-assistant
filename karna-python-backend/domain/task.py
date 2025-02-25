@@ -23,7 +23,3 @@ class TaskContext:
     progress: int = 0
     message: str = ""
     needs_training: bool = False
-
-    def clone(self) -> 'TaskContext':
-        """Create a deep copy of the TaskContext"""
-        return copy.deepcopy(self)

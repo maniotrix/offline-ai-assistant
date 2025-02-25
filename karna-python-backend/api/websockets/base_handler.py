@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from fastapi import WebSocket, WebSocketDisconnect
 from typing import Dict, List, TypeVar, Generic
 import logging
@@ -17,6 +17,7 @@ class BaseWebSocketHandler(Generic[T], ABC):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.rate_limiter = RateLimit()
 
+    @abstractmethod
     async def connect(
         self, websocket: WebSocket, observer: AsyncCapableObserver
     ) -> None:

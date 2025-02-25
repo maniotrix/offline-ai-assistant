@@ -174,7 +174,7 @@ class TaskExecutorService(Observable[TaskContext]):
         """Update current status and notify observers with a deep copy of the context"""
         self.current_status = context
         # Create a deep copy before notifying observers to prevent shared mutable state
-        self.notify_observers(context.clone())
+        self.notify_observers(context)
 
     def get_current_status(self) -> TaskContext:
         return self.current_status
