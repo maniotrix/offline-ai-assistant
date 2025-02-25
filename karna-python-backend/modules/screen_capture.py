@@ -9,9 +9,10 @@ from typing import Optional, Dict, List
 from collections import defaultdict
 from base.base_observer import Observable
 import shutil
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from enum import Enum, auto
 import math
+import json
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -102,10 +103,8 @@ class ScreenCaptureSession:
     
     def __post_init__(self):
         """Initialize event lists after dataclass initialization"""
-        if self.session_events is None:
-            self.session_events = []
-        if self.screenshot_events is None:
-            self.screenshot_events = []
+        self.session_events = []
+        self.screenshot_events = []
 
     @property
     def duration(self) -> Optional[float]:
@@ -217,6 +216,50 @@ class ScreenCaptureService(Observable[List[ScreenshotEvent]]):
             raise SessionError("Session directories not properly initialized")
         if not os.path.exists(self.current_session.raw_dir) or not os.path.exists(self.current_session.annotated_dir):
             raise DirectoryError("Session directories do not exist")
+
+    def export_screenshot_events_to_json(self) -> str:
+        """Export screenshot events to a JSON file.
+        
+        Returns:
+            str: Path to the exported JSON file
+        
+        Raises:
+            SessionError: If no session exists or is not properly initialized
+            DirectoryError: If unable to create or write to export directory
+        """
+        try:
+            
+            if not self.current_session or not self.current_session.screenshot_events:
+                raise SessionError("No screenshot events to export")
+
+            # Create export path under screenshots directory
+            base_dir = os.path.join('data', self.current_session.project_uuid, 
+                                  self.current_session.command_uuid)
+            os.makedirs(base_dir, exist_ok=True)
+            
+            export_path = os.path.join(base_dir, f'screenshot_events_{self.current_session.command_uuid}.json')
+            
+            # Convert events to serializable format
+            events_data = []
+            for event in self.current_session.screenshot_events:
+                event_dict = asdict(event)
+                # Convert datetime to ISO format string
+                event_dict['timestamp'] = event_dict['timestamp'].isoformat()
+                events_data.append(event_dict)
+            
+            # Write to JSON file with proper formatting
+            with open(export_path, 'w', encoding='utf-8') as f:
+                json.dump(events_data, f, indent=2, ensure_ascii=False)
+            
+            logger.info(f"Screenshot events exported to: {export_path}")
+            return export_path
+            
+        except (SessionError, DirectoryError) as e:
+            logger.error(f"Failed to export screenshot events: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error during screenshot events export: {str(e)}")
+            raise DirectoryError(f"Screenshot events export failed: {str(e)}")
 
     def _ensure_directories(self, project_uuid: str, command_uuid: str) -> tuple[str, str]:
         """Create necessary directories for screenshots and clean existing data"""
@@ -604,7 +647,7 @@ class ScreenCaptureService(Observable[List[ScreenshotEvent]]):
                     
                 self.notify_session_observers()
                 # export screenshot events list to a json file
-                # self.export_screenshot_events_to_json()
+                self.export_screenshot_events_to_json()
                 
             except Exception as e:
                 logger.error(f"Error during capture stop: {str(e)}")
