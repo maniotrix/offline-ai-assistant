@@ -1,4 +1,3 @@
-from typing import Coroutine
 from attr import dataclass
 from fastapi import WebSocket
 
