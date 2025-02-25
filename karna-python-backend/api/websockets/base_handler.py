@@ -83,7 +83,8 @@ class BaseWebSocketHandler(Generic[T], ABC):
 
         data = message.SerializeToString()
         disconnected: List[str] = []
-
+        # log current active connections
+        self.report_active_clients()
         for client_id, connection in self.active_connections.items():
             try:
                 await connection.websocket.send_bytes(data)
