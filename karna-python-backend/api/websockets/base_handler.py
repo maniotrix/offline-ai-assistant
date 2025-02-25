@@ -19,12 +19,13 @@ class BaseWebSocketHandler(Generic[T], ABC):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.rate_limiter = RateLimit()
         
-    async def default_observer_handle_update(self, data: T) -> None:
+    @abstractmethod
+    async def _default_observer_callable(self, data: T) -> None:
         # Default implementation for handling updates
         raise NotImplementedError("Default observer's handle_update not implemented")
 
     def get_default_observer(self) -> AsyncCapableObserver[T]:
-        return AsyncCapableObserver[T](self.default_observer_handle_update)
+        return AsyncCapableObserver[T](self._default_observer_callable)
     
     async def connect(
         self, websocket: WebSocket, observer: AsyncCapableObserver | None = None
@@ -41,7 +42,7 @@ class BaseWebSocketHandler(Generic[T], ABC):
             self.logger.error(f"Failed to establish WebSocket connection: {e}")
             raise
 
-    @abstractmethod
+    # @abstractmethod
     def _create_connection(
         self, websocket: WebSocket, client_id: str, observer: AsyncCapableObserver
     ) -> Connection:
@@ -49,7 +50,7 @@ class BaseWebSocketHandler(Generic[T], ABC):
         return Connection(websocket=websocket, client_id=client_id, observer=observer)
 
 
-    @abstractmethod
+    # @abstractmethod
     async def _post_connect(self, connection: Connection[T]) -> None:
         """Post-connection setup - to be overridden by subclasses"""
         observer = connection.observer
@@ -70,7 +71,7 @@ class BaseWebSocketHandler(Generic[T], ABC):
         except Exception as e:
             self.logger.warning(f"Error during disconnect: {e}")
 
-    @abstractmethod
+    # @abstractmethod
     def _pre_disconnect(self, connection: Connection[T]) -> None:
         """Pre-disconnection cleanup - to be overridden by subclasses"""
         self.service.remove_observer(connection.observer)

@@ -14,7 +14,7 @@ class CommandWebSocketHandler(BaseWebSocketHandler[TaskContext]):
         self.rate_limiter.max_requests = 5  # More restrictive rate limit for commands
         self.rate_limiter.time_window = 60  # 5 requests per minute
 
-    async def default_observer_handle_update(self, data: TaskContext) -> None:
+    async def _default_observer_callable(self, data: TaskContext) -> None:
         # Default implementation for handling updates
         await self.broadcast_task_status(data)
 

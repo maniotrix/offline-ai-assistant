@@ -37,7 +37,7 @@ class StatusWebSocketHandler(BaseWebSocketHandler[StatusContext]):
         self.rate_limiter.max_requests = 20  # More permissive rate limit for status
         self.rate_limiter.time_window = 60  # 20 requests per minute
         
-    async def default_observer_handle_update(self, data: StatusContext) -> None:
+    async def _default_observer_callable(self, data: StatusContext) -> None:
         # Default implementation for handling updates
         await self.broadcast_system_status(data)
 

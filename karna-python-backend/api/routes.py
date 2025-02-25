@@ -1,31 +1,10 @@
 from fastapi import APIRouter, WebSocket
-from pydantic import BaseModel
-from typing import Optional, List
 import logging
-from .websocket import get_websocket_manager_instance
+from api.websocket import WebSocketManager
 # from modules.vision_agent import get_vision_service_instance
-from domain.task import TaskStatus
-from domain.action import Action
 
 router = APIRouter()
-websocket_manager = get_websocket_manager_instance()
-
-class ActionRequest(BaseModel):
-    type: str
-    coordinates: dict
-    text: Optional[str] = None
-
-class CommandRequest(BaseModel):
-    command: str
-    domain: str
-    uuid: Optional[str] = None
-
-class TaskStatusResponse(BaseModel):
-    command_text: str
-    status: TaskStatus
-    message: str
-    progress: int
-    actions: Optional[List[Action]] = None
+websocket_manager = WebSocketManager()
 
 @router.get("/health")
 async def health_check():
@@ -40,29 +19,20 @@ async def startup_event():
 async def shutdown_event():
     pass
 
-@router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket_manager.connect(websocket)
-    try:
-        while True:
-            # Receive binary data instead of JSON
-            data = await websocket.receive_bytes()
-            await websocket_manager.handle_message(websocket, data)
-    except Exception as e:
-        logging.error(f"WebSocket error: {e}")
-    finally:
-        websocket_manager.disconnect(websocket)
+@router.websocket("/ws/command")
+async def websocket_command_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for command channel"""
+    await websocket_manager.handle_command_connection(websocket)
 
-# @router.get("/api/status")
-# async def get_status() -> TaskStatusResponse:
-#     context = websocket_manager.current_status
-#     return TaskStatusResponse(
-#         command_text=context.command_text,
-#         status=context.status,
-#         message=context.message,
-#         progress=context.progress,
-#         actions=context.actions if hasattr(context, 'actions') else None
-#     )
+@router.websocket("/ws/status")
+async def websocket_status_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for status channel"""
+    await websocket_manager.handle_status_connection(websocket)
+
+@router.get("/ws/clients")
+async def get_active_clients():
+    """Get count of active WebSocket clients per channel"""
+    return websocket_manager.report_active_clients()
 
 @router.get("/api/screenshot")
 async def get_screenshot():
