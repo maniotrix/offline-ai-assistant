@@ -17,7 +17,6 @@ class BaseWebSocketHandler(Generic[T], ABC):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.rate_limiter = RateLimit()
 
-    @abstractmethod
     async def connect(
         self, websocket: WebSocket, observer: AsyncCapableObserver
     ) -> None:
@@ -33,12 +32,14 @@ class BaseWebSocketHandler(Generic[T], ABC):
             self.logger.error(f"Failed to establish WebSocket connection: {e}")
             raise
 
+    @abstractmethod
     def _create_connection(
         self, websocket: WebSocket, client_id: str, observer: AsyncCapableObserver
     ) -> Connection[T]:
         """Create a new connection instance - to be overridden by subclasses"""
         return Connection(websocket=websocket, client_id=client_id, observer=observer)
 
+    @abstractmethod
     async def _post_connect(self, connection: Connection[T]) -> None:
         """Post-connection setup - to be overridden by subclasses"""
         pass
@@ -56,6 +57,7 @@ class BaseWebSocketHandler(Generic[T], ABC):
         except Exception as e:
             self.logger.warning(f"Error during disconnect: {e}")
 
+    @abstractmethod
     def _pre_disconnect(self, connection: Connection[T]) -> None:
         """Pre-disconnection cleanup - to be overridden by subclasses"""
         pass
@@ -90,6 +92,7 @@ class BaseWebSocketHandler(Generic[T], ABC):
             self.logger.info(f"📡 Active Connection Details: {self.active_connections}")
             self.logger.info("========================================")
 
+    @abstractmethod
     async def handle_message(self, websocket: WebSocket, data: bytes) -> None:
         """Handle incoming messages - to be implemented by subclasses"""
         raise NotImplementedError("Subclasses must implement handle_message")
