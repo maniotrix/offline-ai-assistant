@@ -4,7 +4,6 @@ import logging
 from base import SingletonMeta
 from api.websockets.command.command_handler import CommandWebSocketHandler
 from api.websockets.status.status_handler import StatusWebSocketHandler
-from domain.task import TaskContext
 
 class WebSocketManager(metaclass=SingletonMeta):
     def __init__(self):
@@ -39,10 +38,6 @@ class WebSocketManager(metaclass=SingletonMeta):
         except Exception as e:
             self.logger.error(f"Error in status connection: {e}", exc_info=True)
             self.status_handler.disconnect(websocket)
-
-    async def broadcast_task_status(self, context: TaskContext) -> None:
-        """Broadcast task status updates through command channel"""
-        await self.command_handler.broadcast_task_status(context)
 
     def report_active_clients(self) -> Dict[str, int]:
         """Report number of active connections per channel"""
