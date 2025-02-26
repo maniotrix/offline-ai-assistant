@@ -1,16 +1,7 @@
 import pytest
-from fastapi.testclient import TestClient
 from fastapi import WebSocket
-from typing import Generator
 from unittest.mock import MagicMock, AsyncMock
 from api.websockets.websocket_manager import WebSocketManager
-from main import app
-
-@pytest.fixture
-def test_client() -> Generator:
-    """Create a test client instance"""
-    with TestClient(app) as client:
-        yield client
 
 @pytest.fixture
 def mock_websocket() -> MagicMock:
