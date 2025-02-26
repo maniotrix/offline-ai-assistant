@@ -17,7 +17,7 @@ def task_status_to_proto(status: TaskStatus) -> CommandExecutionStatus.ValueType
     }.get(status, CommandExecutionStatus.FAILED)
     
 @staticmethod
-def action_to_proto(self, action: Action) -> CommandAction:
+def action_to_proto(action: Action) -> CommandAction:
         """Convert domain Action to protobuf Action"""
         proto_action = CommandAction()
         proto_action.type = action.type
