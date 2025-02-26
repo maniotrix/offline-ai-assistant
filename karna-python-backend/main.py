@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from pathlib import Path
 from fastapi import FastAPI
@@ -10,7 +9,6 @@ from api import setup_routes
 from modules.action_prediction import get_language_service_instance
 from modules.action_execution import get_action_service_instance
 from modules.command_handler.command_processor import get_command_service_instance
-from api.websocket import WebSocketManager
 
 app = FastAPI()
 

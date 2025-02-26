@@ -1,4 +1,4 @@
-from attr import dataclass
+
 from fastapi import WebSocket
 
 from api.websockets.base_handler import BaseWebSocketHandler
@@ -8,27 +8,8 @@ from generated.status_pb2 import (
     StatusRPCResponse,
     StatusResult,
 )
-from modules.action_prediction import get_language_service_instance
-from modules.command_handler.command_processor import get_command_service_instance
-from services.base_service import BaseService
-
-
-@dataclass
-class StatusContext:
-    """Context for status updates."""
-
-    language: str = ""
-    command: str = ""
-
-
-class StatusService(BaseService[StatusContext]):
-    async def update_system_status(self) -> None:
-        context = StatusContext(
-            language=get_language_service_instance().get_status(),
-            command=get_command_service_instance().get_status(),
-        )
-        self.notify_observers(context)
-
+from domain.status import StatusContext
+from services.status_service import StatusService
 
 class StatusWebSocketHandler(BaseWebSocketHandler[StatusContext]):
     service: StatusService  # Add type annotation to help type checker

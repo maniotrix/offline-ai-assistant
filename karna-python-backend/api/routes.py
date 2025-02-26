@@ -1,6 +1,6 @@
 from fastapi import APIRouter, WebSocket
 import logging
-from api.websocket import WebSocketManager
+from api.websockets.websocket_manager import WebSocketManager
 # from modules.vision_agent import get_vision_service_instance
 
 router = APIRouter()

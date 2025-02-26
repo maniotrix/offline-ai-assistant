@@ -1,7 +1,7 @@
 # API module initialization
 from fastapi import FastAPI
-from .routes import router
-from .websocket import WebSocketManager
+from api.routes import router
+from api.websockets.websocket_manager import WebSocketManager
 
 def setup_routes(app: FastAPI):
     """Setup all API routes with the FastAPI application"""
