@@ -30,10 +30,10 @@ async def websocket_status_endpoint(websocket: WebSocket):
     """WebSocket endpoint for status channel"""
     await websocket_manager.handle_status_connection(websocket)
 
-@router.get(REST.ACTIVE_CLIENTS)
-async def get_active_clients():
-    """Get count of active WebSocket clients per channel"""
-    return websocket_manager.report_active_clients()
+# @router.get(REST.ACTIVE_CLIENTS)
+# async def get_active_clients():
+#     """Get count of active WebSocket clients per channel"""
+#     return websocket_manager.report_active_clients()
 
 @router.get(REST.SCREENSHOT)
 async def get_screenshot():
