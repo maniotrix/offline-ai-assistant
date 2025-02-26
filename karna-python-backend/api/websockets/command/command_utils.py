@@ -33,7 +33,7 @@ def create_command_result(context: TaskContext) -> ProtoCommandResult:
     """Create protobuf CommandResult from TaskContext"""
     result = ProtoCommandResult()
     result.command_text = str(context.command) if context.command else ""
-    result.status = CommandExecutionStatus.Value(task_status_to_proto(context.status))
+    result.status = task_status_to_proto(context.status)
     result.message = context.message or ""
     
     if hasattr(context, 'actions') and context.actions:
