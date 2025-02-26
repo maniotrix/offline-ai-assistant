@@ -5,7 +5,7 @@ from database.config import create_db_engine, get_session_factory, Base
 from config.db.settings import use_test_settings, use_default_settings
 
 # Add project root to Python path
-project_root = Path(__file__).parent.parent
+project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 @pytest.fixture(scope="session")
