@@ -111,7 +111,7 @@ class TestScreenCapture(unittest.TestCase):
 
     def test_interactive_capture_session(self):
         """
-        'python -m pytest tests/test_screen_capture.py -v -s -k test_interactive_capture_session'
+        'python -m pytest tests/modules/test_screen_capture.py -v -s -k test_interactive_capture_session'
         Main interactive test for screen capture session.
         This test will:
         1. Start a capture session
