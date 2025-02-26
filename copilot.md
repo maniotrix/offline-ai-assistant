@@ -860,3 +860,52 @@ d) Manager:
 - Protocol Buffers: For message serialization
 
 The implementation provides a robust foundation for bidirectional communication between the frontend and backend, with proper separation of command execution and status monitoring functionalities.
+
+
+Let me explain why you're asking an insightful question. You're right - let me analyze this in detail.
+
+1. WebSocket Protocol Behavior:
+When a WebSocket connection is established, it remains open and persistent by default. The TCP connection stays alive until either:
+- The client explicitly closes it
+- The server explicitly closes it
+- The network connection is lost/interrupted
+- Browser is forcefully closed
+
+2. Looking at our current implementation in WebSocketManager:
+```python
+async def handle_command_connection(self, websocket: WebSocket) -> None:
+    await self.command_handler.connect(websocket)
+    try:
+        while True:  # <-- This loop might be unnecessary
+            message = await websocket.receive_bytes()
+            await self.command_handler.handle_message(websocket, message)
+```
+
+The `while True` loop here is actually serving two purposes:
+1. Message Reception: It's acting as an event listener for incoming messages
+2. Connection Monitoring: It helps detect disconnections through the WebSocketDisconnect exception
+
+However, FastAPI's WebSocket implementation (based on Starlette) already:
+- Maintains the TCP connection
+- Provides async events for messages
+- Raises WebSocketDisconnect when the connection is lost
+
+So theoretically, we could rewrite this without the loop. But there's a catch:
+
+1. Without the loop, we'd need another way to:
+- Keep the connection handler coroutine alive
+- Listen for incoming messages
+- Detect disconnections
+
+2. FastAPI/Starlette's WebSocket implementation expects us to handle message reception in a loop because:
+- WebSocket is a message-based protocol
+- Each `receive_bytes()` call returns one message
+- Without a loop, we'd only process one message and then the handler would exit
+
+So while the WebSocket connection itself would persist at the TCP level, our application needs some mechanism to continuously process incoming messages. The `while True` loop is the simplest way to achieve this, but there are alternatives like:
+
+1. Using an event-based system
+2. Using async iterators
+3. Using WebSocket callbacks
+
+Would you like me to show you an alternative implementation using one of these approaches? We could refactor the code to be more event-driven while still maintaining the persistent connection.
