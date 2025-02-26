@@ -17,7 +17,8 @@ class Settings:
     
     @classmethod
     def get_default(cls) -> 'Settings':
-        base_dir = Path(__file__).parent.parent
+        # Get the karna-python-backend root directory
+        base_dir = Path(__file__).parent.parent.parent
         return cls(
             database=DatabaseSettings(
                 url=f"sqlite:///{base_dir / 'data' / 'cache.db'}"
