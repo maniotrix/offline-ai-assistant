@@ -1,6 +1,6 @@
 
 from modules.action_prediction import get_language_service_instance
-from modules.command_handler.command_processor import get_command_service_instance
+from modules.command.command_processor import get_command_service_instance
 from services.base_service import BaseService
 from domain.status import StatusContext
 
