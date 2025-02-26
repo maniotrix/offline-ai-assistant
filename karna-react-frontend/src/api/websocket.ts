@@ -1,4 +1,5 @@
 import { karna } from '../generated/messages';
+import { WS } from './constants';
 
 type MessageHandler<T> = (data: T) => void;
 type ErrorHandler = (error: Error) => void;
@@ -28,7 +29,8 @@ class WebSocketService {
         this.disconnect();
 
         this.isConnecting = true;
-        const wsUrl = `ws://${window.location.hostname}:8000/ws`;
+        const baseUrl = WS.getBaseUrl();
+        const wsUrl = `${baseUrl}${WS.COMMAND}`;
         this.socket = new WebSocket(wsUrl);
         this.socket.binaryType = 'arraybuffer';
         

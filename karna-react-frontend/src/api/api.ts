@@ -1,10 +1,11 @@
 import { BoundingBox, ImageDataResponse } from '../types/types';
 import { websocketService } from './websocket';
 import { karna } from '../generated/messages';
+import { REST } from './constants';
 
 // REST APIs for non-real-time operations
 export const fetchAnnotations = async (): Promise<ImageDataResponse> => {
-    const response = await fetch('/api/get_image_data');
+    const response = await fetch(REST.GET_IMAGE_DATA);
     if (!response.ok) {
         throw new Error('Failed to fetch image data');
     }
@@ -12,7 +13,7 @@ export const fetchAnnotations = async (): Promise<ImageDataResponse> => {
 };
 
 export const saveAnnotations = async (imageUrl: string, annotations: BoundingBox[]): Promise<any> => {
-    const response = await fetch('/api/save_bboxes', {
+    const response = await fetch(REST.SAVE_BBOXES, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -57,7 +58,7 @@ export const subscribeToErrors = (callback: (error: Error) => void): () => void 
 };
 
 export const getScreenshot = async (): Promise<string> => {
-    const response = await fetch('/api/screenshot');
+    const response = await fetch(REST.SCREENSHOT);
     if (!response.ok) {
         throw new Error('Failed to fetch screenshot');
     }
