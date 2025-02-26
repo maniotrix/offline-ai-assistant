@@ -1,7 +1,8 @@
 import pytest
 import pytest_asyncio
+import asyncio
 from api.websockets.command.command_handler import CommandWebSocketHandler
-from generated.command_pb2 import CommandRPCRequest, CommandRequest
+from generated.command_pb2 import CommandRPCRequest, CommandRPCResponse, CommandExecutionStatus
 
 @pytest_asyncio.fixture
 async def command_handler():
@@ -38,13 +39,34 @@ async def test_handle_command_execution(command_handler, mock_websocket):
     command.command = "test command"
     command.domain = "test"
     
-    await command_handler._handle_command_execution(mock_websocket, command)
+    # Start command execution
+    execution_task = asyncio.create_task(
+        command_handler._handle_command_execution(mock_websocket, command)
+    )
     
-    # Verify response was sent
-    mock_websocket.send_bytes.assert_called_once()
-    args = mock_websocket.send_bytes.call_args[0]
-    assert len(args) > 0
-    assert isinstance(args[0], bytes)
+    # Wait for all status updates
+    await asyncio.sleep(0.1)  # Give time for updates to be sent
+    
+    # Get all calls to send_bytes
+    calls = mock_websocket.send_bytes.call_args_list
+    assert len(calls) > 0, "Expected at least one status update"
+    
+    # Verify progression of status updates
+    status_sequence = []
+    for args in calls:
+        response_bytes = args[0][0]
+        response = CommandRPCResponse()
+        response.ParseFromString(response_bytes)
+        if hasattr(response, 'command_response'):
+            status_sequence.append(response.command_response.status)
+    
+    # Verify we got status updates in the expected sequence
+    assert len(status_sequence) > 0, "Expected status updates"
+    assert CommandExecutionStatus.PENDING in status_sequence, "Expected PENDING status"
+    assert CommandExecutionStatus.IN_PROGRESS in status_sequence, "Expected IN_PROGRESS status"
+    assert CommandExecutionStatus.COMPLETED in status_sequence, "Expected COMPLETED status"
+    
+    await execution_task
 
 @pytest.mark.asyncio
 async def test_handle_invalid_message(command_handler, mock_websocket):
