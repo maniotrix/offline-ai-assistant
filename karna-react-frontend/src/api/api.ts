@@ -30,11 +30,11 @@ export const saveAnnotations = async (imageUrl: string, annotations: BoundingBox
     return response.json();
 };
 
-// Use the generated protobuf Status interface
-export type Status = karna.IStatus;
+// Use the generated protobuf StatusResult interface
+export type Status = karna.status.IStatusResult;
 
 // Using WebSocket for real-time command execution
-export const executeCommand = async (command: string, domain: string = 'default'): Promise<karna.ICommandResult> => {
+export const executeCommand = async (command: string, domain: string = 'default'): Promise<karna.command.ICommandResult> => {
     return websocketService.sendCommand(command, domain);
 };
 
@@ -49,7 +49,7 @@ export const subscribeToStatus = (callback: (status: Status) => void): () => voi
     return websocketService.onStatusUpdate(callback);
 };
 
-export const subscribeToCommandResponse = (callback: (response: karna.ICommandResult) => void): () => void => {
+export const subscribeToCommandResponse = (callback: (response: karna.command.ICommandResult) => void): () => void => {
     return websocketService.onCommandResponse(callback);
 };
 

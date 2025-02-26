@@ -46,24 +46,34 @@ class WebSocketService {
                 if (!(event.data instanceof ArrayBuffer)) {
                     throw new Error('Expected binary message');
                 }
-                const response = karna.RPCResponse.decode(new Uint8Array(event.data));
-                
-                if (response.error) {
-                    this.notifyError(new Error(response.error));
-                    return;
-                }
 
-                const type = response.type;
-                if (!type) {
-                    throw new Error('Missing response type');
+                // Try decoding as command response first
+                try {
+                    const commandResponse = karna.command.CommandRPCResponse.decode(new Uint8Array(event.data));
+                    if (commandResponse.error) {
+                        this.notifyError(new Error(commandResponse.error));
+                        return;
+                    }
+                    if (commandResponse.commandResponse) {
+                        this.notifyHandlers('commandResponse', commandResponse.commandResponse);
+                        return;
+                    }
+                } catch (e) {
+                    // Not a command response, try status response
+                    try {
+                        const statusResponse = karna.status.StatusRPCResponse.decode(new Uint8Array(event.data));
+                        if (statusResponse.error) {
+                            this.notifyError(new Error(statusResponse.error));
+                            return;
+                        }
+                        if (statusResponse.statusUpdate) {
+                            this.notifyHandlers('statusUpdate', statusResponse.statusUpdate);
+                            return;
+                        }
+                    } catch (e2) {
+                        throw new Error('Failed to decode message as either command or status response');
+                    }
                 }
-
-                const data = response[type];
-                if (!data) {
-                    throw new Error(`Missing data for type: ${type}`);
-                }
-
-                this.notifyHandlers(type, data);
             } catch (error) {
                 console.error('Failed to parse WebSocket message:', error);
                 this.notifyError(error instanceof Error ? error : new Error(String(error)));
@@ -110,22 +120,22 @@ class WebSocketService {
         this.pendingRequests.clear();
     }
 
-    async sendCommand(command: string, domain: string = 'default'): Promise<karna.ICommandResult> {
+    async sendCommand(command: string, domain: string = 'default'): Promise<karna.command.ICommandResult> {
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
             throw new Error('WebSocket is not connected');
         }
         
-        const request = karna.RPCRequest.create({
+        const request = karna.command.CommandRPCRequest.create({
             executeCommand: {
                 command,
                 domain
             }
         });
         
-        const buffer = karna.RPCRequest.encode(request).finish();
+        const buffer = karna.command.CommandRPCRequest.encode(request).finish();
         this.socket.send(buffer);
         
-        return new Promise<karna.ICommandResult>((resolve, reject) => {
+        return new Promise<karna.command.ICommandResult>((resolve, reject) => {
             const requestId = Math.random().toString(36).substring(7);
             this.pendingRequests.set(requestId, { resolve, reject });
 
@@ -135,7 +145,7 @@ class WebSocketService {
                 this.removeHandler('error', errorHandler);
             };
 
-            const responseHandler = (response: karna.ICommandResult) => {
+            const responseHandler = (response: karna.command.ICommandResult) => {
                 cleanup();
                 resolve(response);
             };
@@ -163,11 +173,11 @@ class WebSocketService {
             throw new Error('WebSocket is not connected');
         }
 
-        const request = karna.RPCRequest.create({
+        const request = karna.status.StatusRPCRequest.create({
             getStatus: {}
         });
         
-        const buffer = karna.RPCRequest.encode(request).finish();
+        const buffer = karna.status.StatusRPCRequest.encode(request).finish();
         this.socket.send(buffer);
     }
 
@@ -190,12 +200,12 @@ class WebSocketService {
         }
     }
 
-    onStatusUpdate(handler: MessageHandler<karna.IStatus>): () => void {
+    onStatusUpdate(handler: MessageHandler<karna.status.IStatusResult>): () => void {
         this.addHandler('statusUpdate', handler);
         return () => this.removeHandler('statusUpdate', handler);
     }
 
-    onCommandResponse(handler: MessageHandler<karna.ICommandResult>): () => void {
+    onCommandResponse(handler: MessageHandler<karna.command.ICommandResult>): () => void {
         this.addHandler('commandResponse', handler);
         return () => this.removeHandler('commandResponse', handler);
     }

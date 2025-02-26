@@ -15,7 +15,7 @@ const Homepage: React.FC = () => {
   const [domain, setDomain] = useState('default');
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
-  const [commandResponse, setCommandResponse] = useState<karna.ICommandResult | null>(null);
+  const [commandResponse, setCommandResponse] = useState<karna.command.ICommandResult | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -37,7 +37,7 @@ const Homepage: React.FC = () => {
       console.error('Error received:', error);
       setCommandResponse({
         commandText: command,
-        status: karna.TaskStatus.FAILED,
+        status: karna.command.CommandExecutionStatus.FAILED,
         message: error.message,
         actions: []
       });
@@ -63,7 +63,7 @@ const Homepage: React.FC = () => {
       console.error('Failed to execute command:', error);
       setCommandResponse({
         commandText: command,
-        status: karna.TaskStatus.FAILED,
+        status: karna.command.CommandExecutionStatus.FAILED,
         message: error instanceof Error ? error.message : 'Failed to execute command',
         actions: []
       });
@@ -143,15 +143,15 @@ const Homepage: React.FC = () => {
               Command Response
             </Typography>
             <Typography 
-              color={commandResponse.status === karna.TaskStatus.COMPLETED 
+              color={commandResponse.status === karna.command.CommandExecutionStatus.COMPLETED 
                 ? "success.main" 
-                : commandResponse.status === karna.TaskStatus.FAILED 
+                : commandResponse.status === karna.command.CommandExecutionStatus.FAILED 
                   ? "error.main" 
                   : "info.main"
               }
             >
               {commandResponse.message || (
-                commandResponse.status === karna.TaskStatus.COMPLETED 
+                commandResponse.status === karna.command.CommandExecutionStatus.COMPLETED 
                   ? 'Command executed successfully'
                   : 'Command execution in progress'
               )}
