@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 from database.config import create_db_engine, get_session_factory, Base
 from config.db.settings import use_test_settings, use_default_settings
+from tests.repository.test_models import TestModel  # Import from new location
 
 # Add project root to Python path
 project_root = Path(__file__).parent.parent
@@ -13,7 +14,7 @@ def test_engine():
     """Create a test database engine that uses an in-memory SQLite database"""
     use_test_settings()
     engine = create_db_engine()
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=engine)  # This will now create TestModel table too
     yield engine
     Base.metadata.drop_all(bind=engine)
     use_default_settings()
