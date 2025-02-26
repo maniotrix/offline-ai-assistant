@@ -33,30 +33,39 @@ export const saveAnnotations = async (imageUrl: string, annotations: BoundingBox
 // Use the generated protobuf StatusResult interface
 export type Status = karna.status.IStatusResult;
 
-// Using WebSocket for real-time command execution
+// WebSocket Connection Management
+export const connectWebSocket = (): void => {
+    websocketService.connect();
+};
+
+export const disconnectWebSocket = (): void => {
+    websocketService.disconnect();
+};
+
+// Command Channel APIs
 export const executeCommand = async (command: string, domain: string = 'default'): Promise<karna.command.ICommandResult> => {
     return websocketService.sendCommand(command, domain);
-};
-
-// Using WebSocket for status updates
-export const getStatus = async (): Promise<Status> => {
-    await websocketService.requestStatus();
-    // The actual status will be received through the status update subscription
-    return { vision: '', language: '', command: '' };
-};
-
-export const subscribeToStatus = (callback: (status: Status) => void): () => void => {
-    return websocketService.onStatusUpdate(callback);
 };
 
 export const subscribeToCommandResponse = (callback: (response: karna.command.ICommandResult) => void): () => void => {
     return websocketService.onCommandResponse(callback);
 };
 
+// Status Channel APIs
+export const requestStatus = async (): Promise<void> => {
+    return websocketService.requestStatus();
+};
+
+export const subscribeToStatus = (callback: (status: Status) => void): () => void => {
+    return websocketService.onStatusUpdate(callback);
+};
+
+// Error Handling
 export const subscribeToErrors = (callback: (error: Error) => void): () => void => {
     return websocketService.onError(callback);
 };
 
+// Screenshot API
 export const getScreenshot = async (): Promise<string> => {
     const response = await fetch(REST.SCREENSHOT);
     if (!response.ok) {

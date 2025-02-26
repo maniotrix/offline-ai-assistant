@@ -4,10 +4,9 @@ import CanvasEditor from "./components/CanvasEditor/CanvasEditor";
 import ClassSelector from "./components/ClassSelector/ClassSelector";
 import Header from "./components/Header/Header";
 import Homepage from "./components/Home/Homepage";
-import { fetchAnnotations } from "./api/api";
+import { fetchAnnotations, connectWebSocket, disconnectWebSocket } from "./api/api";
 import useAnnotationStore from "./stores/annotationStore";
 import { Box } from "@mui/material";
-import { websocketService } from "./api/websocket";
 
 const EditorLayout = ({ imageUrl, onCancel }: { imageUrl: string | null, onCancel: () => void }) => (
   <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>
@@ -25,11 +24,11 @@ const App: React.FC = () => {
 
   useEffect(() => {
     // Initialize WebSocket connection
-    websocketService.connect();
+    connectWebSocket();
 
     // Cleanup on unmount
     return () => {
-      websocketService.disconnect();
+      disconnectWebSocket();
     };
   }, []);
 

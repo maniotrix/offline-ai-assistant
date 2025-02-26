@@ -1,31 +1,42 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Paper, Typography, TextField, Button } from '@mui/material';
-import { executeCommand, getScreenshot, Status, subscribeToStatus, subscribeToErrors, subscribeToCommandResponse } from '../../api/api';
+import { 
+  executeCommand, 
+  getScreenshot, 
+  Status, 
+  subscribeToStatus, 
+  subscribeToErrors, 
+  subscribeToCommandResponse,
+  requestStatus 
+} from '../../api/api';
 import { useNavigate } from 'react-router-dom';
 import { karna } from '../../generated/messages';
 import './Homepage.css';
 
-const Homepage: React.FC = () => {
+export const Homepage: React.FC = () => {
   const [status, setStatus] = useState<Status>({ 
     vision: '',
     language: '',
     command: ''
   });
   const [command, setCommand] = useState('');
-  const [domain, setDomain] = useState('default');
+  const [domain, setDomain] = useState('');
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
   const [commandResponse, setCommandResponse] = useState<karna.command.ICommandResult | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Request initial status
+    requestStatus().catch(console.error);
+
     // Subscribe to status updates
     const statusUnsubscribe = subscribeToStatus((newStatus) => {
       console.log('Status update received:', newStatus);
       setStatus(newStatus);
     });
 
-    // Subscribe to command responses through api layer
+    // Subscribe to command responses
     const commandUnsubscribe = subscribeToCommandResponse((response) => {
       console.log('Command response received:', response);
       setCommandResponse(response);
@@ -34,7 +45,7 @@ const Homepage: React.FC = () => {
 
     // Subscribe to errors
     const errorUnsubscribe = subscribeToErrors((error) => {
-      console.error('Error received:', error);
+      console.error('Error:', error);
       setCommandResponse({
         commandText: command,
         status: karna.command.CommandExecutionStatus.FAILED,
@@ -44,13 +55,24 @@ const Homepage: React.FC = () => {
       setIsExecuting(false);
     });
 
-    // Cleanup subscriptions on unmount
+    // Load initial screenshot
+    const fetchScreenshot = async () => {
+      try {
+        const screenshotData = await getScreenshot();
+        setScreenshot(screenshotData);
+      } catch (error) {
+        console.error('Failed to fetch screenshot:', error);
+      }
+    };
+    fetchScreenshot();
+
+    // Cleanup subscriptions
     return () => {
       statusUnsubscribe();
       commandUnsubscribe();
       errorUnsubscribe();
     };
-  }, [command]);
+  }, []);
 
   const handleCommandSubmit = async () => {
     if (!command.trim()) return;
@@ -77,19 +99,6 @@ const Homepage: React.FC = () => {
       handleCommandSubmit();
     }
   };
-
-  useEffect(() => {
-    // Fetch screenshot on mount
-    const fetchScreenshot = async () => {
-      try {
-        const screenshotData = await getScreenshot();
-        setScreenshot(screenshotData);
-      } catch (error) {
-        console.error('Failed to fetch screenshot:', error);
-      }
-    };
-    fetchScreenshot();
-  }, []);
 
   return (
     <Box sx={{ p: 3, maxWidth: '800px', margin: '0 auto' }}>
