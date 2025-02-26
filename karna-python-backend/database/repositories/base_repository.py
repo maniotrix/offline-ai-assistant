@@ -1,4 +1,4 @@
-from typing import Generic, TypeVar, Type, Optional, List, Union, Generator
+from typing import Generic, TypeVar, Type, Optional, List, Union, Generator, Callable
 from sqlalchemy.orm import Session, DeclarativeBase, mapped_column, Mapped
 from sqlalchemy import select, Integer, String
 from ..config import SessionLocal
@@ -11,12 +11,13 @@ class BaseModel(DeclarativeBase):
 ModelType = TypeVar("ModelType", bound=BaseModel)
 
 class BaseRepository(Generic[ModelType]):
-    def __init__(self, model: Type[ModelType]):
+    def __init__(self, model: Type[ModelType], session_factory: Callable[[], Session] | None = None):
         self.model = model
+        self._session_factory = session_factory or SessionLocal
 
     @contextmanager
     def get_db(self) -> Generator[Session, None, None]:
-        db = SessionLocal()
+        db = self._session_factory()
         try:
             yield db
         finally:

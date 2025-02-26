@@ -1,30 +1,38 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.pool import QueuePool
-import os
+from config.settings import get_settings
 
-# Get the directory of the current file
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'data', 'cache.db')}"
+def create_db_engine(database_url=None):
+    settings = get_settings()
+    db_settings = settings.database
+    
+    if database_url is None:
+        database_url = db_settings.url
+    
+    return create_engine(
+        database_url,
+        connect_args={"check_same_thread": False},
+        poolclass=QueuePool,
+        pool_size=db_settings.pool_size,
+        max_overflow=db_settings.max_overflow,
+        pool_timeout=db_settings.pool_timeout,
+        pool_recycle=db_settings.pool_recycle,
+        echo=db_settings.echo
+    )
 
-# Configure the SQLAlchemy engine with connection pooling
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=QueuePool,
-    pool_size=5,  # Number of connections to maintain
-    max_overflow=10,  # Maximum number of connections to create beyond pool_size
-    pool_timeout=30,  # Seconds to wait before giving up on getting a connection
-    pool_recycle=1800,  # Recycle connections after 30 minutes
-    echo=False  # Set to True to log all SQL statements
-)
+def get_session_factory(engine=None):
+    if engine is None:
+        engine = create_db_engine()
+    
+    return sessionmaker(
+        autocommit=False,
+        autoflush=False,
+        bind=engine,
+        expire_on_commit=False
+    )
 
-# Configure the session factory with optimized settings
-SessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine,
-    expire_on_commit=False  # Prevent expired object access issues
-)
-
+# Default instances for backward compatibility
+engine = create_db_engine()
+SessionLocal = get_session_factory(engine)
 Base = declarative_base()
