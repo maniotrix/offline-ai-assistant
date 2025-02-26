@@ -9,6 +9,7 @@
     we have agents which are analogus to projects, so domain youtube would be an agent which has own model separately trained, make sure the 
     data generattion mechanism is well thought so that several agents can leverage the core of the karna
     in future should have something like agent finder, agent builders etc, remember agents do not have to be deep learning models always
+    better pathing in backend for using paths in packages
 Okay, here's a comprehensive summary detailing the design and implementation of our personal, vision-based offline AI assistant project. This includes the progression of our architectural choices and the reasoning behind them:
 
 **I. Project Overview:**
