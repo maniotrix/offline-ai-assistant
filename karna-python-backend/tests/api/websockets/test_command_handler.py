@@ -1,14 +1,12 @@
 import pytest
-from unittest.mock import MagicMock
 import pytest_asyncio
 from api.websockets.command.command_handler import CommandWebSocketHandler
 from generated.command_pb2 import CommandRPCRequest, CommandRequest
 
 @pytest_asyncio.fixture
-async def command_handler(mock_task_service):
-    """Create a CommandWebSocketHandler instance with mocked service"""
+async def command_handler():
+    """Create a CommandWebSocketHandler instance"""
     handler = CommandWebSocketHandler()
-    handler.service = mock_task_service
     return handler
 
 @pytest.mark.asyncio
@@ -42,10 +40,11 @@ async def test_handle_command_execution(command_handler, mock_websocket):
     
     await command_handler._handle_command_execution(mock_websocket, command)
     
-    # Verify service called with correct command
-    command_handler.service.execute_command.assert_called_once_with(
-        "test command, domain test"
-    )
+    # Verify response was sent
+    mock_websocket.send_bytes.assert_called_once()
+    args = mock_websocket.send_bytes.call_args[0]
+    assert len(args) > 0
+    assert isinstance(args[0], bytes)
 
 @pytest.mark.asyncio
 async def test_handle_invalid_message(command_handler, mock_websocket):

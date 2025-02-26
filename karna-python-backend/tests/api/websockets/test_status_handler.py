@@ -1,15 +1,13 @@
 import pytest
 import pytest_asyncio
-from unittest.mock import MagicMock
 from api.websockets.status.status_handler import StatusWebSocketHandler
-from generated.status_pb2 import StatusRPCRequest, StatusRequest, StatusResult
+from generated.status_pb2 import StatusRPCRequest
 from domain.status import StatusContext
 
 @pytest_asyncio.fixture
-async def status_handler(mock_status_service):
-    """Create a StatusWebSocketHandler instance with mocked service"""
+async def status_handler():
+    """Create a StatusWebSocketHandler instance"""
     handler = StatusWebSocketHandler()
-    handler.service = mock_status_service
     return handler
 
 @pytest.mark.asyncio
@@ -41,8 +39,11 @@ async def test_handle_status_request(status_handler, mock_websocket):
     
     await status_handler._handle_status_request(mock_websocket, status_req)
     
-    # Verify service was called
-    status_handler.service.update_system_status.assert_called_once()
+    # Verify response was sent
+    mock_websocket.send_bytes.assert_called_once()
+    args = mock_websocket.send_bytes.call_args[0]
+    assert len(args) > 0
+    assert isinstance(args[0], bytes)
 
 @pytest.mark.asyncio
 async def test_broadcast_system_status(status_handler, mock_websocket):

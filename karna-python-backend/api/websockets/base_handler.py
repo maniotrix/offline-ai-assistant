@@ -56,7 +56,8 @@ class BaseWebSocketHandler(Generic[T], ABC):
         observer = connection.observer
         if observer is None:
             observer = self.get_default_observer()
-        self.service.add_observer(observer)
+            connection.observer = observer
+            self.service.add_observer(observer)
 
     def disconnect(self, websocket: WebSocket) -> None:
         """Handle WebSocket disconnection"""
@@ -101,11 +102,11 @@ class BaseWebSocketHandler(Generic[T], ABC):
                 self.disconnect(self.active_connections[client_id].websocket)
 
     def report_active_clients(self) -> None:
-            self.logger.info(f"======{self.__class__.__name__} Connection Status ======")
-            self.logger.info(f"🔌 Active Connections Count: {len(self.active_connections)}")
-            self.logger.info(f"🆔 Connected Client IDs: {list(self.active_connections.keys())}")
-            self.logger.info(f"📡 Active Connection Details: {self.active_connections}")
-            self.logger.info("========================================")
+        self.logger.info(f"======{self.__class__.__name__} Connection Status ======")
+        self.logger.info(f"🔌 Active Connections Count: {len(self.active_connections)}")
+        self.logger.info(f"🆔 Connected Client IDs: {list(self.active_connections.keys())}")
+        self.logger.info(f"📡 Active Connection Details: {self.active_connections}")
+        self.logger.info("========================================")
 
     @abstractmethod
     async def handle_message(self, websocket: WebSocket, data: bytes) -> None:

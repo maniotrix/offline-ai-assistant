@@ -1,12 +1,9 @@
 import pytest
 from fastapi.testclient import TestClient
 from fastapi import WebSocket
-from typing import Generator, AsyncGenerator
-import asyncio
+from typing import Generator
 from unittest.mock import MagicMock, AsyncMock
 from api.websockets.websocket_manager import WebSocketManager
-from services.task_execution_service import TaskExecutorService
-from services.status_service import StatusService
 from main import app
 
 @pytest.fixture
@@ -24,24 +21,6 @@ def mock_websocket() -> MagicMock:
     mock.receive_bytes = AsyncMock()
     mock.send_bytes = AsyncMock()
     mock.close = AsyncMock()
-    return mock
-
-@pytest.fixture
-def mock_task_service() -> MagicMock:
-    """Create a mock TaskExecutorService"""
-    mock = MagicMock(spec=TaskExecutorService)
-    mock.execute_command = AsyncMock()
-    mock.add_observer = MagicMock()
-    mock.remove_observer = MagicMock()
-    return mock
-
-@pytest.fixture
-def mock_status_service() -> MagicMock:
-    """Create a mock StatusService"""
-    mock = MagicMock(spec=StatusService)
-    mock.update_system_status = AsyncMock()
-    mock.add_observer = MagicMock()
-    mock.remove_observer = MagicMock()
     return mock
 
 @pytest.fixture
