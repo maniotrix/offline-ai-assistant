@@ -9,6 +9,7 @@ from api import setup_routes
 from modules.action_prediction import get_language_service_instance
 from modules.action_execution import get_action_service_instance
 from modules.command_handler.command_processor import get_command_service_instance
+import config.db.settings as db_settings
 
 app = FastAPI()
 
@@ -129,6 +130,9 @@ async def startup_event():
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
 
+    # Initialize database with default settings
+    db_settings.use_default_settings()
+
     # Setup model paths
     base_path = Path(__file__).parent
     model_paths = {
@@ -149,4 +153,5 @@ async def shutdown_event():
     await assistant.stop()
 
 if __name__ == "__main__":
+    db_settings.use_default_settings()
     uvicorn.run("main:app", host="0.0.0.0", port=8000)
