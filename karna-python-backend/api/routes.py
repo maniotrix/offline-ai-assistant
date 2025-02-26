@@ -1,11 +1,11 @@
 from fastapi import APIRouter, WebSocket
 import logging
-from api.websockets.websocket_manager import WebSocketManager
+from api.websockets.websocket_manager import get_websocket_manager_instance
 from api.constants import REST, WS
 # from modules.vision_agent import get_vision_service_instance
 
 router = APIRouter()
-websocket_manager = WebSocketManager()
+websocket_manager = get_websocket_manager_instance()
 
 @router.get(REST.HEALTH)
 async def health_check():
