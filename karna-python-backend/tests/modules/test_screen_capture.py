@@ -3,7 +3,7 @@ import os
 import shutil
 import time
 from typing import List
-from modules.screen_capture import (
+from services.screen_capture_service import (
     ScreenCaptureService, 
     ScreenshotEvent,
     SessionError

@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw, ImageFont
 import logging
 from typing import Optional, Dict, List
 from collections import defaultdict
-from base.base_observer import Observable
+from services.base_service import BaseService
 import shutil
 from dataclasses import dataclass, asdict
 from enum import Enum, auto
@@ -175,7 +175,7 @@ class ScreenCaptureSession:
             
         return stats
 
-class ScreenCaptureService(Observable[List[ScreenshotEvent]]):
+class ScreenCaptureService(BaseService[List[ScreenshotEvent]]):
     """Service for capturing screen interactions with annotation capability.
     Notifies observers about changes to the screenshot event list."""
     
