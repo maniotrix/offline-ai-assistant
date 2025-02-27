@@ -909,3 +909,138 @@ So while the WebSocket connection itself would persist at the TCP level, our app
 3. Using WebSocket callbacks
 
 Would you like me to show you an alternative implementation using one of these approaches? We could refactor the code to be more event-driven while still maintaining the persistent connection.
+
+Looking at the `ScreenCaptureService` class, I can see that it's mixing the business logic of screen capturing with the observer pattern functionality. This isn't optimal from a design perspective. Let me explain why decoupling would be a better practice and suggest an improvement.
+
+The current design combines:
+1. Screen capture functionality (business logic)
+2. Observable pattern implementation (for notifying observers about changes)
+3. Data storage (session and screenshot events)
+
+Decoupling these concerns would lead to a cleaner, more maintainable design with better separation of concerns.
+
+Let's explore how we could improve this:After analyzing the code, I can provide a more detailed explanation on how to improve the design by decoupling the observable pattern from the business logic in the `ScreenCaptureService` class.
+
+## Current Design Issues
+
+The current `ScreenCaptureService` has several responsibilities mixed together:
+
+1. Screen capture functionality (taking screenshots, handling key/mouse events)
+2. Session management (tracking and validating sessions)
+3. File operations (saving/loading screenshots, managing directories)
+4. Observable pattern implementation (notifying observers about changes)
+5. Data management (storing screenshot events and session data)
+
+This mixing of concerns makes the code harder to maintain, test, and extend.
+
+## Better Design: Decoupling Observable and Service Logic
+
+Looking at the base classes and implementation patterns in your codebase, I recommend restructuring the service into three components:
+
+### 1. Data Store Component
+
+Create a dedicated class for storing and managing screenshot data:
+
+```python
+class ScreenshotEventStore:
+    """Stores and manages screenshot events and session data"""
+    
+    def __init__(self):
+        self.current_session: Optional[ScreenCaptureSession] = None
+        self._event_stats: defaultdict[EventType, int] = defaultdict(int)
+        self._session_history: List[SessionStatistics] = []
+        
+    # Methods for adding, retrieving, and managing events
+    def add_screenshot_event(self, event: ScreenshotEvent) -> None:
+        if self.current_session and self.current_session.is_active:
+            self.current_session.add_screenshot_event(event)
+            
+    def add_session_event(self, event: SessionEvent) -> None:
+        if self.current_session and self.current_session.is_active:
+            self.current_session.add_session_event(event)
+            
+    def get_screenshot_events(self) -> List[ScreenshotEvent]:
+        if self.current_session:
+            return self.current_session.screenshot_events
+        return []
+        
+    # Other data management methods...
+```
+
+### 2. Observable Component
+
+Create a separate observable class that wraps the data store:
+
+```python
+class ScreenshotEventObservable(Observable[List[ScreenshotEvent]]):
+    """Handles the observable pattern for screenshot events"""
+    
+    def __init__(self, event_store: ScreenshotEventStore):
+        super().__init__()
+        self._event_store = event_store
+        
+    def notify_session_observers(self):
+        """Notify observers with the current list of screenshots"""
+        events = self._event_store.get_screenshot_events()
+        if events:
+            self.notify_observers(events)
+```
+
+### 3. Service Component
+
+Refine the service class to focus on business logic and delegate data storage and observer notification:
+
+```python
+class ScreenCaptureService(BaseService[List[ScreenshotEvent]]):
+    """Service for capturing screen interactions"""
+    
+    def __init__(self):
+        super().__init__()
+        self._event_store = ScreenshotEventStore()
+        self._observable = ScreenshotEventObservable(self._event_store)
+        self.lock = threading.Lock()
+        # Initialize other components...
+        
+    # Override base class methods to delegate to the observable
+    def add_observer(self, observer, condition=None):
+        self._observable.add_observer(observer, condition)
+        
+    def remove_observer(self, observer):
+        self._observable.remove_observer(observer)
+        
+    def notify_observers(self, data):
+        self._observable.notify_observers(data)
+        
+    # Business logic methods
+    def _take_screenshot(self, event_description, x=None, y=None, key_char=None, key_code=None, is_special_key=False):
+        # Business logic for taking screenshots
+        # ...
+        
+        # Create event
+        event = self._create_capture_event(...)
+        
+        # Update the store and notify observers
+        self._event_store.add_screenshot_event(event)
+        self._observable.notify_session_observers()
+        
+    # Other business logic methods...
+```
+
+## Benefits of This Approach
+
+1. **Single Responsibility Principle**: Each class has a single focused responsibility
+2. **Better Testability**: You can test the data store and business logic separately
+3. **Enhanced Maintainability**: Changes to one component (e.g., how events are stored) don't affect others
+4. **Improved Extensibility**: Easier to add new features or refactor components
+5. **Cleaner Code**: Business logic isn't cluttered with observer pattern code
+
+## Implementation Strategy
+
+To implement this change:
+
+1. First, extract the data storage methods into a new `ScreenshotEventStore` class
+2. Create the `ScreenshotEventObservable` class that wraps the store
+3. Modify the `ScreenCaptureService` to use these components
+4. Update any references to the service methods in other parts of the code
+
+This approach maintains the same functionality but with a cleaner separation of concerns. It would significantly improve the codebase's maintainability and make future changes easier to implement.

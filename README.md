@@ -11,6 +11,13 @@
     in future should have something like agent finder, agent builders etc, remember agents do not have to be deep learning models always
     better pathing in backend for using paths in packages
     --warn: websocket manager using loop for each websocket handler, hence need to revisit ws management and communication on backend side as well as frontend side
+    Looking at the ScreenCaptureService class, I can see that it's mixing the business logic of screen capturing with the observer pattern functionality. This isn't optimal from a design perspective. Let me explain why decoupling would be a better practice and suggest an improvement.
+    The current design combines:(look into copilot md for more info)
+    Screen capture functionality (business logic)
+    Observable pattern implementation (for notifying observers about changes)
+    Data storage (session and screenshot events)
+    Decoupling these concerns would lead to a cleaner, more maintainable design with better separation of concerns.
+
 Okay, here's a comprehensive summary detailing the design and implementation of our personal, vision-based offline AI assistant project. This includes the progression of our architectural choices and the reasoning behind them:
 
 **I. Project Overview:**
