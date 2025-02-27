@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package karna.screen_capture;
+
+message CaptureRequest {
+  string project_uuid = 1;
+  string command_uuid = 2;
+}
+
+// Request message types
+message ScreenCaptureRPCRequest {
+  oneof method {
+    CaptureRequest start_capture = 1;
+    CaptureRequest stop_capture = 2;
+  }
+}
+
+message RpcScreenshotEvent {
+  string project_uuid = 1;
+  string command_uuid = 2;
+  string timestamp = 3;
+  string description = 4;
+  string screenshot_path = 5;
+  optional string annotation_path = 6;
+  optional int32 mouse_x = 7;
+  optional int32 mouse_y = 8;
+  optional string key_char = 9;
+  optional string key_code = 10;
+  bool is_special_key = 11;
+}
+
+message CaptureResult {
+  string project_uuid = 1;
+  string command_uuid = 2;
+  bool is_active = 3;
+  string message = 4;
+  repeated RpcScreenshotEvent screenshot_events = 5;
+}
+
+// Response message types
+message ScreenCaptureRPCResponse {
+  oneof type {
+    CaptureResult capture_response = 1;
+    string error = 2;
+  }
+}

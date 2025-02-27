@@ -7,7 +7,7 @@ const protoDir = path.join(rootDir, 'proto');
 const outputDir = path.join(rootDir, 'karna-react-frontend', 'src', 'generated');
 
 // List of proto files to process
-const protoFiles = ['command.proto', 'status.proto'];
+const protoFiles = ['command.proto', 'status.proto', 'screen_capture.proto'];
 
 try {
     // Clear output directory if it exists

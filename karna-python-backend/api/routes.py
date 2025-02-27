@@ -29,6 +29,11 @@ async def websocket_command_endpoint(websocket: WebSocket):
 async def websocket_status_endpoint(websocket: WebSocket):
     """WebSocket endpoint for status channel"""
     await websocket_manager.handle_status_connection(websocket)
+    
+@router.websocket(WS.SCREEN_CAPTURE)
+async def websocket_screen_capture_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for screen capture channel"""
+    await websocket_manager.handle_screen_capture_connection(websocket)
 
 # @router.get(REST.ACTIVE_CLIENTS)
 # async def get_active_clients():

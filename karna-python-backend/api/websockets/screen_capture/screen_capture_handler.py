@@ -1,0 +1,121 @@
+from fastapi import WebSocket
+from generated.screen_capture_pb2 import (
+    ScreenCaptureRPCRequest,
+    ScreenCaptureRPCResponse,
+    CaptureRequest,
+    CaptureResult,
+    RpcScreenshotEvent
+)
+from services.screen_capture_service import ScreenCaptureService, ScreenshotEvent
+from api.websockets.base_handler import BaseWebSocketHandler
+from typing import List
+
+class ScreenCaptureWebSocketHandler(BaseWebSocketHandler[List[ScreenshotEvent]]):
+    service: ScreenCaptureService  # Add type annotation to help type checker
+    
+    def __init__(self):
+        super().__init__(service=ScreenCaptureService())
+        self.rate_limiter.max_requests = 10  # Moderate rate limit for screen capture
+        self.rate_limiter.time_window = 60  # 10 requests per minute
+
+    async def _default_observer_callable(self, data: List[ScreenshotEvent]) -> None:
+        """Default implementation for handling screenshot event updates"""
+        await self.broadcast_capture_events(data)
+
+    async def broadcast_capture_events(self, events: List[ScreenshotEvent]) -> None:
+        """Broadcast screen capture events to all connected clients"""
+        response = ScreenCaptureRPCResponse()
+        result = CaptureResult()
+        
+        if events and len(events) > 0:
+            # Get project and command UUIDs from first event
+            result.project_uuid = events[0].project_uuid
+            result.command_uuid = events[0].command_uuid
+            result.is_active = self.service.is_capturing
+            result.message = "Screen capture events updated"
+            
+            # Convert domain events to proto events
+            for event in events:
+                proto_event : RpcScreenshotEvent = result.screenshot_events.add()
+                proto_event.project_uuid = event.project_uuid
+                proto_event.command_uuid = event.command_uuid
+                proto_event.timestamp = event.timestamp.isoformat()
+                proto_event.description = event.description
+                proto_event.screenshot_path = event.screenshot_path
+                if event.annotation_path:
+                    proto_event.annotation_path = event.annotation_path
+                if event.mouse_x is not None:
+                    proto_event.mouse_x = event.mouse_x
+                if event.mouse_y is not None:
+                    proto_event.mouse_y = event.mouse_y
+                if event.key_char:
+                    proto_event.key_char = event.key_char
+                if event.key_code:
+                    proto_event.key_code = event.key_code
+                proto_event.is_special_key = event.is_special_key
+                
+        response.capture_response.CopyFrom(result)
+        await self.broadcast(response)
+
+    async def handle_message(self, websocket: WebSocket, data: bytes) -> None:
+        """Handle incoming WebSocket messages"""
+        client_id = str(id(websocket))
+
+        if not self.rate_limiter.is_allowed(client_id):
+            response = ScreenCaptureRPCResponse()
+            response.error = "Rate limit exceeded for screen capture channel"
+            await websocket.send_bytes(response.SerializeToString())
+            return
+
+        try:
+            request = ScreenCaptureRPCRequest()
+            request.ParseFromString(data)
+
+            method = request.WhichOneof("method")
+            if method == "start_capture":
+                message_content = getattr(request, method)
+                self.logger.info(f"Received start capture request from client {client_id}:")
+                self.logger.info(f"Project UUID: {message_content.project_uuid}")
+                self.logger.info(f"Command UUID: {message_content.command_uuid}")
+                await self._handle_start_capture(websocket, request.start_capture)
+            elif method == "stop_capture":
+                message_content = getattr(request, method)
+                self.logger.info(f"Received stop capture request from client {client_id}")
+                await self._handle_stop_capture(websocket, request.stop_capture)
+            else:
+                response = ScreenCaptureRPCResponse()
+                response.error = f"Unknown screen capture method: {method}"
+                await websocket.send_bytes(response.SerializeToString())
+
+        except Exception as e:
+            self.logger.error(f"Error processing screen capture message: {e}", exc_info=True)
+            response = ScreenCaptureRPCResponse()
+            response.error = f"Error processing screen capture request: {str(e)}"
+            await websocket.send_bytes(response.SerializeToString())
+
+    async def _handle_start_capture(
+        self, websocket: WebSocket, capture_request: CaptureRequest
+    ) -> None:
+        """Handle start capture request"""
+        try:
+            self.service.start_capture(
+                project_uuid=capture_request.project_uuid,
+                command_uuid=capture_request.command_uuid
+            )
+        except Exception as e:
+            self.logger.error(f"Screen capture start error: {e}", exc_info=True)
+            response = ScreenCaptureRPCResponse()
+            response.error = str(e)
+            await websocket.send_bytes(response.SerializeToString())
+
+    async def _handle_stop_capture(
+        self, websocket: WebSocket, capture_request: CaptureRequest
+    ) -> None:
+        """Handle stop capture request"""
+        try:
+            self.service.stop_capture()
+        except Exception as e:
+            self.logger.error(f"Screen capture stop error: {e}", exc_info=True)
+            response = ScreenCaptureRPCResponse()
+            response.error = str(e)
+            await websocket.send_bytes(response.SerializeToString())
