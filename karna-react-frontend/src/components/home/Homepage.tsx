@@ -27,23 +27,18 @@ export const Homepage: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Request initial status
-    requestStatus().catch(console.error);
-
-    // Subscribe to status updates
+    // First set up all subscribers
     const statusUnsubscribe = subscribeToStatus((newStatus) => {
       console.log('Status update received:', newStatus);
       setStatus(newStatus);
     });
 
-    // Subscribe to command responses
     const commandUnsubscribe = subscribeToCommandResponse((response) => {
       console.log('Command response received:', response);
       setCommandResponse(response);
       setIsExecuting(false);
     });
 
-    // Subscribe to errors
     const errorUnsubscribe = subscribeToErrors((error) => {
       console.error('Error:', error);
       setCommandResponse({
@@ -54,6 +49,9 @@ export const Homepage: React.FC = () => {
       });
       setIsExecuting(false);
     });
+
+    // Then request initial status after subscriptions are set up
+    requestStatus().catch(console.error);
 
     // Load initial screenshot
     const fetchScreenshot = async () => {

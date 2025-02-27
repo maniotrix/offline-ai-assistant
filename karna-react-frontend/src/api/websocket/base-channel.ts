@@ -27,13 +27,27 @@ export abstract class BaseWebSocketChannel {
 
         const baseUrl = WS.getBaseUrl();
         const wsUrl = `${baseUrl}${this.endpoint}`;
+        console.log(`Connecting to WebSocket at ${wsUrl}`);
+        
         this.socket = new WebSocket(wsUrl);
         this.socket.binaryType = 'arraybuffer';
         
-        this.socket.onopen = this.handleOpen.bind(this);
-        this.socket.onmessage = this.handleMessage.bind(this);
-        this.socket.onerror = this.handleError.bind(this);
-        this.socket.onclose = this.handleClose.bind(this);
+        this.socket.onopen = (event) => {
+            console.log('WebSocket.onopen called:', event);
+            this.handleOpen();
+        };
+        this.socket.onmessage = (event) => {
+            console.log('WebSocket.onmessage called:', event);
+            this.handleMessage(event);
+        };
+        this.socket.onerror = (event) => {
+            console.log('WebSocket.onerror called:', event);
+            this.handleError(event);
+        };
+        this.socket.onclose = (event) => {
+            console.log('WebSocket.onclose called:', event);
+            this.handleClose();
+        };
     }
 
     disconnect(): void {
@@ -90,13 +104,18 @@ export abstract class BaseWebSocketChannel {
     }
 
     protected notifyHandlers<T>(type: string, data: T): void {
+        console.log(`Notifying handlers for type ${type}:`, this.messageHandlers.get(type)?.size || 0, 'handlers');
         const handlers = this.messageHandlers.get(type);
         if (handlers) {
-            handlers.forEach(handler => handler(data));
+            handlers.forEach(handler => {
+                console.log('Calling handler with data:', data);
+                handler(data);
+            });
         }
     }
 
     protected notifyError(error: Error): void {
+        console.error('Notifying error handlers:', error);
         this.errorHandlers.forEach(handler => handler(error));
         this.pendingRequests.forEach(({ reject }) => reject(error));
         this.pendingRequests.clear();
@@ -109,6 +128,7 @@ export abstract class BaseWebSocketChannel {
             this.messageHandlers.set(type, handlers);
         }
         handlers.add(handler);
+        console.log(`Added handler for type ${type}, now have ${handlers.size} handlers`);
     }
 
     protected removeHandler<T>(type: string, handler: MessageHandler<T>): void {
@@ -118,6 +138,7 @@ export abstract class BaseWebSocketChannel {
             if (handlers.size === 0) {
                 this.messageHandlers.delete(type);
             }
+            console.log(`Removed handler for type ${type}, now have ${handlers.size} handlers`);
         }
     }
 
