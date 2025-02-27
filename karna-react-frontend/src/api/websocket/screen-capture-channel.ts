@@ -8,18 +8,25 @@ export class ScreenCaptureChannel extends BaseWebSocketChannel {
     }
 
     protected handleMessage(event: MessageEvent): void {
+        console.log('ScreenCaptureChannel received message:', event);
         try {
             if (!(event.data instanceof ArrayBuffer)) {
+                console.error('Unexpected message type:', typeof event.data);
                 throw new Error('Expected binary message');
             }
 
             const response = karna.screen_capture.ScreenCaptureRPCResponse.decode(new Uint8Array(event.data));
+            console.log('Decoded screen capture response:', response);
+            
             if (response.error) {
                 this.notifyError(new Error(response.error));
                 return;
             }
             if (response.captureResponse) {
+                console.log('Notifying handlers with capture response:', response.captureResponse);
                 this.notifyHandlers('captureResponse', response.captureResponse);
+            } else {
+                console.log('No capture response in response:', response);
             }
         } catch (error) {
             console.error('Failed to parse screen capture message:', error);
@@ -32,6 +39,7 @@ export class ScreenCaptureChannel extends BaseWebSocketChannel {
             throw new Error('WebSocket is not connected');
         }
 
+        console.log('Starting screen capture:', { projectUuid, commandUuid });
         const request = karna.screen_capture.ScreenCaptureRPCRequest.create({
             startCapture: {
                 projectUuid,
@@ -41,6 +49,7 @@ export class ScreenCaptureChannel extends BaseWebSocketChannel {
 
         const buffer = karna.screen_capture.ScreenCaptureRPCRequest.encode(request).finish();
         this.socket.send(buffer);
+        console.log('Start capture request sent');
     }
 
     async stopCapture(projectUuid: string, commandUuid: string): Promise<void> {
@@ -48,6 +57,7 @@ export class ScreenCaptureChannel extends BaseWebSocketChannel {
             throw new Error('WebSocket is not connected');
         }
 
+        console.log('Stopping screen capture:', { projectUuid, commandUuid });
         const request = karna.screen_capture.ScreenCaptureRPCRequest.create({
             stopCapture: {
                 projectUuid,
@@ -57,10 +67,20 @@ export class ScreenCaptureChannel extends BaseWebSocketChannel {
 
         const buffer = karna.screen_capture.ScreenCaptureRPCRequest.encode(request).finish();
         this.socket.send(buffer);
+        console.log('Stop capture request sent');
     }
 
     onCaptureResponse(handler: MessageHandler<karna.screen_capture.ICaptureResult>): () => void {
+        console.log('Adding capture response handler');
         this.addHandler('captureResponse', handler);
-        return () => this.removeHandler('captureResponse', handler);
+        return () => {
+            console.log('Removing capture response handler');
+            this.removeHandler('captureResponse', handler);
+        };
+    }
+
+    protected handleOpen(): void {
+        super.handleOpen();
+        console.log('ScreenCaptureChannel connected');
     }
 }
