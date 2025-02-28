@@ -7,6 +7,7 @@ import './Homepage.css';
 import useStatusStore from '../../stores/statusStore';
 import useCommandStore from '../../stores/commandStore';
 import { websocketService } from '../../api/websocket';
+import ScreenCaptureButton from './ScreenCaptureButton';
 
 export const Homepage: React.FC = () => {
   // Get status and command state from Zustand stores
@@ -59,6 +60,10 @@ export const Homepage: React.FC = () => {
 
   // Get the error to display (either from status or command channel)
   const displayError = statusError || commandError;
+
+  // Check if command has completed successfully to show screen capture button
+  const isCommandCompleted = commandResponse && 
+    commandResponse.status === karna.command.CommandExecutionStatus.COMPLETED;
 
   return (
     <Box sx={{ p: 3, maxWidth: '800px', margin: '0 auto' }}>
@@ -114,15 +119,20 @@ export const Homepage: React.FC = () => {
             margin="normal"
             placeholder="Type your command here..."
           />
-          <Button 
-            variant="contained" 
-            onClick={handleCommandSubmit}
-            disabled={!command.trim() || isExecuting || !commandConnected}
-            sx={{ mt: 2 }}
-            startIcon={isExecuting ? <CircularProgress size={20} color="inherit" /> : null}
-          >
-            {isExecuting ? 'Executing...' : 'Execute Command'}
-          </Button>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Button 
+              variant="contained" 
+              onClick={handleCommandSubmit}
+              disabled={!command.trim() || isExecuting || !commandConnected}
+              sx={{ mt: 2 }}
+              startIcon={isExecuting ? <CircularProgress size={20} color="inherit" /> : null}
+            >
+              {isExecuting ? 'Executing...' : 'Execute Command'}
+            </Button>
+            
+            {/* Show screen capture button only when command has completed */}
+            {isCommandCompleted && <ScreenCaptureButton />}
+          </Box>
         </Box>
 
         {commandResponse && (
