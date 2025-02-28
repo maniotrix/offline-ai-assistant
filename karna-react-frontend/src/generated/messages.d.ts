@@ -1076,8 +1076,8 @@ export namespace karna {
             /** CaptureUpdateRequest message */
             message?: (string|null);
 
-            /** CaptureUpdateRequest screenshotEvents */
-            screenshotEvents?: (karna.screen_capture.IRpcScreenshotEvent[]|null);
+            /** CaptureUpdateRequest screenshotEventIds */
+            screenshotEventIds?: (string[]|null);
         }
 
         /** Represents a CaptureUpdateRequest. */
@@ -1098,8 +1098,8 @@ export namespace karna {
             /** CaptureUpdateRequest message. */
             public message: string;
 
-            /** CaptureUpdateRequest screenshotEvents. */
-            public screenshotEvents: karna.screen_capture.IRpcScreenshotEvent[];
+            /** CaptureUpdateRequest screenshotEventIds. */
+            public screenshotEventIds: string[];
 
             /**
              * Creates a new CaptureUpdateRequest instance using the specified properties.
@@ -1190,6 +1190,9 @@ export namespace karna {
 
             /** CaptureUpdateResponse message */
             message?: (string|null);
+
+            /** CaptureUpdateResponse screenshotEvents */
+            screenshotEvents?: (karna.screen_capture.IRpcScreenshotEvent[]|null);
         }
 
         /** Represents a CaptureUpdateResponse. */
@@ -1209,6 +1212,9 @@ export namespace karna {
 
             /** CaptureUpdateResponse message. */
             public message: string;
+
+            /** CaptureUpdateResponse screenshotEvents. */
+            public screenshotEvents: karna.screen_capture.IRpcScreenshotEvent[];
 
             /**
              * Creates a new CaptureUpdateResponse instance using the specified properties.
@@ -1403,6 +1409,9 @@ export namespace karna {
         /** Properties of a RpcScreenshotEvent. */
         interface IRpcScreenshotEvent {
 
+            /** RpcScreenshotEvent eventId */
+            eventId?: (string|null);
+
             /** RpcScreenshotEvent projectUuid */
             projectUuid?: (string|null);
 
@@ -1445,6 +1454,9 @@ export namespace karna {
              * @param [properties] Properties to set
              */
             constructor(properties?: karna.screen_capture.IRpcScreenshotEvent);
+
+            /** RpcScreenshotEvent eventId. */
+            public eventId: string;
 
             /** RpcScreenshotEvent projectUuid. */
             public projectUuid: string;

@@ -11,13 +11,14 @@ message CaptureUpdateRequest {
   string project_uuid = 1;
   string command_uuid = 2;
   string message = 3;
-  repeated RpcScreenshotEvent screenshot_events = 4;
+  repeated string screenshot_event_ids = 4;
 }
 
 message CaptureUpdateResponse {
   string project_uuid = 1;
   string command_uuid = 2;
   string message = 3;
+  repeated RpcScreenshotEvent screenshot_events = 4;
 }
 
 // Request message types
@@ -30,17 +31,18 @@ message ScreenCaptureRPCRequest {
 }
 
 message RpcScreenshotEvent {
-  string project_uuid = 1;
-  string command_uuid = 2;
-  string timestamp = 3;
-  string description = 4;
-  string screenshot_path = 5;
-  optional string annotation_path = 6;
-  optional int32 mouse_x = 7;
-  optional int32 mouse_y = 8;
-  optional string key_char = 9;
-  optional string key_code = 10;
-  bool is_special_key = 11;
+  string event_id = 1;
+  string project_uuid = 2;
+  string command_uuid = 3;
+  string timestamp = 4;
+  string description = 5;
+  string screenshot_path = 6;
+  optional string annotation_path = 7;
+  optional int32 mouse_x = 8;
+  optional int32 mouse_y = 9;
+  optional string key_char = 10;
+  optional string key_code = 11;
+  bool is_special_key = 12;
 }
 
 message CaptureResult {

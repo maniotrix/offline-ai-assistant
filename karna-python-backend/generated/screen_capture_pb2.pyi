@@ -37,6 +37,31 @@ class CaptureUpdateRequest(google.protobuf.message.Message):
     PROJECT_UUID_FIELD_NUMBER: builtins.int
     COMMAND_UUID_FIELD_NUMBER: builtins.int
     MESSAGE_FIELD_NUMBER: builtins.int
+    SCREENSHOT_EVENT_IDS_FIELD_NUMBER: builtins.int
+    project_uuid: builtins.str
+    command_uuid: builtins.str
+    message: builtins.str
+    @property
+    def screenshot_event_ids(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+    def __init__(
+        self,
+        *,
+        project_uuid: builtins.str = ...,
+        command_uuid: builtins.str = ...,
+        message: builtins.str = ...,
+        screenshot_event_ids: collections.abc.Iterable[builtins.str] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["command_uuid", b"command_uuid", "message", b"message", "project_uuid", b"project_uuid", "screenshot_event_ids", b"screenshot_event_ids"]) -> None: ...
+
+global___CaptureUpdateRequest = CaptureUpdateRequest
+
+@typing.final
+class CaptureUpdateResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PROJECT_UUID_FIELD_NUMBER: builtins.int
+    COMMAND_UUID_FIELD_NUMBER: builtins.int
+    MESSAGE_FIELD_NUMBER: builtins.int
     SCREENSHOT_EVENTS_FIELD_NUMBER: builtins.int
     project_uuid: builtins.str
     command_uuid: builtins.str
@@ -52,27 +77,6 @@ class CaptureUpdateRequest(google.protobuf.message.Message):
         screenshot_events: collections.abc.Iterable[global___RpcScreenshotEvent] | None = ...,
     ) -> None: ...
     def ClearField(self, field_name: typing.Literal["command_uuid", b"command_uuid", "message", b"message", "project_uuid", b"project_uuid", "screenshot_events", b"screenshot_events"]) -> None: ...
-
-global___CaptureUpdateRequest = CaptureUpdateRequest
-
-@typing.final
-class CaptureUpdateResponse(google.protobuf.message.Message):
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    PROJECT_UUID_FIELD_NUMBER: builtins.int
-    COMMAND_UUID_FIELD_NUMBER: builtins.int
-    MESSAGE_FIELD_NUMBER: builtins.int
-    project_uuid: builtins.str
-    command_uuid: builtins.str
-    message: builtins.str
-    def __init__(
-        self,
-        *,
-        project_uuid: builtins.str = ...,
-        command_uuid: builtins.str = ...,
-        message: builtins.str = ...,
-    ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["command_uuid", b"command_uuid", "message", b"message", "project_uuid", b"project_uuid"]) -> None: ...
 
 global___CaptureUpdateResponse = CaptureUpdateResponse
 
@@ -108,6 +112,7 @@ global___ScreenCaptureRPCRequest = ScreenCaptureRPCRequest
 class RpcScreenshotEvent(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
+    EVENT_ID_FIELD_NUMBER: builtins.int
     PROJECT_UUID_FIELD_NUMBER: builtins.int
     COMMAND_UUID_FIELD_NUMBER: builtins.int
     TIMESTAMP_FIELD_NUMBER: builtins.int
@@ -119,6 +124,7 @@ class RpcScreenshotEvent(google.protobuf.message.Message):
     KEY_CHAR_FIELD_NUMBER: builtins.int
     KEY_CODE_FIELD_NUMBER: builtins.int
     IS_SPECIAL_KEY_FIELD_NUMBER: builtins.int
+    event_id: builtins.str
     project_uuid: builtins.str
     command_uuid: builtins.str
     timestamp: builtins.str
@@ -133,6 +139,7 @@ class RpcScreenshotEvent(google.protobuf.message.Message):
     def __init__(
         self,
         *,
+        event_id: builtins.str = ...,
         project_uuid: builtins.str = ...,
         command_uuid: builtins.str = ...,
         timestamp: builtins.str = ...,
@@ -146,7 +153,7 @@ class RpcScreenshotEvent(google.protobuf.message.Message):
         is_special_key: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["_annotation_path", b"_annotation_path", "_key_char", b"_key_char", "_key_code", b"_key_code", "_mouse_x", b"_mouse_x", "_mouse_y", b"_mouse_y", "annotation_path", b"annotation_path", "key_char", b"key_char", "key_code", b"key_code", "mouse_x", b"mouse_x", "mouse_y", b"mouse_y"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_annotation_path", b"_annotation_path", "_key_char", b"_key_char", "_key_code", b"_key_code", "_mouse_x", b"_mouse_x", "_mouse_y", b"_mouse_y", "annotation_path", b"annotation_path", "command_uuid", b"command_uuid", "description", b"description", "is_special_key", b"is_special_key", "key_char", b"key_char", "key_code", b"key_code", "mouse_x", b"mouse_x", "mouse_y", b"mouse_y", "project_uuid", b"project_uuid", "screenshot_path", b"screenshot_path", "timestamp", b"timestamp"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["_annotation_path", b"_annotation_path", "_key_char", b"_key_char", "_key_code", b"_key_code", "_mouse_x", b"_mouse_x", "_mouse_y", b"_mouse_y", "annotation_path", b"annotation_path", "command_uuid", b"command_uuid", "description", b"description", "event_id", b"event_id", "is_special_key", b"is_special_key", "key_char", b"key_char", "key_code", b"key_code", "mouse_x", b"mouse_x", "mouse_y", b"mouse_y", "project_uuid", b"project_uuid", "screenshot_path", b"screenshot_path", "timestamp", b"timestamp"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_annotation_path", b"_annotation_path"]) -> typing.Literal["annotation_path"] | None: ...
     @typing.overload

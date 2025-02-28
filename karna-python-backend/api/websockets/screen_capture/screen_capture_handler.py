@@ -1,5 +1,6 @@
 from fastapi import WebSocket
 from generated.screen_capture_pb2 import (
+    CaptureUpdateRequest,
     ScreenCaptureRPCRequest,
     ScreenCaptureRPCResponse,
     CaptureRequest,
@@ -37,6 +38,7 @@ class ScreenCaptureWebSocketHandler(BaseWebSocketHandler[List[ScreenshotEvent]])
             # Convert domain events to proto events
             for event in events:
                 proto_event : RpcScreenshotEvent = result.screenshot_events.add()
+                proto_event.event_id = event.event_id
                 proto_event.project_uuid = event.project_uuid
                 proto_event.command_uuid = event.command_uuid
                 proto_event.timestamp = event.timestamp.isoformat()
@@ -87,6 +89,10 @@ class ScreenCaptureWebSocketHandler(BaseWebSocketHandler[List[ScreenshotEvent]])
                 #     response = ScreenCaptureRPCResponse()
                 #     response.error = "No active screen capture session to stop"
                 #     await websocket.send_bytes(response.SerializeToString())
+            elif method == "update_capture":
+                message_content = getattr(request, method)
+                self.logger.info(f"Received update capture request from client {client_id}")
+                await self.handle_update_capture(websocket, message_content.update_capture)
             else:
                 response = ScreenCaptureRPCResponse()
                 response.error = f"Unknown screen capture method: {method}"
@@ -124,3 +130,20 @@ class ScreenCaptureWebSocketHandler(BaseWebSocketHandler[List[ScreenshotEvent]])
             response = ScreenCaptureRPCResponse()
             response.error = str(e)
             await websocket.send_bytes(response.SerializeToString())
+            
+    async def handle_update_capture(self, websocket: WebSocket, update_capture_request: CaptureUpdateRequest) -> None:
+        try:
+            deleted_events_ids = [str(event_id) for event_id in update_capture_request.screenshot_event_ids]
+            updated_events = ScreenCaptureService.update_screenshot_events_json_file(
+                project_uuid=update_capture_request.project_uuid,
+                command_uuid=update_capture_request.command_uuid,
+                deleted_events_ids=deleted_events_ids
+            )
+            await self.broadcast_capture_events(updated_events)
+            self.logger.info(f"Updated screenshot events for {update_capture_request.project_uuid}/{update_capture_request.command_uuid}")
+        except Exception as e:
+            self.logger.error(f"Error updating screenshot events: {e}", exc_info=True)
+            response = ScreenCaptureRPCResponse()
+            response.error = str(e)
+            await websocket.send_bytes(response.SerializeToString())
+
