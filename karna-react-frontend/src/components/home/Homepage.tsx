@@ -62,9 +62,23 @@ export const Homepage: React.FC = () => {
   // Get the error to display (either from status or command channel)
   const displayError = statusError || commandError;
 
-  // Check if command has completed successfully to show screen capture button
-  const isCommandCompleted = commandResponse && 
-    commandResponse.status === karna.command.CommandExecutionStatus.COMPLETED;
+  // Check conditions to show screen capture button:
+  // 1. Command has completed successfully
+  // 2. is_in_cache is false in the command text (needs training data collection)
+  const shouldShowCaptureButton = () => {
+    if (!commandResponse || commandResponse.status !== karna.command.CommandExecutionStatus.COMPLETED) {
+      return false;
+    }
+    
+    // Check if command text contains is_in_cache=False
+    if (commandResponse.commandText) {
+      const commandText = commandResponse.commandText.toLowerCase();
+      return commandText.includes('is_in_cache=false') || 
+             (commandText.includes('is_in_cache') && !commandText.includes('is_in_cache=true'));
+    }
+    
+    return false;
+  };
 
   return (
     <Box sx={{ p: 3, maxWidth: '800px', margin: '0 auto' }}>
@@ -131,8 +145,8 @@ export const Homepage: React.FC = () => {
               {isExecuting ? 'Executing...' : 'Execute Command'}
             </Button>
             
-            {/* Show screen capture button only when command has completed successfully */}
-            {isCommandCompleted && (
+            {/* Show screen capture button only when command has completed successfully AND needs training data */}
+            {shouldShowCaptureButton() && (
               <ScreenCaptureButton 
                 refreshScreenshot={fetchScreenshot}
               />
