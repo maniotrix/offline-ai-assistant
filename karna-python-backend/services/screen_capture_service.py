@@ -719,8 +719,7 @@ class ScreenCaptureService(BaseService[List[ScreenshotEvent]]):
                 logger.error(f"Error during capture stop: {str(e)}")
                 raise
 
-    @staticmethod
-    def update_screenshot_events_json_file(project_uuid: str, command_uuid: str, deleted_events_ids: List[str]) -> List[ScreenshotEvent]:
+    def update_screenshot_events_json_file(self, project_uuid: str, command_uuid: str, deleted_events_ids: List[str]) -> List[ScreenshotEvent]:
         """Update screenshot events after client-side editing.
         
         This method:
@@ -742,6 +741,9 @@ class ScreenCaptureService(BaseService[List[ScreenshotEvent]]):
             SessionError: If event data is invalid
         """
         try:
+            if not self.current_session or not self.current_session.screenshot_events:
+                raise SessionError("No screenshot events to export")
+            
             base_dir = os.path.join('data', project_uuid, command_uuid)
             if not os.path.exists(base_dir):
                 raise DirectoryError(f"Directory not found for project {project_uuid}, command {command_uuid}")
@@ -788,6 +790,7 @@ class ScreenCaptureService(BaseService[List[ScreenshotEvent]]):
                 updated_events.append(event)
             
             logger.info(f"Updated screenshot events for {project_uuid}/{command_uuid}")
+            self.current_session.screenshot_events = updated_events
             return updated_events
             
         except Exception as e:

@@ -134,13 +134,14 @@ class ScreenCaptureWebSocketHandler(BaseWebSocketHandler[List[ScreenshotEvent]])
     async def handle_update_capture(self, websocket: WebSocket, update_capture_request: CaptureUpdateRequest) -> None:
         try:
             deleted_events_ids = [str(event_id) for event_id in update_capture_request.screenshot_event_ids]
-            updated_events = ScreenCaptureService.update_screenshot_events_json_file(
+            updated_events = self.service.update_screenshot_events_json_file(
                 project_uuid=update_capture_request.project_uuid,
                 command_uuid=update_capture_request.command_uuid,
                 deleted_events_ids=deleted_events_ids
             )
-            await self.broadcast_capture_events(updated_events)
-            self.logger.info(f"Updated screenshot events for {update_capture_request.project_uuid}/{update_capture_request.command_uuid}")
+            if updated_events and len(updated_events) > 0 and self.service.current_session:
+                await self.broadcast_capture_events(updated_events)
+                self.logger.info(f"Updated screenshot events for {update_capture_request.project_uuid}/{update_capture_request.command_uuid}")
         except Exception as e:
             self.logger.error(f"Error updating screenshot events: {e}", exc_info=True)
             response = ScreenCaptureRPCResponse()
