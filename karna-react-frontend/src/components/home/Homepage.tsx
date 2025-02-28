@@ -8,6 +8,7 @@ import useCommandStore from '../../stores/commandStore';
 import useScreenCaptureStore from '../../stores/screenCaptureStore';
 import { websocketService } from '../../api/websocket';
 import ScreenCaptureButton from './ScreenCaptureButton';
+import Slideshow from './ScreenCaptureSlideshow';
 
 export const Homepage: React.FC = () => {
   // Get status and command state from Zustand stores
@@ -17,7 +18,6 @@ export const Homepage: React.FC = () => {
   
   const [command, setCommand] = useState('');
   const [domain, setDomain] = useState('');
-  const [screenshot, setScreenshot] = useState<string | null>(null);
   const navigate = useNavigate();
 
   // Check if any commands are pending
@@ -29,17 +29,6 @@ export const Homepage: React.FC = () => {
       websocketService.requestStatus().catch(console.error);
     }
   }, [statusConnected]);
-
-  // Update screenshot when capture result changes
-  useEffect(() => {
-    if (captureResult && captureResult.screenshotEvents && captureResult.screenshotEvents.length > 0) {
-      // Get the latest screenshot from the capture result
-      const latestEvent = captureResult.screenshotEvents[captureResult.screenshotEvents.length - 1];
-      if (latestEvent.screenshotPath) {
-        setScreenshot(latestEvent.screenshotPath);
-      }
-    }
-  }, [captureResult]);
 
   const handleCommandSubmit = async () => {
     if (!command.trim()) return;
@@ -185,14 +174,12 @@ export const Homepage: React.FC = () => {
         )}
       </Paper>
 
-      {screenshot && (
-        <Paper elevation={3} sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>Current Screen</Typography>
-          <img 
-            src={`data:image/png;base64,${screenshot}`} 
-            alt="Current screen" 
-            style={{ maxWidth: '100%' }} 
-          />
+      {captureResult?.screenshotEvents && captureResult.screenshotEvents.length > 0 && (
+        <Paper elevation={3} sx={{ p: 3, height: '600px' }}>
+          <Typography variant="h6" gutterBottom>Screen Captures</Typography>
+          <Box sx={{ height: 'calc(100% - 40px)' }}>
+            <Slideshow />
+          </Box>
         </Paper>
       )}
 
