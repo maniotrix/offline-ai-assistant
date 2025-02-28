@@ -715,7 +715,79 @@ class ScreenCaptureService(BaseService[List[ScreenshotEvent]]):
                 logger.error(f"Error during capture stop: {str(e)}")
                 raise
 
-    
+    @staticmethod
+    def update_screenshot_events(project_uuid: str, command_uuid: str, updated_events: List[ScreenshotEvent]) -> bool:
+        """Update screenshot events after client-side editing.
+        
+        This method:
+        1. Validates the updated events list
+        2. Deletes removed screenshots and their annotations
+        3. Updates the JSON export file
+        
+        Args:
+            project_uuid: Project identifier
+            command_uuid: Command identifier
+            updated_events: New list of screenshot events to keep
+        
+        Returns:
+            bool: True if update was successful, False otherwise
+        
+        Raises:
+            DirectoryError: If directory operations fail
+            SessionError: If event data is invalid
+        """
+        try:
+            base_dir = os.path.join('data', project_uuid, command_uuid)
+            if not os.path.exists(base_dir):
+                raise DirectoryError(f"Directory not found for project {project_uuid}, command {command_uuid}")
+            
+            screenshots_dir = os.path.join(base_dir, 'screenshots')
+            raw_dir = os.path.join(screenshots_dir, 'raw')
+            annotated_dir = os.path.join(screenshots_dir, 'annotated')
+            json_path = os.path.join(base_dir, f'screenshot_events_{command_uuid}.json')
+            
+            # Get list of all screenshot and annotation files
+            existing_files = set()
+            if os.path.exists(raw_dir):
+                existing_files.update(os.path.join(raw_dir, f) for f in os.listdir(raw_dir))
+            if os.path.exists(annotated_dir):
+                existing_files.update(os.path.join(annotated_dir, f) for f in os.listdir(annotated_dir))
+            
+            # Collect files to keep
+            files_to_keep = set()
+            for event in updated_events:
+                if event.screenshot_path and os.path.exists(event.screenshot_path):
+                    files_to_keep.add(event.screenshot_path)
+                if event.annotation_path and os.path.exists(event.annotation_path):
+                    files_to_keep.add(event.annotation_path)
+            
+            # Delete removed files
+            for file_path in existing_files - files_to_keep:
+                try:
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                        logger.info(f"Deleted removed file: {file_path}")
+                except Exception as e:
+                    logger.error(f"Failed to delete file {file_path}: {str(e)}")
+            
+            # Update JSON file with new events
+            events_data = []
+            for event in updated_events:
+                event_dict = asdict(event)
+                # Convert datetime to ISO format string
+                event_dict['timestamp'] = event_dict['timestamp'].isoformat()
+                events_data.append(event_dict)
+            
+            with open(json_path, 'w', encoding='utf-8') as f:
+                json.dump(events_data, f, indent=2, ensure_ascii=False)
+            
+            logger.info(f"Updated screenshot events for {project_uuid}/{command_uuid}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to update screenshot events: {str(e)}")
+            raise DirectoryError(f"Screenshot events update failed: {str(e)}")
+
     def notify_session_observers(self):
         """Notify observers with the current list of screenshots"""
         if self.current_session:
