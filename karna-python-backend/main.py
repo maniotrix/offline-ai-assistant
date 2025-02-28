@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 from base import SingletonMeta, ServiceManager
 from api import setup_routes
@@ -27,6 +28,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount static files directory
+data_dir = Path(__file__).parent.parent / "data"
+app.mount("/data", StaticFiles(directory=str(data_dir), html=True), name="data")
 
 # Setup routes
 setup_routes(app)
