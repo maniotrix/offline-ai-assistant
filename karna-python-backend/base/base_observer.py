@@ -38,6 +38,15 @@ class Observer(Generic[ObserverDataType], ABC):
 
 class AsyncCapableObserver(Observer[ObserverDataType]):
     """Base class for observers that need to handle async operations."""
+    # Shared event loop for all cross-thread tasks
+    _main_loop = None
+    
+    @classmethod
+    def set_main_loop(cls, loop):
+        """Set the main event loop for cross-thread tasks"""
+        cls._main_loop = loop
+    
+    
     def __init__(self, handle_update: Callable[[ObserverDataType], Awaitable[None]], priority: Priority = Priority.NORMAL):
         super().__init__(priority)
         # Verify that handle_update is an async function
@@ -48,10 +57,14 @@ class AsyncCapableObserver(Observer[ObserverDataType]):
     def _schedule_async(self, coro):
         """Helper method to schedule any coroutine in the event loop"""
         try:
-            if asyncio.get_event_loop().is_running():
-                asyncio.create_task(coro)
-            # else:
-            #     asyncio.run(coro)
+            # if asyncio.get_event_loop().is_running():
+            #     asyncio.create_task(coro)
+            if AsyncCapableObserver._main_loop:
+                # Use the main loop if available
+                asyncio.run_coroutine_threadsafe(
+                    coro, 
+                    AsyncCapableObserver._main_loop
+                )
         except RuntimeError:
             raise RuntimeError("Cannot schedule async operation from a running event loop.")
             # loop = asyncio.new_event_loop()
