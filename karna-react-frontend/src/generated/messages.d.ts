@@ -1064,6 +1064,230 @@ export namespace karna {
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
+        /** Properties of a CaptureUpdateRequest. */
+        interface ICaptureUpdateRequest {
+
+            /** CaptureUpdateRequest projectUuid */
+            projectUuid?: (string|null);
+
+            /** CaptureUpdateRequest commandUuid */
+            commandUuid?: (string|null);
+
+            /** CaptureUpdateRequest message */
+            message?: (string|null);
+
+            /** CaptureUpdateRequest screenshotEvents */
+            screenshotEvents?: (karna.screen_capture.IRpcScreenshotEvent[]|null);
+        }
+
+        /** Represents a CaptureUpdateRequest. */
+        class CaptureUpdateRequest implements ICaptureUpdateRequest {
+
+            /**
+             * Constructs a new CaptureUpdateRequest.
+             * @param [properties] Properties to set
+             */
+            constructor(properties?: karna.screen_capture.ICaptureUpdateRequest);
+
+            /** CaptureUpdateRequest projectUuid. */
+            public projectUuid: string;
+
+            /** CaptureUpdateRequest commandUuid. */
+            public commandUuid: string;
+
+            /** CaptureUpdateRequest message. */
+            public message: string;
+
+            /** CaptureUpdateRequest screenshotEvents. */
+            public screenshotEvents: karna.screen_capture.IRpcScreenshotEvent[];
+
+            /**
+             * Creates a new CaptureUpdateRequest instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns CaptureUpdateRequest instance
+             */
+            public static create(properties?: karna.screen_capture.ICaptureUpdateRequest): karna.screen_capture.CaptureUpdateRequest;
+
+            /**
+             * Encodes the specified CaptureUpdateRequest message. Does not implicitly {@link karna.screen_capture.CaptureUpdateRequest.verify|verify} messages.
+             * @param message CaptureUpdateRequest message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            public static encode(message: karna.screen_capture.ICaptureUpdateRequest, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified CaptureUpdateRequest message, length delimited. Does not implicitly {@link karna.screen_capture.CaptureUpdateRequest.verify|verify} messages.
+             * @param message CaptureUpdateRequest message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            public static encodeDelimited(message: karna.screen_capture.ICaptureUpdateRequest, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a CaptureUpdateRequest message from the specified reader or buffer.
+             * @param reader Reader or buffer to decode from
+             * @param [length] Message length if known beforehand
+             * @returns CaptureUpdateRequest
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): karna.screen_capture.CaptureUpdateRequest;
+
+            /**
+             * Decodes a CaptureUpdateRequest message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns CaptureUpdateRequest
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): karna.screen_capture.CaptureUpdateRequest;
+
+            /**
+             * Verifies a CaptureUpdateRequest message.
+             * @param message Plain object to verify
+             * @returns `null` if valid, otherwise the reason why it is not
+             */
+            public static verify(message: { [k: string]: any }): (string|null);
+
+            /**
+             * Creates a CaptureUpdateRequest message from a plain object. Also converts values to their respective internal types.
+             * @param object Plain object
+             * @returns CaptureUpdateRequest
+             */
+            public static fromObject(object: { [k: string]: any }): karna.screen_capture.CaptureUpdateRequest;
+
+            /**
+             * Creates a plain object from a CaptureUpdateRequest message. Also converts values to other types if specified.
+             * @param message CaptureUpdateRequest
+             * @param [options] Conversion options
+             * @returns Plain object
+             */
+            public static toObject(message: karna.screen_capture.CaptureUpdateRequest, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+            /**
+             * Converts this CaptureUpdateRequest to JSON.
+             * @returns JSON object
+             */
+            public toJSON(): { [k: string]: any };
+
+            /**
+             * Gets the default type url for CaptureUpdateRequest
+             * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+             * @returns The default type url
+             */
+            public static getTypeUrl(typeUrlPrefix?: string): string;
+        }
+
+        /** Properties of a CaptureUpdateResponse. */
+        interface ICaptureUpdateResponse {
+
+            /** CaptureUpdateResponse projectUuid */
+            projectUuid?: (string|null);
+
+            /** CaptureUpdateResponse commandUuid */
+            commandUuid?: (string|null);
+
+            /** CaptureUpdateResponse message */
+            message?: (string|null);
+        }
+
+        /** Represents a CaptureUpdateResponse. */
+        class CaptureUpdateResponse implements ICaptureUpdateResponse {
+
+            /**
+             * Constructs a new CaptureUpdateResponse.
+             * @param [properties] Properties to set
+             */
+            constructor(properties?: karna.screen_capture.ICaptureUpdateResponse);
+
+            /** CaptureUpdateResponse projectUuid. */
+            public projectUuid: string;
+
+            /** CaptureUpdateResponse commandUuid. */
+            public commandUuid: string;
+
+            /** CaptureUpdateResponse message. */
+            public message: string;
+
+            /**
+             * Creates a new CaptureUpdateResponse instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns CaptureUpdateResponse instance
+             */
+            public static create(properties?: karna.screen_capture.ICaptureUpdateResponse): karna.screen_capture.CaptureUpdateResponse;
+
+            /**
+             * Encodes the specified CaptureUpdateResponse message. Does not implicitly {@link karna.screen_capture.CaptureUpdateResponse.verify|verify} messages.
+             * @param message CaptureUpdateResponse message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            public static encode(message: karna.screen_capture.ICaptureUpdateResponse, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified CaptureUpdateResponse message, length delimited. Does not implicitly {@link karna.screen_capture.CaptureUpdateResponse.verify|verify} messages.
+             * @param message CaptureUpdateResponse message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            public static encodeDelimited(message: karna.screen_capture.ICaptureUpdateResponse, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a CaptureUpdateResponse message from the specified reader or buffer.
+             * @param reader Reader or buffer to decode from
+             * @param [length] Message length if known beforehand
+             * @returns CaptureUpdateResponse
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): karna.screen_capture.CaptureUpdateResponse;
+
+            /**
+             * Decodes a CaptureUpdateResponse message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns CaptureUpdateResponse
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): karna.screen_capture.CaptureUpdateResponse;
+
+            /**
+             * Verifies a CaptureUpdateResponse message.
+             * @param message Plain object to verify
+             * @returns `null` if valid, otherwise the reason why it is not
+             */
+            public static verify(message: { [k: string]: any }): (string|null);
+
+            /**
+             * Creates a CaptureUpdateResponse message from a plain object. Also converts values to their respective internal types.
+             * @param object Plain object
+             * @returns CaptureUpdateResponse
+             */
+            public static fromObject(object: { [k: string]: any }): karna.screen_capture.CaptureUpdateResponse;
+
+            /**
+             * Creates a plain object from a CaptureUpdateResponse message. Also converts values to other types if specified.
+             * @param message CaptureUpdateResponse
+             * @param [options] Conversion options
+             * @returns Plain object
+             */
+            public static toObject(message: karna.screen_capture.CaptureUpdateResponse, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+            /**
+             * Converts this CaptureUpdateResponse to JSON.
+             * @returns JSON object
+             */
+            public toJSON(): { [k: string]: any };
+
+            /**
+             * Gets the default type url for CaptureUpdateResponse
+             * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+             * @returns The default type url
+             */
+            public static getTypeUrl(typeUrlPrefix?: string): string;
+        }
+
         /** Properties of a ScreenCaptureRPCRequest. */
         interface IScreenCaptureRPCRequest {
 
@@ -1072,6 +1296,9 @@ export namespace karna {
 
             /** ScreenCaptureRPCRequest stopCapture */
             stopCapture?: (karna.screen_capture.ICaptureRequest|null);
+
+            /** ScreenCaptureRPCRequest updateCapture */
+            updateCapture?: (karna.screen_capture.ICaptureUpdateRequest|null);
         }
 
         /** Represents a ScreenCaptureRPCRequest. */
@@ -1089,8 +1316,11 @@ export namespace karna {
             /** ScreenCaptureRPCRequest stopCapture. */
             public stopCapture?: (karna.screen_capture.ICaptureRequest|null);
 
+            /** ScreenCaptureRPCRequest updateCapture. */
+            public updateCapture?: (karna.screen_capture.ICaptureUpdateRequest|null);
+
             /** ScreenCaptureRPCRequest method. */
-            public method?: ("startCapture"|"stopCapture");
+            public method?: ("startCapture"|"stopCapture"|"updateCapture");
 
             /**
              * Creates a new ScreenCaptureRPCRequest instance using the specified properties.
@@ -1456,6 +1686,9 @@ export namespace karna {
 
             /** ScreenCaptureRPCResponse error */
             error?: (string|null);
+
+            /** ScreenCaptureRPCResponse updateCaptureResponse */
+            updateCaptureResponse?: (karna.screen_capture.ICaptureUpdateResponse|null);
         }
 
         /** Represents a ScreenCaptureRPCResponse. */
@@ -1473,8 +1706,11 @@ export namespace karna {
             /** ScreenCaptureRPCResponse error. */
             public error?: (string|null);
 
+            /** ScreenCaptureRPCResponse updateCaptureResponse. */
+            public updateCaptureResponse?: (karna.screen_capture.ICaptureUpdateResponse|null);
+
             /** ScreenCaptureRPCResponse type. */
-            public type?: ("captureResponse"|"error");
+            public type?: ("captureResponse"|"error"|"updateCaptureResponse");
 
             /**
              * Creates a new ScreenCaptureRPCResponse instance using the specified properties.

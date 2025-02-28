@@ -7,11 +7,25 @@ message CaptureRequest {
   string command_uuid = 2;
 }
 
+message CaptureUpdateRequest {
+  string project_uuid = 1;
+  string command_uuid = 2;
+  string message = 3;
+  repeated RpcScreenshotEvent screenshot_events = 4;
+}
+
+message CaptureUpdateResponse {
+  string project_uuid = 1;
+  string command_uuid = 2;
+  string message = 3;
+}
+
 // Request message types
 message ScreenCaptureRPCRequest {
   oneof method {
     CaptureRequest start_capture = 1;
     CaptureRequest stop_capture = 2;
+    CaptureUpdateRequest update_capture = 3;
   }
 }
 
@@ -42,5 +56,6 @@ message ScreenCaptureRPCResponse {
   oneof type {
     CaptureResult capture_response = 1;
     string error = 2;
+    CaptureUpdateResponse update_capture_response = 3;
   }
 }
