@@ -1,12 +1,9 @@
 import { WS } from '../constants';
 
-export type MessageHandler<T> = (data: T) => void;
 export type ErrorHandler = (error: Error) => void;
 
 export abstract class BaseWebSocketChannel {
     protected socket: WebSocket | null = null;
-    protected messageHandlers: Map<string, Set<MessageHandler<any>>> = new Map();
-    protected errorHandlers: Set<ErrorHandler> = new Set();
     protected reconnectAttempts = 0;
     protected maxReconnectAttempts = 5;
     protected reconnectDelay = 1000;
@@ -64,12 +61,13 @@ export abstract class BaseWebSocketChannel {
         }
         
         this.isConnecting = false;
-        this.clearHandlers();
+        this.clearPendingRequests();
     }
 
-    protected clearHandlers(): void {
-        this.messageHandlers.clear();
-        this.errorHandlers.clear();
+    protected clearPendingRequests(): void {
+        this.pendingRequests.forEach(({ reject }) => {
+            reject(new Error('WebSocket disconnected'));
+        });
         this.pendingRequests.clear();
     }
 
@@ -77,17 +75,19 @@ export abstract class BaseWebSocketChannel {
         console.log('WebSocket Connected');
         this.reconnectAttempts = 0;
         this.isConnecting = false;
+        this.updateConnectionState(true);
     }
 
     protected handleError(event: Event): void {
         console.error('WebSocket error:', event);
         this.isConnecting = false;
-        this.notifyError(new Error('WebSocket error occurred'));
+        this.updateErrorState(new Error('WebSocket error occurred'));
     }
 
     protected handleClose(): void {
         console.log('WebSocket disconnected');
         this.isConnecting = false;
+        this.updateConnectionState(false);
         
         this.pendingRequests.forEach(({ reject }) => {
             reject(new Error('WebSocket disconnected'));
@@ -103,47 +103,6 @@ export abstract class BaseWebSocketChannel {
         }
     }
 
-    protected notifyHandlers<T>(type: string, data: T): void {
-        console.log(`Notifying handlers for type ${type}:`, this.messageHandlers.get(type)?.size || 0, 'handlers');
-        const handlers = this.messageHandlers.get(type);
-        if (handlers) {
-            handlers.forEach(handler => {
-                console.log('Calling handler with data:', data);
-                handler(data);
-            });
-        }
-    }
-
-    protected notifyError(error: Error): void {
-        console.error('Notifying error handlers:', error);
-        this.errorHandlers.forEach(handler => handler(error));
-        this.pendingRequests.forEach(({ reject }) => reject(error));
-        this.pendingRequests.clear();
-    }
-
-    protected addHandler<T>(type: string, handler: MessageHandler<T>): void {
-        let handlers = this.messageHandlers.get(type);
-        if (!handlers) {
-            handlers = new Set();
-            this.messageHandlers.set(type, handlers);
-        }
-        handlers.add(handler);
-        console.log(`Added handler for type ${type}, now have ${handlers.size} handlers`);
-    }
-
-    protected removeHandler<T>(type: string, handler: MessageHandler<T>): void {
-        const handlers = this.messageHandlers.get(type);
-        if (handlers) {
-            handlers.delete(handler);
-            if (handlers.size === 0) {
-                this.messageHandlers.delete(type);
-            }
-            console.log(`Removed handler for type ${type}, now have ${handlers.size} handlers`);
-        }
-    }
-
-    onError(handler: ErrorHandler): () => void {
-        this.errorHandlers.add(handler);
-        return () => this.errorHandlers.delete(handler);
-    }
+    protected abstract updateConnectionState(connected: boolean): void;
+    protected abstract updateErrorState(error: Error): void;
 }

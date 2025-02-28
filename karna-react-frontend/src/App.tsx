@@ -4,8 +4,9 @@ import CanvasEditor from "./components/CanvasEditor/CanvasEditor";
 import ClassSelector from "./components/ClassSelector/ClassSelector";
 import Header from "./components/Header/Header";
 import Homepage from "./components/Home/Homepage";
-import { fetchAnnotations, connectWebSocket, disconnectWebSocket } from "./api/api";
+import { fetchAnnotations } from "./api/api";
 import useAnnotationStore from "./stores/annotationStore";
+import { websocketService } from "./api/websocket";
 import { Box } from "@mui/material";
 
 const EditorLayout = ({ imageUrl, onCancel }: { imageUrl: string | null, onCancel: () => void }) => (
@@ -23,12 +24,12 @@ const App: React.FC = () => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    // Initialize WebSocket connection
-    connectWebSocket();
+    // Initialize WebSocket connection with the new approach
+    websocketService.connect();
 
     // Cleanup on unmount
     return () => {
-      disconnectWebSocket();
+      websocketService.disconnect();
     };
   }, []);
 

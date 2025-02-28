@@ -1,57 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Paper, Typography, TextField, Button } from '@mui/material';
-import { 
-  executeCommand, 
-  getScreenshot, 
-  Status, 
-  subscribeToStatus, 
-  subscribeToErrors, 
-  subscribeToCommandResponse,
-  requestStatus 
-} from '../../api/api';
+import { Box, Paper, Typography, TextField, Button, CircularProgress } from '@mui/material';
+import { getScreenshot } from '../../api/api';
 import { useNavigate } from 'react-router-dom';
 import { karna } from '../../generated/messages';
 import './Homepage.css';
+import useStatusStore from '../../stores/statusStore';
+import useCommandStore from '../../stores/commandStore';
+import { websocketService } from '../../api/websocket';
 
 export const Homepage: React.FC = () => {
-  const [status, setStatus] = useState<Status>({ 
-    vision: '',
-    language: '',
-    command: ''
-  });
+  // Get status and command state from Zustand stores
+  const { status, connected: statusConnected, error: statusError } = useStatusStore();
+  const { commandResponse, connected: commandConnected, error: commandError, pendingCommands } = useCommandStore();
+  
   const [command, setCommand] = useState('');
   const [domain, setDomain] = useState('');
   const [screenshot, setScreenshot] = useState<string | null>(null);
-  const [isExecuting, setIsExecuting] = useState(false);
-  const [commandResponse, setCommandResponse] = useState<karna.command.ICommandResult | null>(null);
   const navigate = useNavigate();
 
+  // Check if any commands are pending
+  const isExecuting = pendingCommands.size > 0;
+
   useEffect(() => {
-    // First set up all subscribers
-    const statusUnsubscribe = subscribeToStatus((newStatus) => {
-      console.log('Status update received:', newStatus);
-      setStatus(newStatus);
-    });
-
-    const commandUnsubscribe = subscribeToCommandResponse((response) => {
-      console.log('Command response received:', response);
-      setCommandResponse(response);
-      setIsExecuting(false);
-    });
-
-    const errorUnsubscribe = subscribeToErrors((error) => {
-      console.error('Error:', error);
-      setCommandResponse({
-        commandText: command,
-        status: karna.command.CommandExecutionStatus.FAILED,
-        message: error.message,
-        actions: []
-      });
-      setIsExecuting(false);
-    });
-
-    // Then request initial status after subscriptions are set up
-    requestStatus().catch(console.error);
+    // Request initial status
+    if (statusConnected) {
+      websocketService.requestStatus().catch(console.error);
+    }
 
     // Load initial screenshot
     const fetchScreenshot = async () => {
@@ -63,31 +37,16 @@ export const Homepage: React.FC = () => {
       }
     };
     fetchScreenshot();
-
-    // Cleanup subscriptions
-    return () => {
-      statusUnsubscribe();
-      commandUnsubscribe();
-      errorUnsubscribe();
-    };
-  }, []);
+  }, [statusConnected]);
 
   const handleCommandSubmit = async () => {
     if (!command.trim()) return;
     
     try {
-      setIsExecuting(true);
-      await executeCommand(command.trim(), domain.trim() || 'default');
+      await websocketService.sendCommand(command.trim(), domain.trim() || 'default');
       setCommand('');
     } catch (error) {
       console.error('Failed to execute command:', error);
-      setCommandResponse({
-        commandText: command,
-        status: karna.command.CommandExecutionStatus.FAILED,
-        message: error instanceof Error ? error.message : 'Failed to execute command',
-        actions: []
-      });
-      setIsExecuting(false);
     }
   };
 
@@ -98,19 +57,40 @@ export const Homepage: React.FC = () => {
     }
   };
 
+  // Get the error to display (either from status or command channel)
+  const displayError = statusError || commandError;
+
   return (
     <Box sx={{ p: 3, maxWidth: '800px', margin: '0 auto' }}>
       <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
         <Typography variant="h5" gutterBottom>AI Assistant Status</Typography>
+        
+        {/* Display connection status */}
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <Typography variant="body2" sx={{ mr: 1 }}>
+            Status Connection: {statusConnected ? 'Connected' : 'Disconnected'}
+          </Typography>
+          <Typography variant="body2">
+            Command Connection: {commandConnected ? 'Connected' : 'Disconnected'}
+          </Typography>
+        </Box>
+        
+        {/* Display error if any */}
+        {displayError && (
+          <Typography color="error" variant="body2" sx={{ mb: 2 }}>
+            Error: {displayError.message}
+          </Typography>
+        )}
+
         <Box sx={{ mb: 2 }}>
           <Typography variant="body1">
-            Vision Status: {status.vision || 'Idle'}
+            Vision Status: {status?.vision || 'Idle'}
           </Typography>
           <Typography variant="body1">
-            Language Status: {status.language || 'Idle'}
+            Language Status: {status?.language || 'Idle'}
           </Typography>
           <Typography variant="body1" gutterBottom>
-            Command Status: {status.command || 'No active command'}
+            Command Status: {status?.command || 'No active command'}
           </Typography>
         </Box>
 
@@ -137,8 +117,9 @@ export const Homepage: React.FC = () => {
           <Button 
             variant="contained" 
             onClick={handleCommandSubmit}
-            disabled={!command.trim() || isExecuting}
+            disabled={!command.trim() || isExecuting || !commandConnected}
             sx={{ mt: 2 }}
+            startIcon={isExecuting ? <CircularProgress size={20} color="inherit" /> : null}
           >
             {isExecuting ? 'Executing...' : 'Execute Command'}
           </Button>

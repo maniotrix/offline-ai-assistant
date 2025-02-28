@@ -1,6 +1,7 @@
 import { karna } from '../../generated/messages';
 import { WS } from '../constants';
-import { BaseWebSocketChannel, MessageHandler } from './base-channel';
+import { BaseWebSocketChannel } from './base-channel';
+import useScreenCaptureStore from '../../stores/screenCaptureStore';
 
 export class ScreenCaptureChannel extends BaseWebSocketChannel {
     constructor() {
@@ -19,18 +20,18 @@ export class ScreenCaptureChannel extends BaseWebSocketChannel {
             console.log('Decoded screen capture response:', response);
             
             if (response.error) {
-                this.notifyError(new Error(response.error));
+                this.updateErrorState(new Error(response.error));
                 return;
             }
             if (response.captureResponse) {
-                console.log('Notifying handlers with capture response:', response.captureResponse);
-                this.notifyHandlers('captureResponse', response.captureResponse);
+                console.log('Updating screen capture state with:', response.captureResponse);
+                useScreenCaptureStore.getState().setCaptureResult(response.captureResponse);
             } else {
                 console.log('No capture response in response:', response);
             }
         } catch (error) {
             console.error('Failed to parse screen capture message:', error);
-            this.notifyError(error instanceof Error ? error : new Error(String(error)));
+            this.updateErrorState(error instanceof Error ? error : new Error(String(error)));
         }
     }
 
@@ -50,6 +51,7 @@ export class ScreenCaptureChannel extends BaseWebSocketChannel {
         const buffer = karna.screen_capture.ScreenCaptureRPCRequest.encode(request).finish();
         this.socket.send(buffer);
         console.log('Start capture request sent');
+        useScreenCaptureStore.getState().setCapturing(true);
     }
 
     async stopCapture(projectUuid: string, commandUuid: string): Promise<void> {
@@ -68,19 +70,19 @@ export class ScreenCaptureChannel extends BaseWebSocketChannel {
         const buffer = karna.screen_capture.ScreenCaptureRPCRequest.encode(request).finish();
         this.socket.send(buffer);
         console.log('Stop capture request sent');
-    }
-
-    onCaptureResponse(handler: MessageHandler<karna.screen_capture.ICaptureResult>): () => void {
-        console.log('Adding capture response handler');
-        this.addHandler('captureResponse', handler);
-        return () => {
-            console.log('Removing capture response handler');
-            this.removeHandler('captureResponse', handler);
-        };
+        useScreenCaptureStore.getState().setCapturing(false);
     }
 
     protected handleOpen(): void {
         super.handleOpen();
         console.log('ScreenCaptureChannel connected');
+    }
+
+    protected updateConnectionState(connected: boolean): void {
+        useScreenCaptureStore.getState().setConnected(connected);
+    }
+
+    protected updateErrorState(error: Error): void {
+        useScreenCaptureStore.getState().setError(error);
     }
 }

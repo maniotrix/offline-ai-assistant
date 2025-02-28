@@ -1,6 +1,7 @@
 import { karna } from '../../generated/messages';
 import { WS } from '../constants';
-import { BaseWebSocketChannel, MessageHandler } from './base-channel';
+import { BaseWebSocketChannel } from './base-channel';
+import useStatusStore from '../../stores/statusStore';
 
 export class StatusChannel extends BaseWebSocketChannel {
     constructor() {
@@ -19,18 +20,18 @@ export class StatusChannel extends BaseWebSocketChannel {
             console.log('Decoded status response:', response);
             
             if (response.error) {
-                this.notifyError(new Error(response.error));
+                this.updateErrorState(new Error(response.error));
                 return;
             }
             if (response.statusUpdate) {
-                console.log('Notifying handlers with status update:', response.statusUpdate);
-                this.notifyHandlers('statusUpdate', response.statusUpdate);
+                console.log('Updating status state with:', response.statusUpdate);
+                useStatusStore.getState().setStatus(response.statusUpdate);
             } else {
                 console.log('No status update in response:', response);
             }
         } catch (error) {
             console.error('Failed to parse status message:', error);
-            this.notifyError(error instanceof Error ? error : new Error(String(error)));
+            this.updateErrorState(error instanceof Error ? error : new Error(String(error)));
         }
     }
 
@@ -49,19 +50,21 @@ export class StatusChannel extends BaseWebSocketChannel {
         console.log('Status request sent');
     }
 
-    onStatusUpdate(handler: MessageHandler<karna.status.IStatusResult>): () => void {
-        console.log('Adding status update handler');
-        this.addHandler('statusUpdate', handler);
-        return () => {
-            console.log('Removing status update handler');
-            this.removeHandler('statusUpdate', handler);
-        };
-    }
-
     protected handleOpen(): void {
         super.handleOpen();
         // Request initial status when connection is established
         console.log('StatusChannel connected, requesting initial status');
-        this.requestStatus().catch(console.error);
+        this.requestStatus().catch(error => {
+            console.error('Failed to request initial status:', error);
+            this.updateErrorState(error);
+        });
+    }
+
+    protected updateConnectionState(connected: boolean): void {
+        useStatusStore.getState().setConnected(connected);
+    }
+
+    protected updateErrorState(error: Error): void {
+        useStatusStore.getState().setError(error);
     }
 }

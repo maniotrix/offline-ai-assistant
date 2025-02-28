@@ -47,22 +47,9 @@ export const executeCommand = async (command: string, domain: string = 'default'
     return websocketService.sendCommand(command, domain);
 };
 
-export const subscribeToCommandResponse = (callback: (response: karna.command.ICommandResult) => void): () => void => {
-    return websocketService.onCommandResponse(callback);
-};
-
 // Status Channel APIs
 export const requestStatus = async (): Promise<void> => {
     return websocketService.requestStatus();
-};
-
-export const subscribeToStatus = (callback: (status: Status) => void): () => void => {
-    return websocketService.onStatusUpdate(callback);
-};
-
-// Error Handling
-export const subscribeToErrors = (callback: (error: Error) => void): () => void => {
-    return websocketService.onError(callback);
 };
 
 // Screenshot API

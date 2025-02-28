@@ -1,6 +1,7 @@
 import { karna } from '../../generated/messages';
 import { WS } from '../constants';
-import { BaseWebSocketChannel, MessageHandler } from './base-channel';
+import { BaseWebSocketChannel } from './base-channel';
+import useCommandStore from '../../stores/commandStore';
 
 export class CommandChannel extends BaseWebSocketChannel {
     constructor() {
@@ -19,18 +20,27 @@ export class CommandChannel extends BaseWebSocketChannel {
             console.log('Decoded command response:', response);
             
             if (response.error) {
-                this.notifyError(new Error(response.error));
+                this.updateErrorState(new Error(response.error));
                 return;
             }
             if (response.commandResponse) {
-                console.log('Notifying handlers with command response:', response.commandResponse);
-                this.notifyHandlers('commandResponse', response.commandResponse);
+                console.log('Updating command state with:', response.commandResponse);
+                useCommandStore.getState().setCommandResponse(response.commandResponse);
+                
+                // Resolve any pending requests
+                this.pendingRequests.forEach(({ resolve }, requestId) => {
+                    resolve(response.commandResponse);
+                    this.pendingRequests.delete(requestId);
+                    
+                    // Update the pending commands in the store
+                    useCommandStore.getState().removePendingCommand(requestId);
+                });
             } else {
                 console.log('No command response in response:', response);
             }
         } catch (error) {
             console.error('Failed to parse command message:', error);
-            this.notifyError(error instanceof Error ? error : new Error(String(error)));
+            this.updateErrorState(error instanceof Error ? error : new Error(String(error)));
         }
     }
 
@@ -54,46 +64,31 @@ export class CommandChannel extends BaseWebSocketChannel {
         return new Promise<karna.command.ICommandResult>((resolve, reject) => {
             const requestId = Math.random().toString(36).substring(7);
             this.pendingRequests.set(requestId, { resolve, reject });
-
-            const cleanup = () => {
-                this.pendingRequests.delete(requestId);
-                this.removeHandler('commandResponse', responseHandler);
-                this.removeHandler('error', errorHandler);
-            };
-
-            const responseHandler = (response: karna.command.ICommandResult) => {
-                cleanup();
-                resolve(response);
-            };
-
-            const errorHandler = (error: Error) => {
-                cleanup();
-                reject(error);
-            };
             
-            this.addHandler('commandResponse', responseHandler);
-            this.addHandler('error', errorHandler);
+            // Update the pending commands in the store
+            useCommandStore.getState().addPendingCommand(requestId);
 
+            // Set a timeout to avoid hanging indefinitely
             setTimeout(() => {
                 if (this.pendingRequests.has(requestId)) {
-                    cleanup();
+                    this.pendingRequests.delete(requestId);
+                    useCommandStore.getState().removePendingCommand(requestId);
                     reject(new Error('Command timed out'));
                 }
             }, 30000);
         });
     }
 
-    onCommandResponse(handler: MessageHandler<karna.command.ICommandResult>): () => void {
-        console.log('Adding command response handler');
-        this.addHandler('commandResponse', handler);
-        return () => {
-            console.log('Removing command response handler');
-            this.removeHandler('commandResponse', handler);
-        };
-    }
-
     protected handleOpen(): void {
         super.handleOpen();
         console.log('CommandChannel connected');
+    }
+
+    protected updateConnectionState(connected: boolean): void {
+        useCommandStore.getState().setConnected(connected);
+    }
+
+    protected updateErrorState(error: Error): void {
+        useCommandStore.getState().setError(error);
     }
 }

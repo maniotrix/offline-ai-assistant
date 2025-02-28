@@ -2,7 +2,6 @@ import { karna } from '../generated/messages';
 import { CommandChannel } from './websocket/command-channel';
 import { StatusChannel } from './websocket/status-channel';
 import { ScreenCaptureChannel } from './websocket/screen-capture-channel';
-import { ErrorHandler, MessageHandler } from './websocket/base-channel';
 
 class WebSocketService {
     private commandChannel: CommandChannel;
@@ -41,29 +40,6 @@ class WebSocketService {
 
     async stopScreenCapture(projectUuid: string, commandUuid: string): Promise<void> {
         return this.screenCaptureChannel.stopCapture(projectUuid, commandUuid);
-    }
-
-    onStatusUpdate(handler: MessageHandler<karna.status.IStatusResult>): () => void {
-        return this.statusChannel.onStatusUpdate(handler);
-    }
-
-    onCommandResponse(handler: MessageHandler<karna.command.ICommandResult>): () => void {
-        return this.commandChannel.onCommandResponse(handler);
-    }
-
-    onCaptureResponse(handler: MessageHandler<karna.screen_capture.ICaptureResult>): () => void {
-        return this.screenCaptureChannel.onCaptureResponse(handler);
-    }
-
-    onError(handler: ErrorHandler): () => void {
-        const unsubCommand = this.commandChannel.onError(handler);
-        const unsubStatus = this.statusChannel.onError(handler);
-        const unsubScreenCapture = this.screenCaptureChannel.onError(handler);
-        return () => {
-            unsubCommand();
-            unsubStatus();
-            unsubScreenCapture();
-        };
     }
 }
 
