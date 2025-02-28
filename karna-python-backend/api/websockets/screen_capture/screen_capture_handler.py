@@ -118,7 +118,7 @@ class ScreenCaptureWebSocketHandler(BaseWebSocketHandler[List[ScreenshotEvent]])
     ) -> None:
         """Handle stop capture request"""
         try:
-            self.service.stop_capture()
+            self.service.stop_capture_special_click_event_from_client_input()
         except Exception as e:
             self.logger.error(f"Screen capture stop error: {e}", exc_info=True)
             response = ScreenCaptureRPCResponse()

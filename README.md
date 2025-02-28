@@ -17,7 +17,20 @@
     Observable pattern implementation (for notifying observers about changes)
     Data storage (session and screenshot events)
     Decoupling these concerns would lead to a cleaner, more maintainable design with better separation of concerns.
+____
+Let's look at the implementation:
 
+The client's mouse click to stop capture triggers an event that gets recorded
+The client sends a stop capture request
+Before processing all screenshots, we'll remove the latest event from the list
+Continue with normal stop capture processing
+This approach should work because:
+
+The most recent event in screenshot_events would be the click that initiated the stop capture request
+By removing it before annotation processing, that specific click won't be included in the final output
+The remainder of the stop process remains intact (creating summaries, calculating statistics, etc.)
+However, one thing to consider is timing. If there's any delay between the click and the stop request being processed, there's a small chance another event could be captured in between. But for most use cases, this approach should be reliable.
+______
 Okay, here's a comprehensive summary detailing the design and implementation of our personal, vision-based offline AI assistant project. This includes the progression of our architectural choices and the reasoning behind them:
 
 **I. Project Overview:**

@@ -653,6 +653,69 @@ class ScreenCaptureService(BaseService[List[ScreenshotEvent]]):
                 logger.error(f"Error during capture stop: {str(e)}")
                 raise
 
+    def stop_capture_special_click_event_from_client_input(self) -> None:
+        """Stop the current capture session and process annotations, removing the last event (client's stop click)"""
+        with self.lock:
+            try:
+                self._validate_session()
+                logger.info(f"Stopping capture for command: {self.current_session.command_uuid}")
+                
+                try:
+                    if self.current_session.keyboard_listener:
+                        self.current_session.keyboard_listener.stop()
+                    if self.current_session.mouse_listener:
+                        self.current_session.mouse_listener.stop()
+                except Exception as e:
+                    logger.error(f"Error stopping listeners: {str(e)}")
+                
+                # Remove the latest event which would be the click that initiated the stop request
+                if self.current_session.screenshot_events and len(self.current_session.screenshot_events) > 0:
+                    logger.info("Removing last screenshot event that triggered the stop capture")
+                    self.current_session.screenshot_events.pop()
+                
+                # Process all screenshots and create annotations
+                for event in self.current_session.screenshot_events:
+                    if isinstance(event, ScreenshotEvent) and event.screenshot_path:
+                        if event.mouse_x is not None and event.mouse_y is not None:
+                            self._annotate_screenshot(event, event.mouse_x, event.mouse_y, event.description)
+                        else:
+                            self._annotate_screenshot(event, text=event.description)
+                
+                # Create session summary
+                summary_path = self.create_session_summary()
+                
+                self.current_session.is_active = False
+                self.current_session.end_time = datetime.now()
+                
+                # Include summary path in stop event if available
+                event_desc = f"Screen capture stopped after {self.current_session.duration:.2f} seconds"
+                if summary_path:
+                    event_desc += f"\nSummary available at: {summary_path}"
+                
+                # Create session stop event
+                event = self._create_session_event(
+                    event_type=EventType.CAPTURE_STOPPED,
+                    description=event_desc
+                )
+                if event:
+                    self.set_state('capturing', False)
+                
+                # Save session statistics before clearing
+                if self.current_session:
+                    stats = self.current_session.get_statistics()
+                    stats.total_key_events = self._event_stats[EventType.KEY_PRESS]
+                    stats.total_mouse_events = self._event_stats[EventType.MOUSE_CLICK]
+                    self._session_history.append(stats)
+                    
+                self.notify_session_observers()
+                # export screenshot events list to a json file
+                self.export_screenshot_events_to_json()
+                
+            except Exception as e:
+                logger.error(f"Error during capture stop: {str(e)}")
+                raise
+
+    
     def notify_session_observers(self):
         """Notify observers with the current list of screenshots"""
         if self.current_session:
