@@ -73,6 +73,26 @@ export class ScreenCaptureChannel extends BaseWebSocketChannel {
         useScreenCaptureStore.getState().setCapturing(false);
     }
 
+    async updateCapture(projectUuid: string, commandUuid: string, deletedEventIds: string[]): Promise<void> {
+        if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+            throw new Error('WebSocket is not connected');
+        }
+
+        console.log('Updating screen capture:', { projectUuid, commandUuid, deletedEventIds });
+        const request = karna.screen_capture.ScreenCaptureRPCRequest.create({
+            updateCapture: {
+                projectUuid,
+                commandUuid,
+                message: 'Update screenshots',
+                screenshotEventIds: deletedEventIds
+            }
+        });
+
+        const buffer = karna.screen_capture.ScreenCaptureRPCRequest.encode(request).finish();
+        this.socket.send(buffer);
+        console.log('Update capture request sent');
+    }
+
     protected handleOpen(): void {
         super.handleOpen();
         console.log('ScreenCaptureChannel connected');

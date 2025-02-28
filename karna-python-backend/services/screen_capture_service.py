@@ -72,9 +72,6 @@ class ScreenshotEvent:
     key_char: Optional[str] = None
     key_code: Optional[str] = None
     is_special_key: bool = False
-    
-    def __post_init__(self):
-        self.event_id = str(uuid.uuid4())
 @dataclass
 class SessionStatistics:
     """Statistics for a screen capture session"""
@@ -320,6 +317,7 @@ class ScreenCaptureService(BaseService[List[ScreenshotEvent]]):
             return None
         
         event = ScreenshotEvent(
+            event_id=str(uuid.uuid4()),
             project_uuid=self.current_session.project_uuid,
             command_uuid=self.current_session.command_uuid,
             timestamp=datetime.now(),

@@ -1,13 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, IconButton, Paper, Typography, CircularProgress, Tooltip } from '@mui/material';
-import { NavigateBefore, NavigateNext, PlayArrow, Pause } from '@mui/icons-material';
+import { Box, IconButton, Paper, Typography, CircularProgress, Tooltip, Button, Checkbox, Snackbar, Alert } from '@mui/material';
+import { NavigateBefore, NavigateNext, PlayArrow, Pause, Delete, Save } from '@mui/icons-material';
 import useScreenCaptureStore from '../../stores/screenCaptureStore';
 import { getAnnotationImageUrl } from '../../utils/urlUtils';
+import { websocketService } from '../../api/websocket';
 
 const Slideshow: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isImageLoading, setIsImageLoading] = useState(true);
+  const [selectedScreenshots, setSelectedScreenshots] = useState<Set<string>>(new Set());
+  const [isSaving, setIsSaving] = useState(false);
+  const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+  
   const { captureResult } = useScreenCaptureStore();
 
   // Filter and sort screenshots
@@ -66,6 +71,62 @@ const Slideshow: React.FC = () => {
     };
   }, [isPlaying, handleNext, validScreenshots.length]);
 
+  // Toggle screenshot selection
+  const toggleScreenshotSelection = (eventId: string) => {
+    setSelectedScreenshots(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(eventId)) {
+        newSet.delete(eventId);
+      } else {
+        newSet.add(eventId);
+      }
+      return newSet;
+    });
+  };
+
+  // Save changes (delete selected screenshots)
+  const saveChanges = async () => {
+    if (selectedScreenshots.size === 0 || !captureResult) return;
+    
+    try {
+      setIsSaving(true);
+      
+      // Get the project and command UUIDs from the first screenshot
+      const projectUuid = captureResult.projectUuid;
+      const commandUuid = captureResult.commandUuid;
+      
+      if (!projectUuid || !commandUuid) {
+        throw new Error('Missing project or command UUID');
+      }
+      
+      // Create an array of selected screenshot event IDs
+      const deletedEventIds = Array.from(selectedScreenshots);
+      
+      // Update the screen capture channel with the deleted event IDs
+      await websocketService.updateScreenCapture(projectUuid, commandUuid, deletedEventIds);
+      
+      // Clear the selection
+      setSelectedScreenshots(new Set());
+      setNotification({
+        message: 'Screenshots updated successfully',
+        type: 'success'
+      });
+    } catch (error) {
+      console.error('Failed to save changes:', error);
+      setNotification({
+        message: `Failed to save changes: ${error instanceof Error ? error.message : String(error)}`,
+        type: 'error'
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Close notification
+  const handleCloseNotification = () => {
+    setNotification(null);
+  };
+
   if (validScreenshots.length === 0 && !captureResult) {
     return (
       <Box sx={{ 
@@ -110,7 +171,7 @@ const Slideshow: React.FC = () => {
       <Box sx={{ 
         position: 'relative',
         width: '100%', 
-        height: '90%',
+        height: '80%',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -146,6 +207,13 @@ const Slideshow: React.FC = () => {
               <CircularProgress size={40} />
             </Box>
           )}
+          <Box sx={{ position: 'absolute', top: 8, left: 8, zIndex: 2 }}>
+            <Checkbox 
+              checked={selectedScreenshots.has(currentScreenshot.eventId || '')}
+              onChange={() => toggleScreenshotSelection(currentScreenshot.eventId || '')}
+              color="primary"
+            />
+          </Box>
           <img 
             src={getAnnotationImageUrl(currentScreenshot.annotationPath)}
             alt={`Screenshot from ${currentScreenshot.timestamp}`}
@@ -200,7 +268,63 @@ const Slideshow: React.FC = () => {
         <Typography variant="body2">
           {currentIndex + 1} / {validScreenshots.length}
         </Typography>
+        
+        {/* Save button */}
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={isSaving ? <CircularProgress size={20} color="inherit" /> : <Save />}
+          onClick={saveChanges}
+          disabled={selectedScreenshots.size === 0 || isSaving}
+          sx={{ ml: 2 }}
+        >
+          {isSaving ? 'Saving...' : 'Save Changes'}
+        </Button>
+        
+        {/* Delete button */}
+        <Tooltip title="Delete selected screenshots">
+          <span>
+            <IconButton 
+              color="error" 
+              disabled={selectedScreenshots.size === 0}
+              onClick={() => {
+                // Just a visual indicator, actual deletion happens on save
+                setNotification({
+                  message: `${selectedScreenshots.size} screenshot(s) marked for deletion. Click Save to confirm.`,
+                  type: 'success'
+                });
+              }}
+            >
+              <Delete />
+            </IconButton>
+          </span>
+        </Tooltip>
       </Box>
+      
+      {/* Selection info */}
+      {selectedScreenshots.size > 0 && (
+        <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+          {selectedScreenshots.size} screenshot(s) selected for deletion
+        </Typography>
+      )}
+      
+      {/* Notification */}
+      <Snackbar 
+        open={notification !== null} 
+        autoHideDuration={6000} 
+        onClose={handleCloseNotification}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        {notification ? (
+          <Alert 
+            onClose={handleCloseNotification} 
+            severity={notification.type} 
+            sx={{ width: '100%' }}
+          >
+            {notification.message}
+          </Alert>
+        ) : <div />}
+      </Snackbar>
     </Box>
   );
 };

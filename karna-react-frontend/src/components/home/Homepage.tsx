@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Paper, Typography, TextField, Button, CircularProgress } from '@mui/material';
+import { Box, Paper, Typography, TextField, Button, CircularProgress, Snackbar, Alert } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { karna } from '../../generated/messages';
 import './Homepage.css';
@@ -18,6 +18,7 @@ export const Homepage: React.FC = () => {
   
   const [command, setCommand] = useState('');
   const [domain, setDomain] = useState('');
+  const [notification, setNotification] = useState<{message: string, type: 'success' | 'error' | 'info'} | null>(null);
   const navigate = useNavigate();
 
   // Check if any commands are pending
@@ -29,6 +30,23 @@ export const Homepage: React.FC = () => {
       websocketService.requestStatus().catch(console.error);
     }
   }, [statusConnected]);
+
+  // Listen for changes in captureResult to show notifications
+  useEffect(() => {
+    if (captureResult) {
+      setNotification({
+        message: 'Screenshots updated successfully',
+        type: 'success'
+      });
+      
+      // Auto-hide notification after 5 seconds
+      const timeoutId = setTimeout(() => {
+        setNotification(null);
+      }, 5000);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [captureResult]);
 
   const handleCommandSubmit = async () => {
     if (!command.trim()) return;
@@ -46,6 +64,11 @@ export const Homepage: React.FC = () => {
       event.preventDefault();
       handleCommandSubmit();
     }
+  };
+
+  // Close notification
+  const handleCloseNotification = () => {
+    setNotification(null);
   };
 
   // Get the error to display (either from status or command channel)
@@ -208,6 +231,24 @@ export const Homepage: React.FC = () => {
           </div>
         </section>
       </div>
+      
+      {/* Global notification */}
+      <Snackbar
+        open={notification !== null}
+        autoHideDuration={6000}
+        onClose={handleCloseNotification}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        {notification ? (
+          <Alert
+            onClose={handleCloseNotification}
+            severity={notification.type}
+            sx={{ width: '100%' }}
+          >
+            {notification.message}
+          </Alert>
+        ) : <div />}
+      </Snackbar>
     </Box>
   );
 };
