@@ -28,3 +28,5 @@ export const WebSocketEndpoints = {
 // Re-export for easier imports
 export const REST = RestEndpoints;
 export const WS = WebSocketEndpoints;
+export const SERVER_PORT = 8000;
+export const SERVER_HOSTNAME = window.location.hostname;

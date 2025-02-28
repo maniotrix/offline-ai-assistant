@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Box, IconButton, Paper, Typography, CircularProgress, Tooltip } from '@mui/material';
 import { NavigateBefore, NavigateNext, PlayArrow, Pause } from '@mui/icons-material';
 import useScreenCaptureStore from '../../stores/screenCaptureStore';
+import { getAnnotationImageUrl } from '../../utils/urlUtils';
 
 const Slideshow: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -146,7 +147,7 @@ const Slideshow: React.FC = () => {
             </Box>
           )}
           <img 
-            src={currentScreenshot.annotationPath || ''} 
+            src={getAnnotationImageUrl(currentScreenshot.annotationPath)}
             alt={`Screenshot from ${currentScreenshot.timestamp}`}
             style={{
               maxWidth: '100%',
