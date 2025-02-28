@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Paper, Typography, TextField, Button, CircularProgress } from '@mui/material';
-import { getScreenshot } from '../../api/api';
 import { useNavigate } from 'react-router-dom';
 import { karna } from '../../generated/messages';
 import './Homepage.css';
 import useStatusStore from '../../stores/statusStore';
 import useCommandStore from '../../stores/commandStore';
+import useScreenCaptureStore from '../../stores/screenCaptureStore';
 import { websocketService } from '../../api/websocket';
 import ScreenCaptureButton from './ScreenCaptureButton';
 
@@ -13,6 +13,7 @@ export const Homepage: React.FC = () => {
   // Get status and command state from Zustand stores
   const { status, connected: statusConnected, error: statusError } = useStatusStore();
   const { commandResponse, connected: commandConnected, error: commandError, pendingCommands } = useCommandStore();
+  const { captureResult } = useScreenCaptureStore();
   
   const [command, setCommand] = useState('');
   const [domain, setDomain] = useState('');
@@ -27,19 +28,18 @@ export const Homepage: React.FC = () => {
     if (statusConnected) {
       websocketService.requestStatus().catch(console.error);
     }
-
-    // Load initial screenshot
-    fetchScreenshot();
   }, [statusConnected]);
 
-  const fetchScreenshot = async () => {
-    try {
-      const screenshotData = await getScreenshot();
-      setScreenshot(screenshotData);
-    } catch (error) {
-      console.error('Failed to fetch screenshot:', error);
+  // Update screenshot when capture result changes
+  useEffect(() => {
+    if (captureResult && captureResult.screenshotEvents && captureResult.screenshotEvents.length > 0) {
+      // Get the latest screenshot from the capture result
+      const latestEvent = captureResult.screenshotEvents[captureResult.screenshotEvents.length - 1];
+      if (latestEvent.screenshotPath) {
+        setScreenshot(latestEvent.screenshotPath);
+      }
     }
-  };
+  }, [captureResult]);
 
   const handleCommandSubmit = async () => {
     if (!command.trim()) return;
@@ -147,9 +147,7 @@ export const Homepage: React.FC = () => {
             
             {/* Show screen capture button only when command has completed successfully AND needs training data */}
             {shouldShowCaptureButton() && (
-              <ScreenCaptureButton 
-                refreshScreenshot={fetchScreenshot}
-              />
+              <ScreenCaptureButton />
             )}
           </Box>
         </Box>

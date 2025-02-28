@@ -5,19 +5,10 @@ import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import useScreenCaptureStore from '../../stores/screenCaptureStore';
 import useCommandStore from '../../stores/commandStore';
 import { websocketService } from '../../api/websocket';
-import { getScreenshot } from '../../api/api';
 
-interface ScreenCaptureButtonProps {
-  onCaptureStopped?: () => void;
-  refreshScreenshot?: () => void;
-}
-
-const ScreenCaptureButton: React.FC<ScreenCaptureButtonProps> = ({ 
-  onCaptureStopped,
-  refreshScreenshot
-}) => {
+const ScreenCaptureButton: React.FC = () => {
   const [isStarting, setIsStarting] = useState(false);
-  const { isCapturing, setCapturing } = useScreenCaptureStore();
+  const { isCapturing } = useScreenCaptureStore();
   const { commandResponse } = useCommandStore();
   
   // Extract command UUID and domain from the command text
@@ -63,16 +54,7 @@ const ScreenCaptureButton: React.FC<ScreenCaptureButtonProps> = ({
     
     try {
       const { projectUuid, commandUuid } = extractCommandInfo();
-      
       await websocketService.stopScreenCapture(projectUuid, commandUuid);
-      
-      // Trigger any callbacks
-      if (onCaptureStopped) onCaptureStopped();
-      
-      // Refresh the screenshot after stopping capture
-      if (refreshScreenshot) {
-        setTimeout(refreshScreenshot, 500); // Small delay to ensure server has time to process
-      }
     } catch (error) {
       console.error('Failed to stop screen capture:', error);
     }
@@ -82,7 +64,7 @@ const ScreenCaptureButton: React.FC<ScreenCaptureButtonProps> = ({
   if (!commandResponse) {
     return null;
   }
-  
+
   return (
     <Badge
       variant="dot"
