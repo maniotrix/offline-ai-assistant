@@ -20,15 +20,35 @@ const ScreenCaptureButton: React.FC<ScreenCaptureButtonProps> = ({
   const { isCapturing, setCapturing } = useScreenCaptureStore();
   const { commandResponse } = useCommandStore();
   
+  // Extract command UUID and domain from the command text
+  const extractCommandInfo = () => {
+    if (!commandResponse || !commandResponse.commandText) return { projectUuid: 'default', commandUuid: `command-${Date.now()}` };
+    
+    try {
+      // Try to parse the command text as it might contain structured data
+      const commandText = commandResponse.commandText;
+      
+      // Extract UUID using regex
+      const uuidMatch = commandText.match(/uuid='([^']+)'/);
+      const commandUuid = uuidMatch ? uuidMatch[1] : `command-${Date.now()}`;
+      
+      // Extract domain using regex
+      const domainMatch = commandText.match(/domain='([^']+)'/);
+      const projectUuid = domainMatch ? domainMatch[1] : 'default';
+      
+      return { projectUuid, commandUuid };
+    } catch (error) {
+      console.error('Error parsing command text:', error);
+      return { projectUuid: 'default', commandUuid: `command-${Date.now()}` };
+    }
+  };
+  
   const handleStartCapture = async () => {
     if (!commandResponse) return;
     
     try {
       setIsStarting(true);
-      // Generate a UUID for the project (could be improved to be more specific)
-      const projectUuid = 'default';
-      // Use the command text as the command UUID to track this session
-      const commandUuid = commandResponse.commandText || `command-${Date.now()}`;
+      const { projectUuid, commandUuid } = extractCommandInfo();
       
       await websocketService.startScreenCapture(projectUuid, commandUuid);
       setIsStarting(false);
@@ -42,9 +62,7 @@ const ScreenCaptureButton: React.FC<ScreenCaptureButtonProps> = ({
     if (!commandResponse) return;
     
     try {
-      // Use the same projectUuid and commandUuid to stop the current session
-      const projectUuid = 'default';
-      const commandUuid = commandResponse.commandText || `command-${Date.now()}`;
+      const { projectUuid, commandUuid } = extractCommandInfo();
       
       await websocketService.stopScreenCapture(projectUuid, commandUuid);
       

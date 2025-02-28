@@ -29,16 +29,17 @@ export const Homepage: React.FC = () => {
     }
 
     // Load initial screenshot
-    const fetchScreenshot = async () => {
-      try {
-        const screenshotData = await getScreenshot();
-        setScreenshot(screenshotData);
-      } catch (error) {
-        console.error('Failed to fetch screenshot:', error);
-      }
-    };
     fetchScreenshot();
   }, [statusConnected]);
+
+  const fetchScreenshot = async () => {
+    try {
+      const screenshotData = await getScreenshot();
+      setScreenshot(screenshotData);
+    } catch (error) {
+      console.error('Failed to fetch screenshot:', error);
+    }
+  };
 
   const handleCommandSubmit = async () => {
     if (!command.trim()) return;
@@ -130,8 +131,12 @@ export const Homepage: React.FC = () => {
               {isExecuting ? 'Executing...' : 'Execute Command'}
             </Button>
             
-            {/* Show screen capture button only when command has completed */}
-            {isCommandCompleted && <ScreenCaptureButton />}
+            {/* Show screen capture button only when command has completed successfully */}
+            {isCommandCompleted && (
+              <ScreenCaptureButton 
+                refreshScreenshot={fetchScreenshot}
+              />
+            )}
           </Box>
         </Box>
 
