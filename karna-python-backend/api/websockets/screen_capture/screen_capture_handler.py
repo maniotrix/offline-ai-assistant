@@ -81,7 +81,12 @@ class ScreenCaptureWebSocketHandler(BaseWebSocketHandler[List[ScreenshotEvent]])
             elif method == "stop_capture":
                 message_content = getattr(request, method)
                 self.logger.info(f"Received stop capture request from client {client_id}")
-                await self._handle_stop_capture(websocket, request.stop_capture)
+                if self.service.is_capturing:
+                    await self._handle_stop_capture(websocket, request.stop_capture)
+                # else:
+                #     response = ScreenCaptureRPCResponse()
+                #     response.error = "No active screen capture session to stop"
+                #     await websocket.send_bytes(response.SerializeToString())
             else:
                 response = ScreenCaptureRPCResponse()
                 response.error = f"Unknown screen capture method: {method}"
