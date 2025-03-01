@@ -11,7 +11,7 @@ const Slideshow: React.FC = () => {
   const [isImageLoading, setIsImageLoading] = useState(true);
   const [selectedScreenshots, setSelectedScreenshots] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
-  const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+  const [notification, setNotification] = useState<{message: string, type: 'success' | 'error' | 'info'} | null>(null);
   
   const { captureResult } = useScreenCaptureStore();
 
@@ -208,11 +208,20 @@ const Slideshow: React.FC = () => {
             </Box>
           )}
           <Box sx={{ position: 'absolute', top: 8, left: 8, zIndex: 2 }}>
-            <Checkbox 
-              checked={selectedScreenshots.has(currentScreenshot.eventId || '')}
-              onChange={() => toggleScreenshotSelection(currentScreenshot.eventId || '')}
-              color="primary"
-            />
+            <Tooltip title="Select for deletion">
+              <Checkbox 
+                checked={selectedScreenshots.has(currentScreenshot.eventId || '')}
+                onChange={() => toggleScreenshotSelection(currentScreenshot.eventId || '')}
+                color="primary"
+                sx={{ 
+                  backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                  borderRadius: '4px',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)'
+                  }
+                }}
+              />
+            </Tooltip>
           </Box>
           <img 
             src={getAnnotationImageUrl(currentScreenshot.annotationPath)}
@@ -278,27 +287,8 @@ const Slideshow: React.FC = () => {
           disabled={selectedScreenshots.size === 0 || isSaving}
           sx={{ ml: 2 }}
         >
-          {isSaving ? 'Saving...' : 'Save Changes'}
+          {isSaving ? 'Saving...' : 'Delete Selected'}
         </Button>
-        
-        {/* Delete button */}
-        <Tooltip title="Delete selected screenshots">
-          <span>
-            <IconButton 
-              color="error" 
-              disabled={selectedScreenshots.size === 0}
-              onClick={() => {
-                // Just a visual indicator, actual deletion happens on save
-                setNotification({
-                  message: `${selectedScreenshots.size} screenshot(s) marked for deletion. Click Save to confirm.`,
-                  type: 'success'
-                });
-              }}
-            >
-              <Delete />
-            </IconButton>
-          </span>
-        </Tooltip>
       </Box>
       
       {/* Selection info */}

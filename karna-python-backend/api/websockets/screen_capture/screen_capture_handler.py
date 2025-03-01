@@ -83,6 +83,8 @@ class ScreenCaptureWebSocketHandler(BaseWebSocketHandler[List[ScreenshotEvent]])
             elif method == "stop_capture":
                 message_content = getattr(request, method)
                 self.logger.info(f"Received stop capture request from client {client_id}")
+                self.logger.info(f"Project UUID: {message_content.project_uuid}")
+                self.logger.info(f"Command UUID: {message_content.command_uuid}")
                 if self.service.is_capturing:
                     await self._handle_stop_capture(websocket, request.stop_capture)
                 # else:
@@ -92,7 +94,9 @@ class ScreenCaptureWebSocketHandler(BaseWebSocketHandler[List[ScreenshotEvent]])
             elif method == "update_capture":
                 message_content = getattr(request, method)
                 self.logger.info(f"Received update capture request from client {client_id}")
-                await self.handle_update_capture(websocket, message_content.update_capture)
+                self.logger.info(f"Project UUID: {message_content.project_uuid}")
+                self.logger.info(f"Command UUID: {message_content.command_uuid}")
+                await self.handle_update_capture(websocket, request.update_capture)
             else:
                 response = ScreenCaptureRPCResponse()
                 response.error = f"Unknown screen capture method: {method}"

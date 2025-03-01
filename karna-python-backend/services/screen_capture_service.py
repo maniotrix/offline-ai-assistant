@@ -393,12 +393,6 @@ class ScreenCaptureService(BaseService[List[ScreenshotEvent]]):
             is_special_key=is_special
         )
         
-        # Stop capturing if escape is pressed
-        if key == keyboard.Key.esc:
-            logger.info("Escape key pressed, stopping capture")
-            self.stop_capture()
-            return False
-        
         # Take screenshot with key context
         self._take_screenshot(
             event_description=event_desc,
@@ -406,6 +400,13 @@ class ScreenCaptureService(BaseService[List[ScreenshotEvent]]):
             key_code=str(key),
             is_special_key=is_special
         )
+        
+        # Stop capturing if escape is pressed
+        if key == keyboard.Key.esc:
+            logger.info("Escape key pressed, stopping capture")
+            self.stop_capture()
+            return False
+        
 
     def _on_click(self, x: int, y: int, button, pressed: bool):
         """Handle mouse click events"""
