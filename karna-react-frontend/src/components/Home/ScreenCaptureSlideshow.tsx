@@ -23,6 +23,14 @@ const Slideshow: React.FC = () => {
       return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
     }) || [];
 
+  // Reset capturing state if we have valid screenshots but the button still shows "Stop Recording"
+  useEffect(() => {
+    if (validScreenshots.length > 0 && useScreenCaptureStore.getState().isCapturing) {
+      // If we have valid screenshots but isCapturing is still true, reset it to false
+      useScreenCaptureStore.getState().setCapturing(false);
+    }
+  }, [validScreenshots.length]);
+
   const handleNext = useCallback(() => {
     if (validScreenshots.length) {
       setCurrentIndex((prev) => (prev + 1) % validScreenshots.length);
