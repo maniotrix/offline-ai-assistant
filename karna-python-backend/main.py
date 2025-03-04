@@ -13,10 +13,10 @@ from modules.command.command_processor import get_command_service_instance
 import config.db.settings as db_settings
 import asyncio
 from base.base_observer import AsyncCapableObserver
-from robot.utils import open_default_system_bboxes_url_maximized
+from robot.utils import open_default_system_bboxes_url_maximized, CHROME_SYSTEM_BOUNDING_BOXES_JSON_FILE_PATH
 import threading
 import time
-
+import os
 # Store reference to the main event loop
 loop = asyncio.get_event_loop()
 AsyncCapableObserver.set_main_loop(loop)
@@ -145,9 +145,15 @@ def open_browser_with_retry(max_retries=5, retry_delay=2):
             try:
                 # Wait for server to start
                 time.sleep(retry_delay)
-                open_default_system_bboxes_url_maximized()
-                logging.info("Successfully opened browser")
-                break
+                # check if chrome_system_bounding_boxes.json exists
+                if not os.path.exists(CHROME_SYSTEM_BOUNDING_BOXES_JSON_FILE_PATH):
+                    logging.info("Opening browser...")
+                    open_default_system_bboxes_url_maximized()
+                    logging.info("Successfully opened browser")
+                    break
+                else:
+                    logging.info("Chrome system bounding boxes already exists...skipping browser opening")
+                    break
             except Exception as e:
                 if attempt < max_retries - 1:
                     logging.warning(f"Failed to open browser (attempt {attempt + 1}): {e}")
