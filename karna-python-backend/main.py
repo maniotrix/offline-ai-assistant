@@ -13,6 +13,9 @@ from modules.command.command_processor import get_command_service_instance
 import config.db.settings as db_settings
 import asyncio
 from base.base_observer import AsyncCapableObserver
+from robot.utils import open_default_system_bboxes_url
+import threading
+import time
 
 # Store reference to the main event loop
 loop = asyncio.get_event_loop()
@@ -133,6 +136,29 @@ def get_orchestrator_instance(model_paths: dict = None):
         _orchestrator_instance = AssistantOrchestrator(model_paths)
     return _orchestrator_instance
 
+def open_browser_with_retry(max_retries=5, retry_delay=2):
+    """
+    Opens the browser with retry logic in a separate thread
+    """
+    def _open_browser():
+        for attempt in range(max_retries):
+            try:
+                # Wait for server to start
+                time.sleep(retry_delay)
+                open_default_system_bboxes_url()
+                logging.info("Successfully opened browser")
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    logging.warning(f"Failed to open browser (attempt {attempt + 1}): {e}")
+                    time.sleep(retry_delay)
+                else:
+                    logging.error(f"Failed to open browser after {max_retries} attempts: {e}")
+
+    # Start browser opening in a separate thread
+    browser_thread = threading.Thread(target=_open_browser, daemon=True)
+    browser_thread.start()
+
 @app.on_event("startup")
 async def startup_event():
     # Configure logging
@@ -160,9 +186,31 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    assistant = get_orchestrator_instance()
-    await assistant.stop()
+    try:
+        assistant = get_orchestrator_instance()
+        await assistant.stop()
+    except Exception as e:
+        logging.error(f"Error during shutdown: {e}")
+
+def run_app():
+    """
+    Run the FastAPI application with proper setup and cleanup
+    """
+    try:
+        # Initialize database settings
+        db_settings.use_default_settings()
+        
+        # Start browser opening process in background
+        open_browser_with_retry()
+        
+        # Run the FastAPI application
+        uvicorn.run("main:app", host="0.0.0.0", port=8000)
+    except Exception as e:
+        logging.error(f"Application startup error: {e}")
+        raise
+    finally:
+        # Ensure proper cleanup
+        logging.info("Shutting down application...")
 
 if __name__ == "__main__":
-    db_settings.use_default_settings()
-    uvicorn.run("main:app", host="0.0.0.0", port=8000)
+    run_app()

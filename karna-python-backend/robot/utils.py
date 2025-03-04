@@ -9,10 +9,10 @@ import urllib.parse
 import requests
 from urllib.error import URLError
 
-CHROME_SYSTEM_BOUNDING_BOXES_HTML_FILE_PATH = os.path.join(os.path.dirname(__file__), 'calculate_chrome_system_bboxes.html')
+CHROME_SYSTEM_BOUNDING_BOXES_HTML_FILE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data', 'calculate_chrome_system_bboxes.html')
 CHROME_SYSTEM_BOUNDING_BOXES_JSON_FILE_PATH = os.path.join(os.path.dirname(__file__), 'chrome_system_bounding_boxes.json')
 # its the url of html file served as static file in backend
-CHROME_SYSTEM_BOUNDING_BOXES_URL = "http://localhost:8000/calculate_chrome_system_bboxes.html"
+CHROME_SYSTEM_BOUNDING_BOXES_URL = "http://localhost:8000/data/calculate_chrome_system_bboxes.html"
 
 # ===== Utils =====
 def open_html_in_chrome(html_file_path):
