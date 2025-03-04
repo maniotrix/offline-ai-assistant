@@ -84,6 +84,22 @@
             ctx.fillStyle = 'red';
             ctx.fillText('Taskbar', taskbarBBox.x + 5, taskbarBBox.y + 20);
 
+            // send the bounding boxes to the backend
+            const boundingBoxes = {
+                taskbarBBox: taskbarBBox,
+                chromeBBox: chromeBBox,
+                renderBBox: renderBBox
+            };
+
+            // send the bounding boxes to the backend
+            fetch('/generate-system-bboxes', {
+                method: 'POST',
+                body: JSON.stringify(boundingBoxes)
+            })
+            .then(response => response.json())
+            .then(data => console.log(data))
+            .catch(error => console.error('Error:', error));
+
             // Provide download link for the annotated image
             const downloadLink = document.getElementById('downloadLink');
             downloadLink.href = canvas.toDataURL('image/png');
