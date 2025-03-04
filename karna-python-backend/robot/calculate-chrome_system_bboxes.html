@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Window & Taskbar BBoxes</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; margin: 20px; }
+        canvas { border: 1px solid #ccc; }
+        #downloadLink { margin-top: 20px; display: inline-block; }
+    </style>
+</head>
+<body>
+    <h1>Window & Taskbar Bounding Boxes</h1>
+    <canvas id="bboxCanvas"></canvas>
+    <br>
+    <a id="downloadLink" href="#" download="annotated_window.png">Download Annotated Image</a>
+
+    <script>
+        // Wait for the page to fully load
+        window.addEventListener('load', function () {
+            // Determine screen details
+            const screenWidth = window.screen.width;
+            const screenHeight = window.screen.height;
+            const availWidth = window.screen.availWidth;
+            const availHeight = window.screen.availHeight;
+
+            // Calculate taskbar bbox (assumed at bottom)
+            const taskbarHeight = screenHeight - availHeight;
+            const taskbarBBox = { x: 0, y: availHeight, width: screenWidth, height: taskbarHeight };
+
+            // Chrome window (approximated)
+            // window.screenX and screenY are the top-left of the browser window
+            const chromeBBox = {
+                x: window.screenX,
+                y: window.screenY,
+                width: window.outerWidth,
+                height: window.outerHeight
+            };
+
+            // Website render area (viewport) within the chrome window
+            // Approximation: assume the vertical chrome UI occupies (outerHeight - innerHeight) pixels at the top
+            const renderYOffset = window.outerHeight - window.innerHeight;
+            const renderBBox = {
+                x: window.screenX,
+                y: window.screenY + renderYOffset,
+                width: window.innerWidth,
+                height: window.innerHeight
+            };
+
+            // Log the bounding boxes
+            console.log('Taskbar BBox:', taskbarBBox);
+            console.log('Chrome Window BBox:', chromeBBox);
+            console.log('Website Render Area BBox:', renderBBox);
+
+            // Create a canvas that represents the full screen
+            const canvas = document.getElementById('bboxCanvas');
+            canvas.width = screenWidth;
+            canvas.height = screenHeight;
+            const ctx = canvas.getContext('2d');
+
+            // Fill background (simulate desktop background) with light gray
+            ctx.fillStyle = '#ddd';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw chrome window bbox in green
+            ctx.strokeStyle = 'green';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(chromeBBox.x, chromeBBox.y, chromeBBox.width, chromeBBox.height);
+            ctx.font = '16px sans-serif';
+            ctx.fillStyle = 'green';
+            ctx.fillText('Chrome Window', chromeBBox.x + 5, chromeBBox.y + 20);
+
+            // Draw website render area in blue
+            ctx.strokeStyle = 'blue';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(renderBBox.x, renderBBox.y, renderBBox.width, renderBBox.height);
+            ctx.fillStyle = 'blue';
+            ctx.fillText('Website Render Area', renderBBox.x + 5, renderBBox.y + 20);
+
+            // Draw taskbar area in red
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(taskbarBBox.x, taskbarBBox.y, taskbarBBox.width, taskbarBBox.height);
+            ctx.fillStyle = 'red';
+            ctx.fillText('Taskbar', taskbarBBox.x + 5, taskbarBBox.y + 20);
+
+            // Provide download link for the annotated image
+            const downloadLink = document.getElementById('downloadLink');
+            downloadLink.href = canvas.toDataURL('image/png');
+        });
+    </script>
+</body>
+</html>
