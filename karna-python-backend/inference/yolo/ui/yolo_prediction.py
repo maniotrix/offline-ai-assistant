@@ -1,5 +1,5 @@
 from ultralytics import YOLO # type: ignore
-from inference.yolo.ui.yolo_utils import export_bounding_boxes
+from inference.yolo.yolo_utils import export_bounding_boxes
 from inference import BaseInference
 import os
 class YOLOPrediction(BaseInference):
