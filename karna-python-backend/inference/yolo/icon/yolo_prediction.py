@@ -47,13 +47,11 @@ class YOLO_ICON_Prediction(BaseInference):
         Args:
             image_path (str): The path to the image.
         Returns:
-            results (Any): The results of the prediction.
-            sample_output (dict): {
-                    "imagePath": image_path,
-                    "originalWidth": original_width,
-                    "originalHeight": original_height,
-                    "boundingBoxes": bounding_boxes
-            }   
+            BoundingBoxResult: Object containing image information and bounding boxes with fields:
+                    image_path: Path to the image
+                    original_width: Original width of the image
+                    original_height: Original height of the image
+                    bounding_boxes: List of BoundingBox objects
         """
         results = self.predict(image_path)
         self.logger.info(f"YOLO single image prediction results: {results}")
@@ -65,14 +63,12 @@ class YOLO_ICON_Prediction(BaseInference):
         Args:
             image_paths (list[str]): The paths to the images.
         Returns:
-            results (list[Any]): The results of the prediction.
-            sample_output (list[dict]): The sample output of the prediction.
-            [{
-                "imagePath": image_path,
-                "originalWidth": original_width,
-                "originalHeight": original_height,
-                "boundingBoxes": bounding_boxes
-            }]
+            list[BoundingBoxResult]: List of objects containing image information and bounding boxes.
+            Each BoundingBoxResult has fields:
+                image_path: Path to the image
+                original_width: Original width of the image
+                original_height: Original height of the image
+                bounding_boxes: List of BoundingBox objects
         """
         self.logger.info(f"YOLO batch prediction started for {len(image_paths)} images")
         results = []
