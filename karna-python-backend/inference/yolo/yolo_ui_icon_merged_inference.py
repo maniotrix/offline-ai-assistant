@@ -4,6 +4,8 @@ import json
 import os
 from datetime import datetime
 
+import cv2
+
 # Replace relative imports with absolute imports
 from inference import BoundingBoxResult
 from inference.yolo.ui.yolo_prediction import YOLO_UI_Prediction
@@ -169,3 +171,31 @@ class Merged_UI_IconBBoxes:
         
         # Get merged bounding boxes using the existing method
         return cls.get_merged_ui_icon_bboxes(screenshot_events)
+    
+    
+    @classmethod
+    def visualise_merged_ui_icon_bboxes(cls, screenshot_events: List[ScreenshotEvent]):
+        """
+        Visualise merged UI and icon bounding boxes.
+        """
+        merged_results = cls.get_merged_ui_icon_bboxes(screenshot_events)
+        for event_id, merged_result in merged_results.items():
+            cls.logger.info(f"Visualising merged bounding boxes for event ID: {event_id}")
+            cls.visualise_merged_bboxes(merged_result, merged_result.image_path)
+
+    @classmethod
+    def visualise_merged_bboxes(cls, merged_result: BoundingBoxResult, image_path: str):
+        """
+        Visualise merged bounding boxes.
+        """
+        cls.logger.info(f"Visualising merged bounding boxes for image: {image_path}")
+        
+        # use open cv to visualise the merged bounding boxes on the image
+        image = cv2.imread(image_path)
+        for bbox in merged_result.bounding_boxes:
+            image = cv2.rectangle(image, (bbox.x, bbox.y), (bbox.x + bbox.width, bbox.y + bbox.height), (0, 0, 255), 2)
+            # add bbox class name and confidence score to the image
+            cv2.putText(image, f"{bbox.class_name} {bbox.confidence:.2f}", (bbox.x, bbox.y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+        cv2.imshow("Merged Bounding Boxes", image)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()

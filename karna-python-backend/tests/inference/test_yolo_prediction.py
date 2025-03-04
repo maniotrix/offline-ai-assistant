@@ -5,6 +5,7 @@ from inference.yolo.ui.yolo_prediction import YOLO_UI_Prediction
 from inference.yolo.icon.yolo_prediction import YOLO_ICON_Prediction
 from inference.yolo.yolo_ui_icon_merged_inference import Merged_UI_IconBBoxes
 from config.paths import workspace_data_dir, workspace_dir
+from services.screen_capture_service import ScreenshotEvent
 
 
 @pytest.fixture
@@ -130,4 +131,21 @@ def test_merged_ui_icon_predictions_from_json(screenshot_events):
         logger.info("Cleaning up temporary JSON file")
         if os.path.exists(json_file_path):
             os.remove(json_file_path)
+            
+def test_visualise_merged_ui_icon_bboxes(screenshot_events):
+    # Set up logging for this test
+    logger = logging.getLogger("test_visualise_merged_ui_icon_bboxes")
+    logger.setLevel(logging.INFO)
+    
+    logger.info("Visualising merged UI and icon bounding boxes")
+    # load events from json file
+    # convert screenshot_paths to proper paths using paths config
+    for event in screenshot_events:
+        if "screenshot_path" in event:
+            event["screenshot_path"] = str(workspace_dir / event["screenshot_path"]) # type: ignore
+    # visualise the merged bounding boxes
+    # load screenshot_events as ScreenshotEvent objects
+    screenshot_events = [ScreenshotEvent(**event) for event in screenshot_events]
+    Merged_UI_IconBBoxes.visualise_merged_ui_icon_bboxes(screenshot_events)
+    
 
