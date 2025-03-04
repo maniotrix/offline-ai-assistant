@@ -270,6 +270,10 @@ def open_chrome_maximized_then_navigate(url_or_file_path, wait_time=2.0):
         robot.hotkey('win', 'up')
         robot.wait(wait_time)
         
+        # Open new tab
+        robot.hotkey('ctrl', 't')
+        robot.wait(1)
+        
         # Focus on the address bar with Ctrl+L
         robot.hotkey('ctrl', 'l')
         robot.wait(0.5)
