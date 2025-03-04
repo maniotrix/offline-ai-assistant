@@ -139,7 +139,8 @@ def open_default_system_bboxes_url(max_retries=3, retry_delay=2):
                     
                     for path in chrome_paths:
                         if os.path.exists(path):
-                            subprocess.Popen([path, CHROME_SYSTEM_BOUNDING_BOXES_URL])
+                            # Add --start-maximized flag to ensure Chrome opens maximized
+                            subprocess.Popen([path, '--start-maximized', CHROME_SYSTEM_BOUNDING_BOXES_URL])
                             return True
                             
                 # Fallback to system default Chrome
@@ -209,6 +210,100 @@ def generate_system_bounding_boxes(results):
         print(f"Unexpected error generating system bounding boxes: {e}")
         return False
 
+def open_chrome_maximized_then_navigate(url_or_file_path, wait_time=2.0):
+    """
+    Opens Chrome on Windows by pressing the Windows key, typing "Google Chrome",
+    selecting the first profile, and maximizing the window before navigating to the URL.
+    
+    Args:
+        url_or_file_path (str): URL or file path to open in Chrome
+        wait_time (float): Time to wait between actions in seconds
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    from .robot import Robot
+    import os
+    import platform
+    
+    # Check if running on Windows
+    if platform.system() != "Windows":
+        print("This function currently only supports Windows.")
+        return False
+    
+    try:
+        # Determine if input is a file path or URL
+        is_file = os.path.exists(url_or_file_path)
+        
+        # Convert file path to URL if needed
+        if is_file:
+            from pathlib import Path
+            file_path = Path(url_or_file_path).resolve()
+            url = f"file://{file_path}"
+        else:
+            url = url_or_file_path
+            
+        # Initialize robot
+        robot = Robot()
+        
+        # Press Windows key
+        robot.press_key('win')
+        robot.wait(wait_time)
+        
+        # Type "Google Chrome"
+        robot.type_text("Google Chrome")
+        robot.wait(wait_time)
+        
+        # Press Enter to launch Chrome
+        robot.press_key('enter')
+        robot.wait(wait_time * 2)  # Wait longer for Chrome to start
+        
+        # Press Tab to select the first profile (if profile selection appears)
+        robot.press_key('tab')
+        robot.wait(0.5)
+        
+        # Press Space to open the selected profile
+        robot.press_key('space')
+        robot.wait(wait_time * 2)  # Wait for Chrome to fully open
+        
+        # Press Windows + Up arrow to maximize
+        robot.hotkey('win', 'up')
+        robot.wait(wait_time)
+        
+        # Focus on the address bar with Ctrl+L
+        robot.hotkey('ctrl', 'l')
+        robot.wait(0.5)
+        
+        # Clear any existing text
+        robot.hotkey('ctrl', 'a')
+        robot.wait(0.2)
+        
+        # Type the URL
+        robot.type_text(url)
+        robot.wait(0.2)
+        
+        # Press Enter to navigate
+        robot.press_key('enter')
+        
+        return True
+        
+    except Exception as e:
+        print(f"Error opening Chrome and navigating: {str(e)}")
+        return False
+
+def open_default_system_bboxes_html_maximized():
+    """
+    Opens the default system bboxes HTML file in Chrome with a maximized window.
+    """
+    return open_chrome_maximized_then_navigate(CHROME_SYSTEM_BOUNDING_BOXES_HTML_FILE_PATH)
+    
+def open_default_system_bboxes_url_maximized():
+    """
+    Opens the default system bboxes URL in Chrome with a maximized window.
+    """
+    return open_chrome_maximized_then_navigate(CHROME_SYSTEM_BOUNDING_BOXES_URL)
+
 if __name__ == "__main__":
     # Example usage
-    open_default_system_bboxes_html()
+    # open_default_system_bboxes_html()
+    open_chrome_maximized_then_navigate("https://www.google.com")

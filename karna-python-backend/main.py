@@ -13,7 +13,7 @@ from modules.command.command_processor import get_command_service_instance
 import config.db.settings as db_settings
 import asyncio
 from base.base_observer import AsyncCapableObserver
-from robot.utils import open_default_system_bboxes_url
+from robot.utils import open_default_system_bboxes_url_maximized
 import threading
 import time
 
@@ -145,7 +145,7 @@ def open_browser_with_retry(max_retries=5, retry_delay=2):
             try:
                 # Wait for server to start
                 time.sleep(retry_delay)
-                open_default_system_bboxes_url()
+                open_default_system_bboxes_url_maximized()
                 logging.info("Successfully opened browser")
                 break
             except Exception as e:
