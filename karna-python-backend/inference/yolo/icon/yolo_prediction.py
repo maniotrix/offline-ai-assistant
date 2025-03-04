@@ -2,11 +2,11 @@ from ultralytics import YOLO # type: ignore
 from inference.yolo.yolo_utils import export_bounding_boxes
 from inference import BaseInference
 import os
-class YOLO_UI_Prediction(BaseInference):
+class YOLO_ICON_Prediction(BaseInference):
     """
     YOLO prediction class.
     """
-    model_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "model/yolo11x_web_ui_1024_50_epoch_best.pt"))
+    model_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "model/omniparser-model.pt"))
     def __init__(self):
         """
         Initialize the YOLO prediction class.
@@ -85,7 +85,7 @@ class YOLO_UI_Prediction(BaseInference):
 # if __name__ == "__main__":
 #     # 
 #     import json
-#     yolo_prediction = YOLO_UI_Prediction()
+#     yolo_prediction = YOLOPrediction()
 #     screenshot_events_json_path = "data/youtube.com/123e4567-e89b-12d3-a456-426614174000/screenshot_events_123e4567-e89b-12d3-a456-426614174000.json"
     
 #     with open(screenshot_events_json_path, "r") as f:
