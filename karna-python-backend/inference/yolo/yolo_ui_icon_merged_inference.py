@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 
 import cv2
+import numpy as np
 
 # Replace relative imports with absolute imports
 from inference import BoundingBoxResult
@@ -186,16 +187,44 @@ class Merged_UI_IconBBoxes:
     @classmethod
     def visualise_merged_bboxes(cls, merged_result: BoundingBoxResult, image_path: str):
         """
-        Visualise merged bounding boxes.
+        Visualise merged bounding boxes with different colors for different classes.
         """
         cls.logger.info(f"Visualising merged bounding boxes for image: {image_path}")
         
         # use open cv to visualise the merged bounding boxes on the image
         image = cv2.imread(image_path)
+        
+        # Create a color mapping for different classes
+        # Extract unique class names from the bounding boxes
+        unique_classes = set(bbox.class_name for bbox in merged_result.bounding_boxes)
+        
+        # Generate a color map for each unique class
+        color_map = {}
+        for i, class_name in enumerate(unique_classes):
+            # Generate distinct colors using HSV color space and convert to BGR
+            hue = int(255 * i / max(1, len(unique_classes)))
+            color = cv2.cvtColor(np.array([[[hue, 255, 255]]], dtype=np.uint8), cv2.COLOR_HSV2BGR)[0][0]
+            # Convert to tuple of integers for OpenCV
+            color_map[class_name] = (int(color[0]), int(color[1]), int(color[2]))
+        
+        # Draw bounding boxes with class-specific colors
         for bbox in merged_result.bounding_boxes:
-            image = cv2.rectangle(image, (bbox.x, bbox.y), (bbox.x + bbox.width, bbox.y + bbox.height), (0, 0, 255), 2)
-            # add bbox class name and confidence score to the image
-            cv2.putText(image, f"{bbox.class_name} {bbox.confidence:.2f}", (bbox.x, bbox.y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+            # Get color for this class (default to red if not found)
+            color = color_map.get(bbox.class_name, (0, 0, 255))
+            
+            # Draw rectangle with class-specific color
+            image = cv2.rectangle(image, (bbox.x, bbox.y), (bbox.x + bbox.width, bbox.y + bbox.height), color, 2)
+            
+            # Add bbox class name and confidence score with the same color
+            cv2.putText(image, f"{bbox.class_name} {bbox.confidence:.2f}", 
+                       (bbox.x, bbox.y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+        
+        # Add a legend to show class-color mapping
+        legend_y = 30
+        for class_name, color in color_map.items():
+            cv2.putText(image, class_name, (10, legend_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+            legend_y += 20
+            
         cv2.imshow("Merged Bounding Boxes", image)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
