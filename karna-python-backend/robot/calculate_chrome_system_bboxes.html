@@ -94,10 +94,13 @@
             // send the bounding boxes to the backend
             fetch('/generate-system-bboxes', {
                 method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify(boundingBoxes)
             })
             .then(response => response.json())
-            .then(data => console.log(data))
+            .then(data => console.log('Success:', data))
             .catch(error => console.error('Error:', error));
 
             // Provide download link for the annotated image

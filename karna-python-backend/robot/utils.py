@@ -4,10 +4,17 @@ import platform
 import webbrowser
 from pathlib import Path
 import json
+import time
+import urllib.parse
+import requests
+from urllib.error import URLError
 
 CHROME_SYSTEM_BOUNDING_BOXES_HTML_FILE_PATH = os.path.join(os.path.dirname(__file__), 'calculate_chrome_system_bboxes.html')
 CHROME_SYSTEM_BOUNDING_BOXES_JSON_FILE_PATH = os.path.join(os.path.dirname(__file__), 'chrome_system_bounding_boxes.json')
+# its the url of html file served as static file in backend
+CHROME_SYSTEM_BOUNDING_BOXES_URL = "http://localhost:8000/calculate_chrome_system_bboxes.html"
 
+# ===== Utils =====
 def open_html_in_chrome(html_file_path):
     """
     Opens an HTML file in Chrome browser.
@@ -91,6 +98,67 @@ def open_default_system_bboxes_html():
     """
     open_html_in_chrome(CHROME_SYSTEM_BOUNDING_BOXES_HTML_FILE_PATH)
     
+def open_default_system_bboxes_url(max_retries=3, retry_delay=2):
+    """
+    Opens the default system bboxes URL in Chrome.
+    
+    Args:
+        max_retries (int): Maximum number of retry attempts if opening fails
+        retry_delay (int): Delay in seconds between retries
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    def validate_url(url):
+        """Validate if URL is properly formatted and accessible"""
+        try:
+            result = urllib.parse.urlparse(url)
+            return all([result.scheme, result.netloc])
+        except Exception:
+            return False
+            
+    try:
+        # Validate URL format
+        if not validate_url(CHROME_SYSTEM_BOUNDING_BOXES_URL):
+            print(f"Error: Invalid URL format: {CHROME_SYSTEM_BOUNDING_BOXES_URL}")
+            return False
+            
+        # Try to open URL with retries
+        for attempt in range(max_retries):
+            try:
+                # Check if server is accessible
+                requests.head(CHROME_SYSTEM_BOUNDING_BOXES_URL, timeout=5)
+                
+                # Try to open specifically in Chrome
+                if platform.system() == "Windows":
+                    chrome_paths = [
+                        os.path.join(os.environ.get('PROGRAMFILES', 'C:\\Program Files'), 'Google\\Chrome\\Application\\chrome.exe'),
+                        os.path.join(os.environ.get('PROGRAMFILES(X86)', 'C:\\Program Files (x86)'), 'Google\\Chrome\\Application\\chrome.exe'),
+                        os.path.join(os.environ.get('LOCALAPPDATA', ''), 'Google\\Chrome\\Application\\chrome.exe')
+                    ]
+                    
+                    for path in chrome_paths:
+                        if os.path.exists(path):
+                            subprocess.Popen([path, CHROME_SYSTEM_BOUNDING_BOXES_URL])
+                            return True
+                            
+                # Fallback to system default Chrome
+                browser = webbrowser.get('chrome')
+                browser.open(CHROME_SYSTEM_BOUNDING_BOXES_URL)
+                return True
+                
+            except (requests.RequestException, webbrowser.Error) as e:
+                if attempt < max_retries - 1:
+                    print(f"Attempt {attempt + 1} failed: {str(e)}. Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                else:
+                    print(f"Failed to open URL after {max_retries} attempts: {str(e)}")
+                    return False
+                    
+    except Exception as e:
+        print(f"Unexpected error opening system bboxes URL: {str(e)}")
+        return False
+
 def generate_system_bounding_boxes(results):
     """
     Generates the system bounding boxes JSON file.
