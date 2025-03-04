@@ -74,6 +74,7 @@ class YOLOPrediction(BaseInference):
                 "boundingBoxes": bounding_boxes
             }]
         """
+        self.logger.info(f"YOLO batch prediction started for {len(image_paths)} images")
         results = []
         for image_path in image_paths:
             results.append(self.predict_and_export_bboxes(image_path))

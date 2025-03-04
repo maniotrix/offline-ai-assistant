@@ -674,6 +674,9 @@ class ScreenCaptureService(BaseService[List[ScreenshotEvent]]):
                 # Remove the latest event which would be the click that initiated the stop request
                 if self.current_session.screenshot_events and len(self.current_session.screenshot_events) > 0:
                     logger.info("Removing last screenshot event that triggered the stop capture")
+                    # delete the last screenshot file
+                    if self.current_session.screenshot_events[-1].screenshot_path:
+                        os.remove(self.current_session.screenshot_events[-1].screenshot_path)
                     self.current_session.screenshot_events.pop()
                 
                 # Process all screenshots and create annotations
