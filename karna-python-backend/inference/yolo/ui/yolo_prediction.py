@@ -1,7 +1,13 @@
 from ultralytics import YOLO # type: ignore
 from inference.yolo.yolo_utils import export_bounding_boxes
-from inference import BaseInference
+from inference import BaseInference, BoundingBoxResult
 import os
+from PIL import Image
+from typing import Union, List, Any
+import numpy as np
+import uuid
+import tempfile
+
 class YOLO_UI_Prediction(BaseInference):
     """
     YOLO prediction class.
@@ -15,67 +21,105 @@ class YOLO_UI_Prediction(BaseInference):
         self.model = YOLO(self.model_path)
         self.logger.info(f"YOLO model loaded from {self.model_path}")
 
-    def predict(self, image_path: str):
+    def predict(self, image: Union[str, Image.Image]):
         """
         Predict the bounding boxes of the image.
         Args:
-            image_path (str): The path to the image.
+            image: Either a path to an image (str) or a PIL Image object.
         Returns:
             results (Any): The results of the prediction.
         """
-        results = self.model(image_path)
+        results = self.model(image)
         self.logger.info(f"YOLO single image prediction results: {results}")
         return results
 
-    def predict_batch(self, image_paths: list[str]):
+    def predict_batch(self, images: List[Union[str, Image.Image]]):
         """
         Predict the bounding boxes of the images.
         Args:
-            image_paths (list[str]): The paths to the images.
+            images: List of either image paths (str) or PIL Image objects.
         Returns:
             results (list[Any]): The results of the prediction.
         """
         results = []
-        for image_path in image_paths:
-            results.append(self.predict(image_path))
+        for image in images:
+            results.append(self.predict(image))
         self.logger.info(f"YOLO batch prediction results: {results}")
         return results
     
-    def predict_and_export_bboxes(self, image_path: str):
+    def predict_and_export_bboxes(self, image: Union[str, Image.Image]):
         """
         Predict the bounding boxes of the image and export the results.
         Args:
-            image_path (str): The path to the image.
+            image: Either a path to an image (str) or a PIL Image object.
         Returns:
             BoundingBoxResult: Object containing image information and bounding boxes with fields:
-                    image_path: Path to the image
+                    image_path: Path to the image (or a generated ID for PIL images)
                     original_width: Original width of the image
                     original_height: Original height of the image
                     bounding_boxes: List of BoundingBox objects
         """
-        results = self.predict(image_path)
-        self.logger.info(f"YOLO single image prediction results: {results}")
-        return export_bounding_boxes(self.model, image_path=image_path, results=results)
+        results = self.predict(image)
+        
+        # Handle PIL Image objects
+        if isinstance(image, Image.Image):
+            # Create a temporary file to save the image for processing
+            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_file:
+                temp_path = temp_file.name
+                image.save(temp_path)
+                
+            bbox_result = export_bounding_boxes(self.model, image_path=temp_path, results=results)
+            
+            # Clean up the temporary file
+            os.unlink(temp_path)
+            
+            # Update the image_path to indicate it was from a PIL Image
+            bbox_result.image_path = f"pil_image_{uuid.uuid4()}"
+            
+            return bbox_result
+        else:
+            # Handle string paths as before
+            return export_bounding_boxes(self.model, image_path=image, results=results)
     
-    def predict_and_export_bboxes_batch(self, image_paths: list[str]):
+    def predict_and_export_bboxes_batch(self, images: List[Union[str, Image.Image]]):
         """
         Predict the bounding boxes of the images and export the results.
         Args:
-            image_paths (list[str]): The paths to the images.
+            images: List of either image paths (str) or PIL Image objects.
         Returns:
             list[BoundingBoxResult]: List of objects containing image information and bounding boxes.
             Each BoundingBoxResult has fields:
-                image_path: Path to the image
+                image_path: Path to the image (or a generated ID for PIL images)
                 original_width: Original width of the image
                 original_height: Original height of the image
                 bounding_boxes: List of BoundingBox objects
         """
-        self.logger.info(f"YOLO batch prediction started for {len(image_paths)} images")
+        self.logger.info(f"YOLO batch prediction started for {len(images)} images")
         results = []
-        for image_path in image_paths:
-            results.append(self.predict_and_export_bboxes(image_path))
+        for image in images:
+            results.append(self.predict_and_export_bboxes(image))
         self.logger.info(f"YOLO batch prediction results: {results}")
         return results
+    
+    def predict_pil_image(self, pil_image: Image.Image):
+        """
+        Predict the bounding boxes of a PIL image.
+        Args:
+            pil_image (Image.Image): The PIL Image object.
+        Returns:
+            results (Any): The results of the prediction.
+        """
+        return self.predict(pil_image)
+    
+    def predict_and_export_bboxes_pil(self, pil_image: Image.Image):
+        """
+        Predict the bounding boxes of a PIL image and export the results.
+        Args:
+            pil_image (Image.Image): The PIL Image object.
+        Returns:
+            BoundingBoxResult: Object containing image information and bounding boxes.
+        """
+        return self.predict_and_export_bboxes(pil_image)
 
 
 # if __name__ == "__main__":

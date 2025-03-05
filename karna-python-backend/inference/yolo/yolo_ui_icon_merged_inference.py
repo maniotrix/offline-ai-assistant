@@ -6,12 +6,14 @@ from datetime import datetime
 
 import cv2
 import numpy as np
+from PIL import Image
 
 # Replace relative imports with absolute imports
 from inference import BoundingBoxResult
 from inference.yolo.ui.yolo_prediction import YOLO_UI_Prediction
 from inference.yolo.icon.yolo_prediction import YOLO_ICON_Prediction
 from services.screen_capture_service import ScreenshotEvent
+from utils.image_utils import crop_to_render_area
 
 
 class Merged_UI_IconBBoxes:
@@ -51,13 +53,64 @@ class Merged_UI_IconBBoxes:
             bounding_boxes=merged_bboxes
         )
     
+    @staticmethod
+    def path_to_pil_image(image_path: str, should_crop: bool = True) -> Image.Image:
+        """
+        Convert an image path to a PIL Image.
+        
+        Parameters:
+            image_path (str): Path to the image.
+            should_crop (bool): Whether to crop the image to the website render area. Default is True.
+            
+        Returns:
+            Image.Image: PIL Image object.
+            
+        Raises:
+            FileNotFoundError: If the image file does not exist.
+            ValueError: If the image cannot be opened.
+        """
+        if not os.path.exists(image_path):
+            raise FileNotFoundError(f"Image file not found: {image_path}")
+        
+        try:
+            # Use the crop_to_render_area function to get the image
+            return crop_to_render_area(image_path, should_crop=should_crop)
+        except Exception as e:
+            raise ValueError(f"Failed to open image: {str(e)}")
+    
     @classmethod
-    def get_ui_bboxes(cls, screenshot_paths: List[str]) -> List[BoundingBoxResult]:
+    def paths_to_pil_images(cls, image_paths: List[str], should_crop: bool = True) -> List[Image.Image]:
+        """
+        Convert a list of image paths to PIL Images.
+        
+        Parameters:
+            image_paths (List[str]): List of image paths.
+            should_crop (bool): Whether to crop the images to the website render area. Default is True.
+            
+        Returns:
+            List[Image.Image]: List of PIL Image objects.
+        """
+        cls.logger.info(f"Converting {len(image_paths)} image paths to PIL Images")
+        pil_images = []
+        
+        for image_path in image_paths:
+            try:
+                pil_image = cls.path_to_pil_image(image_path, should_crop=should_crop)
+                pil_images.append(pil_image)
+            except (FileNotFoundError, ValueError) as e:
+                cls.logger.warning(f"Skipping image {image_path}: {str(e)}")
+        
+        cls.logger.info(f"Successfully converted {len(pil_images)} images to PIL format")
+        return pil_images
+    
+    @classmethod
+    def get_ui_bboxes(cls, screenshot_paths: List[str], should_crop: bool = True) -> List[BoundingBoxResult]:
         """
         Get UI bounding boxes from screenshot paths.
         
         Parameters:
             screenshot_paths (List[str]): List of screenshot paths.
+            should_crop (bool): Whether to crop the images to the website render area. Default is True.
             
         Returns:
             List[BoundingBoxResult]: List of UI bounding box results.
@@ -65,19 +118,54 @@ class Merged_UI_IconBBoxes:
         cls.logger.info("Initializing YOLO UI prediction model")
         ui_model = YOLO_UI_Prediction()
         
-        cls.logger.info("Starting UI bounding box prediction")
+        # If cropping is enabled, first crop the images and then predict
+        if should_crop:
+            cls.logger.info("Cropping images to website render area before UI prediction")
+            pil_images = cls.paths_to_pil_images(screenshot_paths, should_crop=True)
+            return cls.get_ui_bboxes_pil(pil_images, screenshot_paths)
+        
+        cls.logger.info("Starting UI bounding box prediction without cropping")
         ui_bboxes_results = ui_model.predict_and_export_bboxes_batch(screenshot_paths)
         cls.logger.info(f"Completed UI bounding box prediction, found {len(ui_bboxes_results)} results")
         
         return ui_bboxes_results
     
     @classmethod
-    def get_icon_bboxes(cls, screenshot_paths: List[str]) -> List[BoundingBoxResult]:
+    def get_ui_bboxes_pil(cls, pil_images: List[Image.Image], original_paths: List[str]) -> List[BoundingBoxResult]:
+        """
+        Get UI bounding boxes from PIL images.
+        
+        Parameters:
+            pil_images (List[Image.Image]): List of PIL images.
+            original_paths (List[str]): List of original image paths for reference.
+            
+        Returns:
+            List[BoundingBoxResult]: List of UI bounding box results.
+        """
+        cls.logger.info("Initializing YOLO UI prediction model for PIL images")
+        ui_model = YOLO_UI_Prediction()
+        
+        cls.logger.info("Starting UI bounding box prediction with PIL images")
+        ui_bboxes_results = []
+        
+        for pil_image, original_path in zip(pil_images, original_paths):
+            result = ui_model.predict_and_export_bboxes_pil(pil_image)
+            # Update the image path to the original path
+            result.image_path = original_path
+            ui_bboxes_results.append(result)
+        
+        cls.logger.info(f"Completed UI bounding box prediction with PIL images, found {len(ui_bboxes_results)} results")
+        
+        return ui_bboxes_results
+    
+    @classmethod
+    def get_icon_bboxes(cls, screenshot_paths: List[str], should_crop: bool = True) -> List[BoundingBoxResult]:
         """
         Get icon bounding boxes from screenshot paths.
         
         Parameters:
             screenshot_paths (List[str]): List of screenshot paths.
+            should_crop (bool): Whether to crop the images to the website render area. Default is True.
             
         Returns:
             List[BoundingBoxResult]: List of icon bounding box results.
@@ -85,19 +173,54 @@ class Merged_UI_IconBBoxes:
         cls.logger.info("Initializing YOLO Icon prediction model")
         icon_model = YOLO_ICON_Prediction()
         
-        cls.logger.info("Starting Icon bounding box prediction")
+        # If cropping is enabled, first crop the images and then predict
+        if should_crop:
+            cls.logger.info("Cropping images to website render area before Icon prediction")
+            pil_images = cls.paths_to_pil_images(screenshot_paths, should_crop=True)
+            return cls.get_icon_bboxes_pil(pil_images, screenshot_paths)
+        
+        cls.logger.info("Starting Icon bounding box prediction without cropping")
         icon_bboxes_results = icon_model.predict_and_export_bboxes_batch(screenshot_paths)
         cls.logger.info(f"Completed Icon bounding box prediction, found {len(icon_bboxes_results)} results")
         
         return icon_bboxes_results
     
     @classmethod
-    def get_merged_ui_icon_bboxes(cls, screenshot_events: List[ScreenshotEvent]) -> Dict[str, BoundingBoxResult]:
+    def get_icon_bboxes_pil(cls, pil_images: List[Image.Image], original_paths: List[str]) -> List[BoundingBoxResult]:
+        """
+        Get icon bounding boxes from PIL images.
+        
+        Parameters:
+            pil_images (List[Image.Image]): List of PIL images.
+            original_paths (List[str]): List of original image paths for reference.
+            
+        Returns:
+            List[BoundingBoxResult]: List of icon bounding box results.
+        """
+        cls.logger.info("Initializing YOLO Icon prediction model for PIL images")
+        icon_model = YOLO_ICON_Prediction()
+        
+        cls.logger.info("Starting Icon bounding box prediction with PIL images")
+        icon_bboxes_results = []
+        
+        for pil_image, original_path in zip(pil_images, original_paths):
+            result = icon_model.predict_and_export_bboxes_pil(pil_image)
+            # Update the image path to the original path
+            result.image_path = original_path
+            icon_bboxes_results.append(result)
+        
+        cls.logger.info(f"Completed Icon bounding box prediction with PIL images, found {len(icon_bboxes_results)} results")
+        
+        return icon_bboxes_results
+    
+    @classmethod
+    def get_merged_ui_icon_bboxes(cls, screenshot_events: List[ScreenshotEvent], should_crop: bool = True) -> Dict[str, BoundingBoxResult]:
         """
         Get merged UI and icon bounding boxes from screenshot events.
         
         Parameters:
             screenshot_events (List[ScreenshotEvent]): List of screenshot events.
+            should_crop (bool): Whether to crop the images to the website render area. Default is True.
 
         Returns:
             Dict[str, BoundingBoxResult]: Dictionary mapping event IDs to their merged UI and icon bounding boxes.
@@ -110,8 +233,8 @@ class Merged_UI_IconBBoxes:
         cls.logger.info(f"Found {len(screenshot_paths)} screenshot paths")
         
         # Get UI and icon bounding boxes
-        ui_bboxes_results = cls.get_ui_bboxes(screenshot_paths)
-        icon_bboxes_results = cls.get_icon_bboxes(screenshot_paths)
+        ui_bboxes_results = cls.get_ui_bboxes(screenshot_paths, should_crop=should_crop)
+        icon_bboxes_results = cls.get_icon_bboxes(screenshot_paths, should_crop=should_crop)
         
         # Merge the UI and icon bounding boxes
         cls.logger.info("Merging UI and Icon bounding boxes")
@@ -124,14 +247,54 @@ class Merged_UI_IconBBoxes:
         cls.logger.info(f"Merged results: {merged_results}")
         
         return merged_results
+    
+    @classmethod
+    def get_merged_ui_icon_bboxes_pil(cls, screenshot_events: List[ScreenshotEvent], should_crop: bool = True) -> Dict[str, BoundingBoxResult]:
+        """
+        Get merged UI and icon bounding boxes from screenshot events using PIL images.
+        
+        Parameters:
+            screenshot_events (List[ScreenshotEvent]): List of screenshot events.
+            should_crop (bool): Whether to crop the images to the website render area. Default is True.
+
+        Returns:
+            Dict[str, BoundingBoxResult]: Dictionary mapping event IDs to their merged UI and icon bounding boxes.
+        """
+        cls.logger.info(f"Processing {len(screenshot_events)} screenshot events with PIL images")
+        
+        # Get the screenshot paths and event IDs
+        screenshot_paths = [event.screenshot_path for event in screenshot_events]
+        event_ids = [event.event_id for event in screenshot_events]
+        cls.logger.info(f"Found {len(screenshot_paths)} screenshot paths")
+        
+        # Convert paths to PIL images
+        pil_images = cls.paths_to_pil_images(screenshot_paths, should_crop=should_crop)
+        
+        # Get UI and icon bounding boxes using PIL images
+        ui_bboxes_results = cls.get_ui_bboxes_pil(pil_images, screenshot_paths)
+        
+        # We need to create new PIL images because the previous ones might be modified by the UI prediction
+        pil_images = cls.paths_to_pil_images(screenshot_paths, should_crop=should_crop)
+        icon_bboxes_results = cls.get_icon_bboxes_pil(pil_images, screenshot_paths)
+        
+        # Merge the UI and icon bounding boxes
+        cls.logger.info("Merging UI and Icon bounding boxes from PIL images")
+        merged_results = {}
+        for event_id, ui_result, icon_result in zip(event_ids, ui_bboxes_results, icon_bboxes_results):
+            merged_results[event_id] = cls.merge_icon_ui_bboxes(icon_result, ui_result)
+        
+        cls.logger.info(f"Completed merging with PIL images, returning {len(merged_results)} merged bounding box results")
+        
+        return merged_results
         
     @classmethod
-    def get_merged_ui_icon_bboxes_from_json(cls, json_file_path: str) -> Dict[str, BoundingBoxResult]:
+    def get_merged_ui_icon_bboxes_from_json(cls, json_file_path: str, should_crop: bool = True) -> Dict[str, BoundingBoxResult]:
         """
         Load screenshot events from a JSON file and get merged UI and icon bounding boxes.
         
         Parameters:
             json_file_path (str): Path to the JSON file containing screenshot events.
+            should_crop (bool): Whether to crop the images to the website render area. Default is True.
             
         Returns:
             Dict[str, BoundingBoxResult]: Dictionary mapping event IDs to their merged UI and icon bounding boxes.
@@ -171,28 +334,106 @@ class Merged_UI_IconBBoxes:
         cls.logger.info(f"Loaded {len(screenshot_events)} screenshot events from JSON file")
         
         # Get merged bounding boxes using the existing method
-        return cls.get_merged_ui_icon_bboxes(screenshot_events)
-    
+        return cls.get_merged_ui_icon_bboxes(screenshot_events, should_crop=should_crop)
     
     @classmethod
-    def visualise_merged_ui_icon_bboxes(cls, screenshot_events: List[ScreenshotEvent]):
+    def get_merged_ui_icon_bboxes_from_json_pil(cls, json_file_path: str, should_crop: bool = True) -> Dict[str, BoundingBoxResult]:
+        """
+        Load screenshot events from a JSON file and get merged UI and icon bounding boxes using PIL images.
+        
+        Parameters:
+            json_file_path (str): Path to the JSON file containing screenshot events.
+            should_crop (bool): Whether to crop the images to the website render area. Default is True.
+            
+        Returns:
+            Dict[str, BoundingBoxResult]: Dictionary mapping event IDs to their merged UI and icon bounding boxes.
+            
+        Raises:
+            FileNotFoundError: If the JSON file does not exist.
+            ValueError: If the JSON file is invalid or does not contain screenshot events.
+        """
+        cls.logger.info(f"Loading screenshot events from JSON file for PIL processing: {json_file_path}")
+        
+        if not os.path.exists(json_file_path):
+            raise FileNotFoundError(f"JSON file not found: {json_file_path}")
+        
+        try:
+            with open(json_file_path, 'r', encoding='utf-8') as f:
+                events_data = json.load(f)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON in file: {str(e)}")
+        
+        if not events_data or not isinstance(events_data, list):
+            raise ValueError("JSON file does not contain a list of screenshot events")
+        
+        # Convert JSON data to ScreenshotEvent objects
+        screenshot_events = []
+        for event_dict in events_data:
+            # Convert ISO format string back to datetime
+            if 'timestamp' in event_dict:
+                event_dict['timestamp'] = datetime.fromisoformat(event_dict['timestamp']) # type: ignore
+            
+            # Create ScreenshotEvent object
+            try:
+                event = ScreenshotEvent(**event_dict)
+                screenshot_events.append(event)
+            except (TypeError, ValueError) as e:
+                cls.logger.warning(f"Skipping invalid event: {str(e)}")
+        
+        cls.logger.info(f"Loaded {len(screenshot_events)} screenshot events from JSON file for PIL processing")
+        
+        # Get merged bounding boxes using the PIL method
+        return cls.get_merged_ui_icon_bboxes_pil(screenshot_events, should_crop=should_crop)
+    
+    @classmethod
+    def visualise_merged_ui_icon_bboxes(cls, screenshot_events: List[ScreenshotEvent], should_crop: bool = True):
         """
         Visualise merged UI and icon bounding boxes.
+        
+        Parameters:
+            screenshot_events (List[ScreenshotEvent]): List of screenshot events.
+            should_crop (bool): Whether to crop the images to the website render area. Default is True.
         """
-        merged_results = cls.get_merged_ui_icon_bboxes(screenshot_events)
+        merged_results = cls.get_merged_ui_icon_bboxes(screenshot_events, should_crop=should_crop)
         for event_id, merged_result in merged_results.items():
             cls.logger.info(f"Visualising merged bounding boxes for event ID: {event_id}")
-            cls.visualise_merged_bboxes(merged_result, merged_result.image_path)
+            cls.visualise_merged_bboxes(merged_result, merged_result.image_path, should_crop=should_crop)
+    
+    @classmethod
+    def visualise_merged_ui_icon_bboxes_pil(cls, screenshot_events: List[ScreenshotEvent], should_crop: bool = True):
+        """
+        Visualise merged UI and icon bounding boxes using PIL images.
+        
+        Parameters:
+            screenshot_events (List[ScreenshotEvent]): List of screenshot events.
+            should_crop (bool): Whether to crop the images to the website render area. Default is True.
+        """
+        merged_results = cls.get_merged_ui_icon_bboxes_pil(screenshot_events, should_crop=should_crop)
+        for event_id, merged_result in merged_results.items():
+            cls.logger.info(f"Visualising merged bounding boxes from PIL images for event ID: {event_id}")
+            cls.visualise_merged_bboxes(merged_result, merged_result.image_path, should_crop=should_crop)
 
     @classmethod
-    def visualise_merged_bboxes(cls, merged_result: BoundingBoxResult, image_path: str):
+    def visualise_merged_bboxes(cls, merged_result: BoundingBoxResult, image_path: str, should_crop: bool = True):
         """
         Visualise merged bounding boxes with different colors for different classes.
+        
+        Parameters:
+            merged_result (BoundingBoxResult): Merged bounding box result.
+            image_path (str): Path to the image.
+            should_crop (bool): Whether to crop the image to the website render area. Default is True.
         """
         cls.logger.info(f"Visualising merged bounding boxes for image: {image_path}")
         
-        # use open cv to visualise the merged bounding boxes on the image
-        image = cv2.imread(image_path)
+        # Use OpenCV to visualize the merged bounding boxes on the image
+        if should_crop:
+            # If cropping is enabled, first load the image as PIL and crop it
+            pil_image = cls.path_to_pil_image(image_path, should_crop=True)
+            # Convert PIL image to OpenCV format
+            image = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
+        else:
+            # If cropping is disabled, load the image directly with OpenCV
+            image = cv2.imread(image_path)
         
         # Create a color mapping for different classes
         # Extract unique class names from the bounding boxes
