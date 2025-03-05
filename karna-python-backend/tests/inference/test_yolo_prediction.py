@@ -6,7 +6,7 @@ from inference.yolo.icon.yolo_prediction import YOLO_ICON_Prediction
 from inference.yolo.yolo_ui_icon_merged_inference import Merged_UI_IconBBoxes
 from config.paths import workspace_data_dir, workspace_dir
 from services.screen_capture_service import ScreenshotEvent
-
+from inference import VisionDetectResultModel # type: ignore
 
 @pytest.fixture
 def yolo_ui_prediction():
@@ -147,5 +147,23 @@ def test_visualise_merged_ui_icon_bboxes(screenshot_events):
     # load screenshot_events as ScreenshotEvent objects
     screenshot_events = [ScreenshotEvent(**event) for event in screenshot_events]
     Merged_UI_IconBBoxes.visualise_merged_ui_icon_bboxes(screenshot_events)
+    
+def test_merged_ui_icon_bboxes_to_vision_detect_result_model_list(screenshot_events):
+    # load events from json file
+    # convert screenshot_paths to proper paths using paths config
+    # command to run this test: 
+#   # python -m pytest tests/inference/test_yolo_prediction.py -v -k test_merged_ui_icon_bboxes_to_vision_detect_result_model_list --log-cli-level=INFO
+    logger = logging.getLogger("test_merged_ui_icon_bboxes_to_vision_detect_result_model_list")
+    for event in screenshot_events:
+        if "screenshot_path" in event:
+            event["screenshot_path"] = str(workspace_dir / event["screenshot_path"]) # type: ignore
+    # load screenshot_events as ScreenshotEvent objects
+    screenshot_events = [ScreenshotEvent(**event) for event in screenshot_events]
+    vision_detect_result_model_list = Merged_UI_IconBBoxes.get_inference_result_models_pil(screenshot_events)
+    logger.info(vision_detect_result_model_list)
+    assert len(vision_detect_result_model_list) > 0
+    assert isinstance(vision_detect_result_model_list, list)
+    assert isinstance(vision_detect_result_model_list[0], VisionDetectResultModel)
+
     
 

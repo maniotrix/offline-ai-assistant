@@ -9,11 +9,23 @@ import numpy as np
 from PIL import Image
 
 # Replace relative imports with absolute imports
-from inference import BoundingBoxResult
+from inference import BoundingBoxResult, VisionDetectResultModel
 from inference.yolo.ui.yolo_prediction import YOLO_UI_Prediction
 from inference.yolo.icon.yolo_prediction import YOLO_ICON_Prediction
 from services.screen_capture_service import ScreenshotEvent
 from utils.image_utils import crop_to_render_area
+
+class InferenceData:
+    """
+    Class for storing inference data.
+    """
+    def __init__(self, screenshot_events: List[ScreenshotEvent], should_crop: bool = True):
+        self.screenshot_events = screenshot_events
+        self.should_crop = should_crop
+        # a dictionary of pil image and corresponding merged ui and icon bounding boxes
+        self.pil_images = {} #  if cropping is enabled, this will be a dictionary of original image path and corresponding cropped pil image
+        self.merged_ui_icon_bboxes = {} # a dictionary of event id and corresponding merged ui and icon bounding boxes
+
 
 
 class Merged_UI_IconBBoxes:
@@ -469,3 +481,56 @@ class Merged_UI_IconBBoxes:
         cv2.imshow("Merged Bounding Boxes", image)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
+
+    @classmethod
+    def get_inference_result_models_pil(cls, screenshot_events: List[ScreenshotEvent], should_crop: bool = True) -> List[VisionDetectResultModel]:
+        """
+        Get inference result models from screenshot events.
+        """
+        # get the pil images
+        screenshot_paths = [event.screenshot_path for event in screenshot_events]
+        pil_images = cls.paths_to_pil_images(screenshot_paths, should_crop=should_crop)
+        merged_results = cls.get_merged_ui_icon_bboxes_pil(screenshot_events, should_crop=should_crop)
+        vision_detect_result_models = []
+        
+        # Create VisionDetectResultModel for each screenshot event
+        for event, pil_image in zip(screenshot_events, pil_images):
+            event_id = event.event_id
+            
+            # Skip if no merged results for this event
+            if event_id not in merged_results:
+                cls.logger.warning(f"No merged results found for event {event_id}, skipping")
+                continue
+                
+            merged_result = merged_results[event_id]
+            
+            # Get original image dimensions from the original image file
+            try:
+                with Image.open(event.screenshot_path) as original_img:
+                    original_width, original_height = original_img.size
+            except (FileNotFoundError, IOError) as e:
+                cls.logger.warning(f"Could not open original image {event.screenshot_path}: {str(e)}")
+                # Fallback to using the cropped image dimensions
+                original_width, original_height = pil_image.size
+            
+            # Create VisionDetectResultModel
+            vision_detect_result_model = VisionDetectResultModel(
+                event_id=event_id,
+                project_uuid=event.project_uuid,
+                command_uuid=event.command_uuid,
+                timestamp=event.timestamp,
+                description=event.description,
+                original_image_path=event.screenshot_path,
+                original_width=original_width,
+                original_height=original_height,
+                is_cropped=should_crop,
+                cropped_image=pil_image,
+                cropped_width=pil_image.width,
+                cropped_height=pil_image.height,
+                merged_ui_icon_bboxes=merged_result.bounding_boxes
+            )
+            
+            vision_detect_result_models.append(vision_detect_result_model)
+            
+        cls.logger.info(f"Created {len(vision_detect_result_models)} VisionDetectResultModel objects")
+        return vision_detect_result_models
