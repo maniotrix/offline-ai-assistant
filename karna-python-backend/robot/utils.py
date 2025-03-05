@@ -7,7 +7,7 @@ import json
 import time
 import urllib.parse
 import requests
-from chrome_robot import ChromeRobot
+from robot.chrome_robot import ChromeRobot
 
 CHROME_SYSTEM_BOUNDING_BOXES_HTML_FILE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data', 'calculate_chrome_system_bboxes.html')
 CHROME_SYSTEM_BOUNDING_BOXES_JSON_FILE_PATH = os.path.join(os.path.dirname(__file__), 'chrome_system_bounding_boxes.json')

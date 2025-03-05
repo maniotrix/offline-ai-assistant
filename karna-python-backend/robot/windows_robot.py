@@ -1,7 +1,7 @@
 import logging
 from typing import Optional
 
-from robot import Robot, Point, Region
+from robot.base_robot import Robot, Point, Region
 
 logger = logging.getLogger(__name__)
 

@@ -13,8 +13,8 @@ from modules.command.command_processor import get_command_service_instance
 import config.db.settings as db_settings
 import asyncio
 from base.base_observer import AsyncCapableObserver
-from robot.utils import open_default_system_bboxes_url_maximized, CHROME_SYSTEM_BOUNDING_BOXES_JSON_FILE_PATH
-import threading
+from robot.utils import CHROME_SYSTEM_BOUNDING_BOXES_JSON_FILE_PATH
+from robot.browser_manager import open_browser_and_get_system_bboxes
 import time
 import os
 # Store reference to the main event loop
@@ -136,35 +136,6 @@ def get_orchestrator_instance(model_paths: dict = None):
         _orchestrator_instance = AssistantOrchestrator(model_paths)
     return _orchestrator_instance
 
-def open_browser_with_retry(max_retries=5, retry_delay=2):
-    """
-    Opens the browser with retry logic in a separate thread
-    """
-    def _open_browser():
-        for attempt in range(max_retries):
-            try:
-                # Wait for server to start
-                time.sleep(retry_delay)
-                # check if chrome_system_bounding_boxes.json exists
-                if not os.path.exists(CHROME_SYSTEM_BOUNDING_BOXES_JSON_FILE_PATH):
-                    logging.info("Opening browser...")
-                    open_default_system_bboxes_url_maximized()
-                    logging.info("Successfully opened browser")
-                    break
-                else:
-                    logging.info("Chrome system bounding boxes already exists...skipping browser opening")
-                    break
-            except Exception as e:
-                if attempt < max_retries - 1:
-                    logging.warning(f"Failed to open browser (attempt {attempt + 1}): {e}")
-                    time.sleep(retry_delay)
-                else:
-                    logging.error(f"Failed to open browser after {max_retries} attempts: {e}")
-
-    # Start browser opening in a separate thread
-    browser_thread = threading.Thread(target=_open_browser, daemon=True)
-    browser_thread.start()
-
 @app.on_event("startup")
 async def startup_event():
     # Configure logging
@@ -207,7 +178,7 @@ def run_app():
         db_settings.use_default_settings()
         
         # Start browser opening process in background
-        open_browser_with_retry()
+        open_browser_and_get_system_bboxes()
         
         # Run the FastAPI application
         uvicorn.run("main:app", host="0.0.0.0", port=8000)

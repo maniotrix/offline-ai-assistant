@@ -6,7 +6,8 @@ from pathlib import Path
 import webbrowser
 import subprocess
 
-from windows_robot import WindowsRobot, Point, Region
+from robot.windows_robot import WindowsRobot
+from robot.base_robot import Point, Region
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,7 @@ class ChromeRobot(WindowsRobot):
     
     def __init__(self):
         """Initialize the ChromeRobot with the WindowsRobot functionality."""
+        
         super().__init__()
     
     # ===== Browser Window Management =====
