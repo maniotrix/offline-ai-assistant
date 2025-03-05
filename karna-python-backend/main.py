@@ -13,10 +13,7 @@ from modules.command.command_processor import get_command_service_instance
 import config.db.settings as db_settings
 import asyncio
 from base.base_observer import AsyncCapableObserver
-from robot.utils import CHROME_SYSTEM_BOUNDING_BOXES_JSON_FILE_PATH
 from robot.browser_manager import open_browser_and_get_system_bboxes
-import time
-import os
 # Store reference to the main event loop
 loop = asyncio.get_event_loop()
 AsyncCapableObserver.set_main_loop(loop)

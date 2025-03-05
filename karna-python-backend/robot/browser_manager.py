@@ -2,7 +2,7 @@ import logging
 import threading
 import time
 import os
-from robot.utils import open_default_system_bboxes_url_maximized, CHROME_SYSTEM_BOUNDING_BOXES_JSON_FILE_PATH, open_chrome_maximized_then_navigate
+from robot.utils import open_default_system_bboxes_url_maximized, CHROME_SYSTEM_BOUNDING_BOXES_JSON_FILE_PATH
 
 def open_browser_and_get_system_bboxes(max_retries=5, retry_delay=2):
     """
