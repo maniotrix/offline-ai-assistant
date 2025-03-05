@@ -473,8 +473,37 @@ class ScreenCaptureService(BaseService[List[ScreenshotEvent]]):
         except Exception as e:
             logger.error(f"Failed to annotate screenshot: {str(e)}")
 
+    def pre_start_capture(self, project_uuid: str, command_uuid: str) -> None:
+        """Pre-start capture setup
+        
+        This method is called before the capture starts.
+        It can be used to perform any necessary setup or checks before the capture starts.
+        
+        Maximise chrome browser window
+        """
+        try:
+            # Maximise chrome browser window
+            self.maximise_chrome_browser_window()
+        except Exception as e:
+            logger.error(f"Failed to maximise chrome browser window: {str(e)}")
+            raise
+        
+    def maximise_chrome_browser_window(self) -> None:
+        """Maximise chrome browser window"""
+        try:
+            # Maximise chrome browser window using chrome robot
+            from robot.chrome_robot import ChromeRobot
+            chrome_robot = ChromeRobot()
+            chrome_robot.maximize_window()
+            logger.info("Maximised chrome browser window")
+        except Exception as e:
+            logger.error(f"Failed to maximise chrome browser window: {str(e)}")
+            raise
+        
+    
     def start_capture(self, project_uuid: str, command_uuid: str) -> None:
         """Start capturing screenshots for a specific command"""
+        self.pre_start_capture(project_uuid, command_uuid)
         with self.lock:
             if self.current_session and self.current_session.is_active:
                 raise SessionError("Cannot start new session while another is active")
