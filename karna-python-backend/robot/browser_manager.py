@@ -13,16 +13,15 @@ def open_browser_and_get_system_bboxes(max_retries=5, retry_delay=2):
             try:
                 # Wait for server to start
                 time.sleep(retry_delay)
-                open_chrome_maximized_then_navigate("https://www.google.com")
                 # check if chrome_system_bounding_boxes.json exists
-                # if not os.path.exists(CHROME_SYSTEM_BOUNDING_BOXES_JSON_FILE_PATH):
-                #     logging.info("Opening browser...")
-                #     open_default_system_bboxes_url_maximized()
-                #     logging.info("Successfully opened browser")
-                #     break
-                # else:
-                #     logging.info("Chrome system bounding boxes already exists...skipping browser opening")
-                #     break
+                if not os.path.exists(CHROME_SYSTEM_BOUNDING_BOXES_JSON_FILE_PATH):
+                    logging.info("Opening browser...")
+                    open_default_system_bboxes_url_maximized()
+                    logging.info("Successfully opened browser")
+                    break
+                else:
+                    logging.info("Chrome system bounding boxes already exists...skipping browser opening")
+                    break
             except Exception as e:
                 if attempt < max_retries - 1:
                     logging.warning(f"Failed to open browser (attempt {attempt + 1}): {e}")
