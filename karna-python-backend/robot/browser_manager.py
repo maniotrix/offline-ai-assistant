@@ -20,7 +20,7 @@ def open_browser_and_get_system_bboxes(max_retries=5, retry_delay=2):
                     logging.info("Successfully opened browser")
                     break
                 else:
-                    logging.info("Chrome system bounding boxes already exists...skipping browser opening")
+                    logging.info("Chrome system bounding boxes already exists...skipping getting system bounding boxes")
                     break
             except Exception as e:
                 if attempt < max_retries - 1:
