@@ -12,9 +12,7 @@ from inference import VisionDetectResultModelList, VisionDetectResultModel
 from generated.vision_detect_pb2 import (
     VisionDetectRPCRequest,
     VisionDetectRPCResponse,
-    ProcessRequest,
     GetResultsRequest,
-    ExportRequest,
     UpdateResultsRequest,
     VisionDetectResultsList,
     VisionDetectResultModel as ProtoVisionDetectResultModel,
@@ -73,12 +71,8 @@ class VisionDetectWebSocketHandler(BaseWebSocketHandler[VisionDetectResultModelL
             
             # Determine which method was called
             method = request.WhichOneof("method")
-            if method == "process_request":
-                await self._handle_process_request(websocket, request.process_request)
-            elif method == "get_results_request":
+            if method == "get_results_request":
                 await self._handle_get_results_request(websocket, request.get_results_request)
-            elif method == "export_request":
-                await self._handle_export_request(websocket, request.export_request)
             elif method == "update_results_request":
                 await self._handle_update_results_request(websocket, request.update_results_request)
             else:
@@ -90,28 +84,6 @@ class VisionDetectWebSocketHandler(BaseWebSocketHandler[VisionDetectResultModelL
             logger.error(f"Error processing vision detection message: {e}", exc_info=True)
             response = VisionDetectRPCResponse()
             response.error = f"Error processing vision detection request: {str(e)}"
-            await websocket.send_bytes(response.SerializeToString())
-    
-    async def _handle_process_request(self, websocket: WebSocket, process_request: ProcessRequest) -> None:
-        """Handle a request to process screenshot events.
-        
-        Args:
-            websocket: The WebSocket connection.
-            process_request: The process request.
-        """
-        try:
-            # Process the screenshot events
-            results = self.service.process_screenshot_events(should_crop=process_request.should_crop)
-            
-            # Send the response
-            response = VisionDetectRPCResponse()
-            response.results.CopyFrom(self._convert_to_proto_results(results))
-            await websocket.send_bytes(response.SerializeToString())
-        
-        except Exception as e:
-            logger.error(f"Error processing screenshot events: {e}", exc_info=True)
-            response = VisionDetectRPCResponse()
-            response.error = f"Error processing screenshot events: {str(e)}"
             await websocket.send_bytes(response.SerializeToString())
     
     async def _handle_get_results_request(self, websocket: WebSocket, get_results_request: GetResultsRequest) -> None:
@@ -145,25 +117,6 @@ class VisionDetectWebSocketHandler(BaseWebSocketHandler[VisionDetectResultModelL
             logger.error(f"Error getting vision detection results: {e}", exc_info=True)
             response = VisionDetectRPCResponse()
             response.error = f"Error getting vision detection results: {str(e)}"
-            await websocket.send_bytes(response.SerializeToString())
-    
-    async def _handle_export_request(self, websocket: WebSocket, export_request: ExportRequest) -> None:
-        """Handle a request to export vision detection results to JSON.
-        
-        Args:
-            websocket: The WebSocket connection.
-            export_request: The export request.
-        """
-        try:
-            # Not implemented
-            response = VisionDetectRPCResponse()
-            response.error = "Export not implemented"
-            await websocket.send_bytes(response.SerializeToString())
-        
-        except Exception as e:
-            logger.error(f"Error exporting vision detection results: {e}", exc_info=True)
-            response = VisionDetectRPCResponse()
-            response.error = f"Error exporting vision detection results: {str(e)}"
             await websocket.send_bytes(response.SerializeToString())
     
     async def _handle_update_results_request(self, websocket: WebSocket, update_request: UpdateResultsRequest) -> None:

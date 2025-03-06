@@ -6,19 +6,10 @@ option java_multiple_files = true;
 option java_package = "com.karna.vision";
 option java_outer_classname = "VisionDetectProto";
 
-// Request to process screenshot events
-message ProcessRequest {
-  bool should_crop = 1;
-}
-
 // Request to get vision detection results
 message GetResultsRequest {
-  // No parameters needed
-}
-
-// Request to export vision detection results to JSON
-message ExportRequest {
-  string output_dir = 1;
+  string project_uuid = 1;
+  string command_uuid = 2;
 }
 
 // Request to update vision detection results
@@ -75,10 +66,8 @@ message VisionDetectStatus {
 // RPC request for vision detection
 message VisionDetectRPCRequest {
   oneof method {
-    ProcessRequest process_request = 1;
-    GetResultsRequest get_results_request = 2;
-    ExportRequest export_request = 3;
-    UpdateResultsRequest update_results_request = 4;
+    GetResultsRequest get_results_request = 1;
+    UpdateResultsRequest update_results_request = 2;
   }
 }
 
@@ -87,7 +76,6 @@ message VisionDetectRPCResponse {
   oneof response {
     VisionDetectResultsList results = 1;
     VisionDetectStatus status = 2;
-    string export_path = 3;
   }
-  string error = 4;
+  string error = 3;
 } 

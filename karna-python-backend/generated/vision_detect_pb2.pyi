@@ -13,52 +13,24 @@ import typing
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
 @typing.final
-class ProcessRequest(google.protobuf.message.Message):
-    """Request to process screenshot events"""
+class GetResultsRequest(google.protobuf.message.Message):
+    """Request to get vision detection results"""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    SHOULD_CROP_FIELD_NUMBER: builtins.int
-    should_crop: builtins.bool
+    PROJECT_UUID_FIELD_NUMBER: builtins.int
+    COMMAND_UUID_FIELD_NUMBER: builtins.int
+    project_uuid: builtins.str
+    command_uuid: builtins.str
     def __init__(
         self,
         *,
-        should_crop: builtins.bool = ...,
+        project_uuid: builtins.str = ...,
+        command_uuid: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["should_crop", b"should_crop"]) -> None: ...
-
-global___ProcessRequest = ProcessRequest
-
-@typing.final
-class GetResultsRequest(google.protobuf.message.Message):
-    """Request to get vision detection results
-    No parameters needed
-    """
-
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    def __init__(
-        self,
-    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["command_uuid", b"command_uuid", "project_uuid", b"project_uuid"]) -> None: ...
 
 global___GetResultsRequest = GetResultsRequest
-
-@typing.final
-class ExportRequest(google.protobuf.message.Message):
-    """Request to export vision detection results to JSON"""
-
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    OUTPUT_DIR_FIELD_NUMBER: builtins.int
-    output_dir: builtins.str
-    def __init__(
-        self,
-        *,
-        output_dir: builtins.str = ...,
-    ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["output_dir", b"output_dir"]) -> None: ...
-
-global___ExportRequest = ExportRequest
 
 @typing.final
 class UpdateResultsRequest(google.protobuf.message.Message):
@@ -235,29 +207,21 @@ class VisionDetectRPCRequest(google.protobuf.message.Message):
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    PROCESS_REQUEST_FIELD_NUMBER: builtins.int
     GET_RESULTS_REQUEST_FIELD_NUMBER: builtins.int
-    EXPORT_REQUEST_FIELD_NUMBER: builtins.int
     UPDATE_RESULTS_REQUEST_FIELD_NUMBER: builtins.int
     @property
-    def process_request(self) -> global___ProcessRequest: ...
-    @property
     def get_results_request(self) -> global___GetResultsRequest: ...
-    @property
-    def export_request(self) -> global___ExportRequest: ...
     @property
     def update_results_request(self) -> global___UpdateResultsRequest: ...
     def __init__(
         self,
         *,
-        process_request: global___ProcessRequest | None = ...,
         get_results_request: global___GetResultsRequest | None = ...,
-        export_request: global___ExportRequest | None = ...,
         update_results_request: global___UpdateResultsRequest | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["export_request", b"export_request", "get_results_request", b"get_results_request", "method", b"method", "process_request", b"process_request", "update_results_request", b"update_results_request"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["export_request", b"export_request", "get_results_request", b"get_results_request", "method", b"method", "process_request", b"process_request", "update_results_request", b"update_results_request"]) -> None: ...
-    def WhichOneof(self, oneof_group: typing.Literal["method", b"method"]) -> typing.Literal["process_request", "get_results_request", "export_request", "update_results_request"] | None: ...
+    def HasField(self, field_name: typing.Literal["get_results_request", b"get_results_request", "method", b"method", "update_results_request", b"update_results_request"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["get_results_request", b"get_results_request", "method", b"method", "update_results_request", b"update_results_request"]) -> None: ...
+    def WhichOneof(self, oneof_group: typing.Literal["method", b"method"]) -> typing.Literal["get_results_request", "update_results_request"] | None: ...
 
 global___VisionDetectRPCRequest = VisionDetectRPCRequest
 
@@ -269,9 +233,7 @@ class VisionDetectRPCResponse(google.protobuf.message.Message):
 
     RESULTS_FIELD_NUMBER: builtins.int
     STATUS_FIELD_NUMBER: builtins.int
-    EXPORT_PATH_FIELD_NUMBER: builtins.int
     ERROR_FIELD_NUMBER: builtins.int
-    export_path: builtins.str
     error: builtins.str
     @property
     def results(self) -> global___VisionDetectResultsList: ...
@@ -282,11 +244,10 @@ class VisionDetectRPCResponse(google.protobuf.message.Message):
         *,
         results: global___VisionDetectResultsList | None = ...,
         status: global___VisionDetectStatus | None = ...,
-        export_path: builtins.str = ...,
         error: builtins.str = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["export_path", b"export_path", "response", b"response", "results", b"results", "status", b"status"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["error", b"error", "export_path", b"export_path", "response", b"response", "results", b"results", "status", b"status"]) -> None: ...
-    def WhichOneof(self, oneof_group: typing.Literal["response", b"response"]) -> typing.Literal["results", "status", "export_path"] | None: ...
+    def HasField(self, field_name: typing.Literal["response", b"response", "results", b"results", "status", b"status"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["error", b"error", "response", b"response", "results", b"results", "status", b"status"]) -> None: ...
+    def WhichOneof(self, oneof_group: typing.Literal["response", b"response"]) -> typing.Literal["results", "status"] | None: ...
 
 global___VisionDetectRPCResponse = VisionDetectRPCResponse
