@@ -7,7 +7,6 @@ from generated.screen_capture_pb2 import (
     CaptureResult,
     RpcScreenshotEvent,
     CaptureCacheRequest,
-    CaptureCacheResponse
 )
 from services.screen_capture_service import ScreenCaptureService, ScreenshotEvent
 from api.websockets.base_handler import BaseWebSocketHandler
@@ -176,54 +175,17 @@ class ScreenCaptureWebSocketHandler(BaseWebSocketHandler[List[ScreenshotEvent]])
                 command_uuid=cache_request.command_uuid
             )
             
-            # Create a CaptureCacheResponse protobuf message
-            response = ScreenCaptureRPCResponse()
-            cache_response = CaptureCacheResponse()
-            cache_response.project_uuid = cache_request.project_uuid
-            cache_response.command_uuid = cache_request.command_uuid
+            if screenshot_events and len(screenshot_events) > 0:
+                await self.broadcast_capture_events(screenshot_events)
+                self.logger.info(f"Sent {len(screenshot_events)} screenshot events from cache to client")
+            else:
+                response = ScreenCaptureRPCResponse()
+                response.error = f"No screenshot events found in cache for project {cache_request.project_uuid}, command {cache_request.command_uuid}"
+                await websocket.send_bytes(response.SerializeToString())
+                self.logger.info(f"No screenshot events found in cache for project {cache_request.project_uuid}, command {cache_request.command_uuid}")
             
-            # Convert each ScreenshotEvent to an RpcScreenshotEvent
-            for event in screenshot_events:
-                rpc_event = RpcScreenshotEvent()
-                rpc_event.event_id = event.event_id
-                rpc_event.project_uuid = event.project_uuid
-                rpc_event.command_uuid = event.command_uuid
-                rpc_event.timestamp = event.timestamp.isoformat()
-                rpc_event.description = event.description
-                rpc_event.screenshot_path = event.screenshot_path
-                
-                # Set optional fields if they exist
-                if event.annotation_path:
-                    rpc_event.annotation_path = event.annotation_path
-                if event.mouse_x is not None:
-                    rpc_event.mouse_x = event.mouse_x
-                if event.mouse_y is not None:
-                    rpc_event.mouse_y = event.mouse_y
-                if event.key_char:
-                    rpc_event.key_char = event.key_char
-                if event.key_code:
-                    rpc_event.key_code = event.key_code
-                rpc_event.is_special_key = event.is_special_key
-                
-                # Add the event to the response
-                cache_response.screenshot_events.append(rpc_event)
-            
-            # Set the cache_response in the ScreenCaptureRPCResponse
-            response.cache_response.CopyFrom(cache_response)
-            
-            # Send the response
-            await websocket.send_bytes(response.SerializeToString())
-            
-            self.logger.info(f"Sent {len(screenshot_events)} screenshot events from cache to client")
-            
-        except ScreenCaptureUtilError as e:
-            self.logger.error(f"Error loading screenshot events from cache: {str(e)}")
-            response = ScreenCaptureRPCResponse()
-            response.error = f"Screenshot events not found: {str(e)}"
-            await websocket.send_bytes(response.SerializeToString())
         except Exception as e:
-            self.logger.error(f"Unexpected error loading screenshot events: {str(e)}")
+            self.logger.error(f"Error updating screenshot events: {e}", exc_info=True)
             response = ScreenCaptureRPCResponse()
-            response.error = f"Failed to load screenshot events: {str(e)}"
+            response.error = str(e)
             await websocket.send_bytes(response.SerializeToString())
-

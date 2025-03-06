@@ -92,6 +92,40 @@ export const Homepage: React.FC = () => {
     return false;
   };
 
+  const extractCommandInfo = () => {
+    if (!commandResponse || !commandResponse.commandText) return { projectUuid: 'default', commandUuid: `command-${Date.now()}` };
+    
+    try {
+      // Try to parse the command text as it might contain structured data
+      const commandText = commandResponse.commandText;
+      
+      // Extract UUID using regex
+      const uuidMatch = commandText.match(/uuid='([^']+)'/);
+      const commandUuid = uuidMatch ? uuidMatch[1] : `command-${Date.now()}`;
+      
+      // Extract domain using regex
+      const domainMatch = commandText.match(/domain='([^']+)'/);
+      const projectUuid = domainMatch ? domainMatch[1] : 'default';
+      
+      return { projectUuid, commandUuid };
+    } catch (error) {
+      console.error('Error parsing command text:', error);
+      return { projectUuid: 'default', commandUuid: `command-${Date.now()}` };
+    }
+  };
+
+  // Trigger get cache request when screen capture button becomes visible
+  useEffect(() => {
+    if (shouldShowCaptureButton() && commandResponse && commandResponse.actions) {
+      // Find project and command UUIDs from actions
+      const { projectUuid, commandUuid } = extractCommandInfo();
+      
+      if (projectUuid && commandUuid) {
+        websocketService.getCaptureCache(projectUuid, commandUuid).catch(console.error);
+      }
+    }
+  }, [commandResponse]);
+
   return (
     <Box sx={{ p: 3, maxWidth: '800px', margin: '0 auto' }}>
       <Paper elevation={3} sx={{ p: 3, mb: 3 }}>

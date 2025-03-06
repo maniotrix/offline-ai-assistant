@@ -74,53 +74,6 @@ class CaptureUpdateRequest(google.protobuf.message.Message):
 global___CaptureUpdateRequest = CaptureUpdateRequest
 
 @typing.final
-class CaptureUpdateResponse(google.protobuf.message.Message):
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    PROJECT_UUID_FIELD_NUMBER: builtins.int
-    COMMAND_UUID_FIELD_NUMBER: builtins.int
-    MESSAGE_FIELD_NUMBER: builtins.int
-    SCREENSHOT_EVENTS_FIELD_NUMBER: builtins.int
-    project_uuid: builtins.str
-    command_uuid: builtins.str
-    message: builtins.str
-    @property
-    def screenshot_events(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___RpcScreenshotEvent]: ...
-    def __init__(
-        self,
-        *,
-        project_uuid: builtins.str = ...,
-        command_uuid: builtins.str = ...,
-        message: builtins.str = ...,
-        screenshot_events: collections.abc.Iterable[global___RpcScreenshotEvent] | None = ...,
-    ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["command_uuid", b"command_uuid", "message", b"message", "project_uuid", b"project_uuid", "screenshot_events", b"screenshot_events"]) -> None: ...
-
-global___CaptureUpdateResponse = CaptureUpdateResponse
-
-@typing.final
-class CaptureCacheResponse(google.protobuf.message.Message):
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    PROJECT_UUID_FIELD_NUMBER: builtins.int
-    COMMAND_UUID_FIELD_NUMBER: builtins.int
-    SCREENSHOT_EVENTS_FIELD_NUMBER: builtins.int
-    project_uuid: builtins.str
-    command_uuid: builtins.str
-    @property
-    def screenshot_events(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___RpcScreenshotEvent]: ...
-    def __init__(
-        self,
-        *,
-        project_uuid: builtins.str = ...,
-        command_uuid: builtins.str = ...,
-        screenshot_events: collections.abc.Iterable[global___RpcScreenshotEvent] | None = ...,
-    ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["command_uuid", b"command_uuid", "project_uuid", b"project_uuid", "screenshot_events", b"screenshot_events"]) -> None: ...
-
-global___CaptureCacheResponse = CaptureCacheResponse
-
-@typing.final
 class ScreenCaptureRPCRequest(google.protobuf.message.Message):
     """Request message types"""
 
@@ -247,25 +200,17 @@ class ScreenCaptureRPCResponse(google.protobuf.message.Message):
 
     CAPTURE_RESPONSE_FIELD_NUMBER: builtins.int
     ERROR_FIELD_NUMBER: builtins.int
-    UPDATE_CAPTURE_RESPONSE_FIELD_NUMBER: builtins.int
-    CACHE_RESPONSE_FIELD_NUMBER: builtins.int
     error: builtins.str
     @property
     def capture_response(self) -> global___CaptureResult: ...
-    @property
-    def update_capture_response(self) -> global___CaptureUpdateResponse: ...
-    @property
-    def cache_response(self) -> global___CaptureCacheResponse: ...
     def __init__(
         self,
         *,
         capture_response: global___CaptureResult | None = ...,
         error: builtins.str = ...,
-        update_capture_response: global___CaptureUpdateResponse | None = ...,
-        cache_response: global___CaptureCacheResponse | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["cache_response", b"cache_response", "capture_response", b"capture_response", "error", b"error", "type", b"type", "update_capture_response", b"update_capture_response"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["cache_response", b"cache_response", "capture_response", b"capture_response", "error", b"error", "type", b"type", "update_capture_response", b"update_capture_response"]) -> None: ...
-    def WhichOneof(self, oneof_group: typing.Literal["type", b"type"]) -> typing.Literal["capture_response", "error", "update_capture_response", "cache_response"] | None: ...
+    def HasField(self, field_name: typing.Literal["capture_response", b"capture_response", "error", b"error", "type", b"type"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["capture_response", b"capture_response", "error", b"error", "type", b"type"]) -> None: ...
+    def WhichOneof(self, oneof_group: typing.Literal["type", b"type"]) -> typing.Literal["capture_response", "error"] | None: ...
 
 global___ScreenCaptureRPCResponse = ScreenCaptureRPCResponse

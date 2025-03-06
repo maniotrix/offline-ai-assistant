@@ -45,6 +45,10 @@ class WebSocketService {
     async updateScreenCapture(projectUuid: string, commandUuid: string, deletedEventIds: string[]): Promise<void> {
         return this.screenCaptureChannel.updateCapture(projectUuid, commandUuid, deletedEventIds);
     }
+
+    async getCaptureCache(projectUuid: string, commandUuid: string): Promise<void> {
+        return this.screenCaptureChannel.getCache(projectUuid, commandUuid);
+    }
 }
 
 export const websocketService = new WebSocketService();

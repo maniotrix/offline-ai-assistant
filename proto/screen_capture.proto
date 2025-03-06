@@ -19,19 +19,6 @@ message CaptureUpdateRequest {
   repeated string screenshot_event_ids = 4;
 }
 
-message CaptureUpdateResponse {
-  string project_uuid = 1;
-  string command_uuid = 2;
-  string message = 3;
-  repeated RpcScreenshotEvent screenshot_events = 4;
-}
-
-message CaptureCacheResponse {
-  string project_uuid = 1;
-  string command_uuid = 2;
-  repeated RpcScreenshotEvent screenshot_events = 3;
-}
-
 // Request message types
 message ScreenCaptureRPCRequest {
   oneof method {
@@ -69,7 +56,5 @@ message ScreenCaptureRPCResponse {
   oneof type {
     CaptureResult capture_response = 1;
     string error = 2;
-    CaptureUpdateResponse update_capture_response = 3;
-    CaptureCacheResponse cache_response = 4;
   }
 }

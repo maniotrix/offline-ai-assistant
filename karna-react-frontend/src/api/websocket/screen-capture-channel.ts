@@ -93,6 +93,25 @@ export class ScreenCaptureChannel extends BaseWebSocketChannel {
         console.log('Update capture request sent');
     }
 
+    async getCache(projectUuid: string, commandUuid: string): Promise<void> {
+        if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+            throw new Error('WebSocket is not connected');
+        }
+
+        console.log('Getting screen capture cache:', { projectUuid, commandUuid });
+        const request = karna.screen_capture.ScreenCaptureRPCRequest.create({
+            getCache: {
+                projectUuid,
+                commandUuid
+            }
+        });
+
+        const buffer = karna.screen_capture.ScreenCaptureRPCRequest.encode(request).finish();
+        this.socket.send(buffer);
+        console.log('Get cache request sent');
+        // The response will be handled by the handleMessage method
+    }
+
     protected handleOpen(): void {
         super.handleOpen();
         console.log('ScreenCaptureChannel connected');
