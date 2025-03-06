@@ -89,6 +89,8 @@ class VisionDetectResultModelList:
     """
     List of vision detect result models.
     """
+    project_uuid: str
+    command_uuid: str
     vision_detect_result_models: List[VisionDetectResultModel]
     
     
