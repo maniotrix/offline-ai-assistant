@@ -155,16 +155,9 @@ class VisionDetectWebSocketHandler(BaseWebSocketHandler[VisionDetectResultModelL
             export_request: The export request.
         """
         try:
-            # Export the vision detection results
-            export_path = self.service.export_vision_detect_results_to_json(output_dir=export_request.output_dir)
-            
-            # Send the response
+            # Not implemented
             response = VisionDetectRPCResponse()
-            if export_path:
-                response.export_path = export_path
-            else:
-                response.error = "No vision detection results available to export"
-            
+            response.error = "Export not implemented"
             await websocket.send_bytes(response.SerializeToString())
         
         except Exception as e:
