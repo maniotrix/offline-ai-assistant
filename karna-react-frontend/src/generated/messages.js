@@ -4481,215 +4481,14 @@ export const karna = $root.karna = (() => {
          */
         const vision = {};
 
-        vision.ProcessRequest = (function() {
-
-            /**
-             * Properties of a ProcessRequest.
-             * @memberof karna.vision
-             * @interface IProcessRequest
-             * @property {boolean|null} [shouldCrop] ProcessRequest shouldCrop
-             */
-
-            /**
-             * Constructs a new ProcessRequest.
-             * @memberof karna.vision
-             * @classdesc Represents a ProcessRequest.
-             * @implements IProcessRequest
-             * @constructor
-             * @param {karna.vision.IProcessRequest=} [properties] Properties to set
-             */
-            function ProcessRequest(properties) {
-                if (properties)
-                    for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
-                        if (properties[keys[i]] != null)
-                            this[keys[i]] = properties[keys[i]];
-            }
-
-            /**
-             * ProcessRequest shouldCrop.
-             * @member {boolean} shouldCrop
-             * @memberof karna.vision.ProcessRequest
-             * @instance
-             */
-            ProcessRequest.prototype.shouldCrop = false;
-
-            /**
-             * Creates a new ProcessRequest instance using the specified properties.
-             * @function create
-             * @memberof karna.vision.ProcessRequest
-             * @static
-             * @param {karna.vision.IProcessRequest=} [properties] Properties to set
-             * @returns {karna.vision.ProcessRequest} ProcessRequest instance
-             */
-            ProcessRequest.create = function create(properties) {
-                return new ProcessRequest(properties);
-            };
-
-            /**
-             * Encodes the specified ProcessRequest message. Does not implicitly {@link karna.vision.ProcessRequest.verify|verify} messages.
-             * @function encode
-             * @memberof karna.vision.ProcessRequest
-             * @static
-             * @param {karna.vision.IProcessRequest} message ProcessRequest message or plain object to encode
-             * @param {$protobuf.Writer} [writer] Writer to encode to
-             * @returns {$protobuf.Writer} Writer
-             */
-            ProcessRequest.encode = function encode(message, writer) {
-                if (!writer)
-                    writer = $Writer.create();
-                if (message.shouldCrop != null && Object.hasOwnProperty.call(message, "shouldCrop"))
-                    writer.uint32(/* id 1, wireType 0 =*/8).bool(message.shouldCrop);
-                return writer;
-            };
-
-            /**
-             * Encodes the specified ProcessRequest message, length delimited. Does not implicitly {@link karna.vision.ProcessRequest.verify|verify} messages.
-             * @function encodeDelimited
-             * @memberof karna.vision.ProcessRequest
-             * @static
-             * @param {karna.vision.IProcessRequest} message ProcessRequest message or plain object to encode
-             * @param {$protobuf.Writer} [writer] Writer to encode to
-             * @returns {$protobuf.Writer} Writer
-             */
-            ProcessRequest.encodeDelimited = function encodeDelimited(message, writer) {
-                return this.encode(message, writer).ldelim();
-            };
-
-            /**
-             * Decodes a ProcessRequest message from the specified reader or buffer.
-             * @function decode
-             * @memberof karna.vision.ProcessRequest
-             * @static
-             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-             * @param {number} [length] Message length if known beforehand
-             * @returns {karna.vision.ProcessRequest} ProcessRequest
-             * @throws {Error} If the payload is not a reader or valid buffer
-             * @throws {$protobuf.util.ProtocolError} If required fields are missing
-             */
-            ProcessRequest.decode = function decode(reader, length) {
-                if (!(reader instanceof $Reader))
-                    reader = $Reader.create(reader);
-                let end = length === undefined ? reader.len : reader.pos + length, message = new $root.karna.vision.ProcessRequest();
-                while (reader.pos < end) {
-                    let tag = reader.uint32();
-                    switch (tag >>> 3) {
-                    case 1: {
-                            message.shouldCrop = reader.bool();
-                            break;
-                        }
-                    default:
-                        reader.skipType(tag & 7);
-                        break;
-                    }
-                }
-                return message;
-            };
-
-            /**
-             * Decodes a ProcessRequest message from the specified reader or buffer, length delimited.
-             * @function decodeDelimited
-             * @memberof karna.vision.ProcessRequest
-             * @static
-             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-             * @returns {karna.vision.ProcessRequest} ProcessRequest
-             * @throws {Error} If the payload is not a reader or valid buffer
-             * @throws {$protobuf.util.ProtocolError} If required fields are missing
-             */
-            ProcessRequest.decodeDelimited = function decodeDelimited(reader) {
-                if (!(reader instanceof $Reader))
-                    reader = new $Reader(reader);
-                return this.decode(reader, reader.uint32());
-            };
-
-            /**
-             * Verifies a ProcessRequest message.
-             * @function verify
-             * @memberof karna.vision.ProcessRequest
-             * @static
-             * @param {Object.<string,*>} message Plain object to verify
-             * @returns {string|null} `null` if valid, otherwise the reason why it is not
-             */
-            ProcessRequest.verify = function verify(message) {
-                if (typeof message !== "object" || message === null)
-                    return "object expected";
-                if (message.shouldCrop != null && message.hasOwnProperty("shouldCrop"))
-                    if (typeof message.shouldCrop !== "boolean")
-                        return "shouldCrop: boolean expected";
-                return null;
-            };
-
-            /**
-             * Creates a ProcessRequest message from a plain object. Also converts values to their respective internal types.
-             * @function fromObject
-             * @memberof karna.vision.ProcessRequest
-             * @static
-             * @param {Object.<string,*>} object Plain object
-             * @returns {karna.vision.ProcessRequest} ProcessRequest
-             */
-            ProcessRequest.fromObject = function fromObject(object) {
-                if (object instanceof $root.karna.vision.ProcessRequest)
-                    return object;
-                let message = new $root.karna.vision.ProcessRequest();
-                if (object.shouldCrop != null)
-                    message.shouldCrop = Boolean(object.shouldCrop);
-                return message;
-            };
-
-            /**
-             * Creates a plain object from a ProcessRequest message. Also converts values to other types if specified.
-             * @function toObject
-             * @memberof karna.vision.ProcessRequest
-             * @static
-             * @param {karna.vision.ProcessRequest} message ProcessRequest
-             * @param {$protobuf.IConversionOptions} [options] Conversion options
-             * @returns {Object.<string,*>} Plain object
-             */
-            ProcessRequest.toObject = function toObject(message, options) {
-                if (!options)
-                    options = {};
-                let object = {};
-                if (options.defaults)
-                    object.shouldCrop = false;
-                if (message.shouldCrop != null && message.hasOwnProperty("shouldCrop"))
-                    object.shouldCrop = message.shouldCrop;
-                return object;
-            };
-
-            /**
-             * Converts this ProcessRequest to JSON.
-             * @function toJSON
-             * @memberof karna.vision.ProcessRequest
-             * @instance
-             * @returns {Object.<string,*>} JSON object
-             */
-            ProcessRequest.prototype.toJSON = function toJSON() {
-                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
-            };
-
-            /**
-             * Gets the default type url for ProcessRequest
-             * @function getTypeUrl
-             * @memberof karna.vision.ProcessRequest
-             * @static
-             * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
-             * @returns {string} The default type url
-             */
-            ProcessRequest.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
-                if (typeUrlPrefix === undefined) {
-                    typeUrlPrefix = "type.googleapis.com";
-                }
-                return typeUrlPrefix + "/karna.vision.ProcessRequest";
-            };
-
-            return ProcessRequest;
-        })();
-
         vision.GetResultsRequest = (function() {
 
             /**
              * Properties of a GetResultsRequest.
              * @memberof karna.vision
              * @interface IGetResultsRequest
+             * @property {string|null} [projectUuid] GetResultsRequest projectUuid
+             * @property {string|null} [commandUuid] GetResultsRequest commandUuid
              */
 
             /**
@@ -4706,6 +4505,22 @@ export const karna = $root.karna = (() => {
                         if (properties[keys[i]] != null)
                             this[keys[i]] = properties[keys[i]];
             }
+
+            /**
+             * GetResultsRequest projectUuid.
+             * @member {string} projectUuid
+             * @memberof karna.vision.GetResultsRequest
+             * @instance
+             */
+            GetResultsRequest.prototype.projectUuid = "";
+
+            /**
+             * GetResultsRequest commandUuid.
+             * @member {string} commandUuid
+             * @memberof karna.vision.GetResultsRequest
+             * @instance
+             */
+            GetResultsRequest.prototype.commandUuid = "";
 
             /**
              * Creates a new GetResultsRequest instance using the specified properties.
@@ -4731,6 +4546,10 @@ export const karna = $root.karna = (() => {
             GetResultsRequest.encode = function encode(message, writer) {
                 if (!writer)
                     writer = $Writer.create();
+                if (message.projectUuid != null && Object.hasOwnProperty.call(message, "projectUuid"))
+                    writer.uint32(/* id 1, wireType 2 =*/10).string(message.projectUuid);
+                if (message.commandUuid != null && Object.hasOwnProperty.call(message, "commandUuid"))
+                    writer.uint32(/* id 2, wireType 2 =*/18).string(message.commandUuid);
                 return writer;
             };
 
@@ -4765,6 +4584,14 @@ export const karna = $root.karna = (() => {
                 while (reader.pos < end) {
                     let tag = reader.uint32();
                     switch (tag >>> 3) {
+                    case 1: {
+                            message.projectUuid = reader.string();
+                            break;
+                        }
+                    case 2: {
+                            message.commandUuid = reader.string();
+                            break;
+                        }
                     default:
                         reader.skipType(tag & 7);
                         break;
@@ -4800,6 +4627,12 @@ export const karna = $root.karna = (() => {
             GetResultsRequest.verify = function verify(message) {
                 if (typeof message !== "object" || message === null)
                     return "object expected";
+                if (message.projectUuid != null && message.hasOwnProperty("projectUuid"))
+                    if (!$util.isString(message.projectUuid))
+                        return "projectUuid: string expected";
+                if (message.commandUuid != null && message.hasOwnProperty("commandUuid"))
+                    if (!$util.isString(message.commandUuid))
+                        return "commandUuid: string expected";
                 return null;
             };
 
@@ -4814,7 +4647,12 @@ export const karna = $root.karna = (() => {
             GetResultsRequest.fromObject = function fromObject(object) {
                 if (object instanceof $root.karna.vision.GetResultsRequest)
                     return object;
-                return new $root.karna.vision.GetResultsRequest();
+                let message = new $root.karna.vision.GetResultsRequest();
+                if (object.projectUuid != null)
+                    message.projectUuid = String(object.projectUuid);
+                if (object.commandUuid != null)
+                    message.commandUuid = String(object.commandUuid);
+                return message;
             };
 
             /**
@@ -4826,8 +4664,19 @@ export const karna = $root.karna = (() => {
              * @param {$protobuf.IConversionOptions} [options] Conversion options
              * @returns {Object.<string,*>} Plain object
              */
-            GetResultsRequest.toObject = function toObject() {
-                return {};
+            GetResultsRequest.toObject = function toObject(message, options) {
+                if (!options)
+                    options = {};
+                let object = {};
+                if (options.defaults) {
+                    object.projectUuid = "";
+                    object.commandUuid = "";
+                }
+                if (message.projectUuid != null && message.hasOwnProperty("projectUuid"))
+                    object.projectUuid = message.projectUuid;
+                if (message.commandUuid != null && message.hasOwnProperty("commandUuid"))
+                    object.commandUuid = message.commandUuid;
+                return object;
             };
 
             /**
@@ -4857,209 +4706,6 @@ export const karna = $root.karna = (() => {
             };
 
             return GetResultsRequest;
-        })();
-
-        vision.ExportRequest = (function() {
-
-            /**
-             * Properties of an ExportRequest.
-             * @memberof karna.vision
-             * @interface IExportRequest
-             * @property {string|null} [outputDir] ExportRequest outputDir
-             */
-
-            /**
-             * Constructs a new ExportRequest.
-             * @memberof karna.vision
-             * @classdesc Represents an ExportRequest.
-             * @implements IExportRequest
-             * @constructor
-             * @param {karna.vision.IExportRequest=} [properties] Properties to set
-             */
-            function ExportRequest(properties) {
-                if (properties)
-                    for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
-                        if (properties[keys[i]] != null)
-                            this[keys[i]] = properties[keys[i]];
-            }
-
-            /**
-             * ExportRequest outputDir.
-             * @member {string} outputDir
-             * @memberof karna.vision.ExportRequest
-             * @instance
-             */
-            ExportRequest.prototype.outputDir = "";
-
-            /**
-             * Creates a new ExportRequest instance using the specified properties.
-             * @function create
-             * @memberof karna.vision.ExportRequest
-             * @static
-             * @param {karna.vision.IExportRequest=} [properties] Properties to set
-             * @returns {karna.vision.ExportRequest} ExportRequest instance
-             */
-            ExportRequest.create = function create(properties) {
-                return new ExportRequest(properties);
-            };
-
-            /**
-             * Encodes the specified ExportRequest message. Does not implicitly {@link karna.vision.ExportRequest.verify|verify} messages.
-             * @function encode
-             * @memberof karna.vision.ExportRequest
-             * @static
-             * @param {karna.vision.IExportRequest} message ExportRequest message or plain object to encode
-             * @param {$protobuf.Writer} [writer] Writer to encode to
-             * @returns {$protobuf.Writer} Writer
-             */
-            ExportRequest.encode = function encode(message, writer) {
-                if (!writer)
-                    writer = $Writer.create();
-                if (message.outputDir != null && Object.hasOwnProperty.call(message, "outputDir"))
-                    writer.uint32(/* id 1, wireType 2 =*/10).string(message.outputDir);
-                return writer;
-            };
-
-            /**
-             * Encodes the specified ExportRequest message, length delimited. Does not implicitly {@link karna.vision.ExportRequest.verify|verify} messages.
-             * @function encodeDelimited
-             * @memberof karna.vision.ExportRequest
-             * @static
-             * @param {karna.vision.IExportRequest} message ExportRequest message or plain object to encode
-             * @param {$protobuf.Writer} [writer] Writer to encode to
-             * @returns {$protobuf.Writer} Writer
-             */
-            ExportRequest.encodeDelimited = function encodeDelimited(message, writer) {
-                return this.encode(message, writer).ldelim();
-            };
-
-            /**
-             * Decodes an ExportRequest message from the specified reader or buffer.
-             * @function decode
-             * @memberof karna.vision.ExportRequest
-             * @static
-             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-             * @param {number} [length] Message length if known beforehand
-             * @returns {karna.vision.ExportRequest} ExportRequest
-             * @throws {Error} If the payload is not a reader or valid buffer
-             * @throws {$protobuf.util.ProtocolError} If required fields are missing
-             */
-            ExportRequest.decode = function decode(reader, length) {
-                if (!(reader instanceof $Reader))
-                    reader = $Reader.create(reader);
-                let end = length === undefined ? reader.len : reader.pos + length, message = new $root.karna.vision.ExportRequest();
-                while (reader.pos < end) {
-                    let tag = reader.uint32();
-                    switch (tag >>> 3) {
-                    case 1: {
-                            message.outputDir = reader.string();
-                            break;
-                        }
-                    default:
-                        reader.skipType(tag & 7);
-                        break;
-                    }
-                }
-                return message;
-            };
-
-            /**
-             * Decodes an ExportRequest message from the specified reader or buffer, length delimited.
-             * @function decodeDelimited
-             * @memberof karna.vision.ExportRequest
-             * @static
-             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
-             * @returns {karna.vision.ExportRequest} ExportRequest
-             * @throws {Error} If the payload is not a reader or valid buffer
-             * @throws {$protobuf.util.ProtocolError} If required fields are missing
-             */
-            ExportRequest.decodeDelimited = function decodeDelimited(reader) {
-                if (!(reader instanceof $Reader))
-                    reader = new $Reader(reader);
-                return this.decode(reader, reader.uint32());
-            };
-
-            /**
-             * Verifies an ExportRequest message.
-             * @function verify
-             * @memberof karna.vision.ExportRequest
-             * @static
-             * @param {Object.<string,*>} message Plain object to verify
-             * @returns {string|null} `null` if valid, otherwise the reason why it is not
-             */
-            ExportRequest.verify = function verify(message) {
-                if (typeof message !== "object" || message === null)
-                    return "object expected";
-                if (message.outputDir != null && message.hasOwnProperty("outputDir"))
-                    if (!$util.isString(message.outputDir))
-                        return "outputDir: string expected";
-                return null;
-            };
-
-            /**
-             * Creates an ExportRequest message from a plain object. Also converts values to their respective internal types.
-             * @function fromObject
-             * @memberof karna.vision.ExportRequest
-             * @static
-             * @param {Object.<string,*>} object Plain object
-             * @returns {karna.vision.ExportRequest} ExportRequest
-             */
-            ExportRequest.fromObject = function fromObject(object) {
-                if (object instanceof $root.karna.vision.ExportRequest)
-                    return object;
-                let message = new $root.karna.vision.ExportRequest();
-                if (object.outputDir != null)
-                    message.outputDir = String(object.outputDir);
-                return message;
-            };
-
-            /**
-             * Creates a plain object from an ExportRequest message. Also converts values to other types if specified.
-             * @function toObject
-             * @memberof karna.vision.ExportRequest
-             * @static
-             * @param {karna.vision.ExportRequest} message ExportRequest
-             * @param {$protobuf.IConversionOptions} [options] Conversion options
-             * @returns {Object.<string,*>} Plain object
-             */
-            ExportRequest.toObject = function toObject(message, options) {
-                if (!options)
-                    options = {};
-                let object = {};
-                if (options.defaults)
-                    object.outputDir = "";
-                if (message.outputDir != null && message.hasOwnProperty("outputDir"))
-                    object.outputDir = message.outputDir;
-                return object;
-            };
-
-            /**
-             * Converts this ExportRequest to JSON.
-             * @function toJSON
-             * @memberof karna.vision.ExportRequest
-             * @instance
-             * @returns {Object.<string,*>} JSON object
-             */
-            ExportRequest.prototype.toJSON = function toJSON() {
-                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
-            };
-
-            /**
-             * Gets the default type url for ExportRequest
-             * @function getTypeUrl
-             * @memberof karna.vision.ExportRequest
-             * @static
-             * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
-             * @returns {string} The default type url
-             */
-            ExportRequest.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
-                if (typeUrlPrefix === undefined) {
-                    typeUrlPrefix = "type.googleapis.com";
-                }
-                return typeUrlPrefix + "/karna.vision.ExportRequest";
-            };
-
-            return ExportRequest;
         })();
 
         vision.UpdateResultsRequest = (function() {
@@ -6743,9 +6389,7 @@ export const karna = $root.karna = (() => {
              * Properties of a VisionDetectRPCRequest.
              * @memberof karna.vision
              * @interface IVisionDetectRPCRequest
-             * @property {karna.vision.IProcessRequest|null} [processRequest] VisionDetectRPCRequest processRequest
              * @property {karna.vision.IGetResultsRequest|null} [getResultsRequest] VisionDetectRPCRequest getResultsRequest
-             * @property {karna.vision.IExportRequest|null} [exportRequest] VisionDetectRPCRequest exportRequest
              * @property {karna.vision.IUpdateResultsRequest|null} [updateResultsRequest] VisionDetectRPCRequest updateResultsRequest
              */
 
@@ -6765,28 +6409,12 @@ export const karna = $root.karna = (() => {
             }
 
             /**
-             * VisionDetectRPCRequest processRequest.
-             * @member {karna.vision.IProcessRequest|null|undefined} processRequest
-             * @memberof karna.vision.VisionDetectRPCRequest
-             * @instance
-             */
-            VisionDetectRPCRequest.prototype.processRequest = null;
-
-            /**
              * VisionDetectRPCRequest getResultsRequest.
              * @member {karna.vision.IGetResultsRequest|null|undefined} getResultsRequest
              * @memberof karna.vision.VisionDetectRPCRequest
              * @instance
              */
             VisionDetectRPCRequest.prototype.getResultsRequest = null;
-
-            /**
-             * VisionDetectRPCRequest exportRequest.
-             * @member {karna.vision.IExportRequest|null|undefined} exportRequest
-             * @memberof karna.vision.VisionDetectRPCRequest
-             * @instance
-             */
-            VisionDetectRPCRequest.prototype.exportRequest = null;
 
             /**
              * VisionDetectRPCRequest updateResultsRequest.
@@ -6801,12 +6429,12 @@ export const karna = $root.karna = (() => {
 
             /**
              * VisionDetectRPCRequest method.
-             * @member {"processRequest"|"getResultsRequest"|"exportRequest"|"updateResultsRequest"|undefined} method
+             * @member {"getResultsRequest"|"updateResultsRequest"|undefined} method
              * @memberof karna.vision.VisionDetectRPCRequest
              * @instance
              */
             Object.defineProperty(VisionDetectRPCRequest.prototype, "method", {
-                get: $util.oneOfGetter($oneOfFields = ["processRequest", "getResultsRequest", "exportRequest", "updateResultsRequest"]),
+                get: $util.oneOfGetter($oneOfFields = ["getResultsRequest", "updateResultsRequest"]),
                 set: $util.oneOfSetter($oneOfFields)
             });
 
@@ -6834,14 +6462,10 @@ export const karna = $root.karna = (() => {
             VisionDetectRPCRequest.encode = function encode(message, writer) {
                 if (!writer)
                     writer = $Writer.create();
-                if (message.processRequest != null && Object.hasOwnProperty.call(message, "processRequest"))
-                    $root.karna.vision.ProcessRequest.encode(message.processRequest, writer.uint32(/* id 1, wireType 2 =*/10).fork()).ldelim();
                 if (message.getResultsRequest != null && Object.hasOwnProperty.call(message, "getResultsRequest"))
-                    $root.karna.vision.GetResultsRequest.encode(message.getResultsRequest, writer.uint32(/* id 2, wireType 2 =*/18).fork()).ldelim();
-                if (message.exportRequest != null && Object.hasOwnProperty.call(message, "exportRequest"))
-                    $root.karna.vision.ExportRequest.encode(message.exportRequest, writer.uint32(/* id 3, wireType 2 =*/26).fork()).ldelim();
+                    $root.karna.vision.GetResultsRequest.encode(message.getResultsRequest, writer.uint32(/* id 1, wireType 2 =*/10).fork()).ldelim();
                 if (message.updateResultsRequest != null && Object.hasOwnProperty.call(message, "updateResultsRequest"))
-                    $root.karna.vision.UpdateResultsRequest.encode(message.updateResultsRequest, writer.uint32(/* id 4, wireType 2 =*/34).fork()).ldelim();
+                    $root.karna.vision.UpdateResultsRequest.encode(message.updateResultsRequest, writer.uint32(/* id 2, wireType 2 =*/18).fork()).ldelim();
                 return writer;
             };
 
@@ -6877,18 +6501,10 @@ export const karna = $root.karna = (() => {
                     let tag = reader.uint32();
                     switch (tag >>> 3) {
                     case 1: {
-                            message.processRequest = $root.karna.vision.ProcessRequest.decode(reader, reader.uint32());
-                            break;
-                        }
-                    case 2: {
                             message.getResultsRequest = $root.karna.vision.GetResultsRequest.decode(reader, reader.uint32());
                             break;
                         }
-                    case 3: {
-                            message.exportRequest = $root.karna.vision.ExportRequest.decode(reader, reader.uint32());
-                            break;
-                        }
-                    case 4: {
+                    case 2: {
                             message.updateResultsRequest = $root.karna.vision.UpdateResultsRequest.decode(reader, reader.uint32());
                             break;
                         }
@@ -6928,32 +6544,12 @@ export const karna = $root.karna = (() => {
                 if (typeof message !== "object" || message === null)
                     return "object expected";
                 let properties = {};
-                if (message.processRequest != null && message.hasOwnProperty("processRequest")) {
-                    properties.method = 1;
-                    {
-                        let error = $root.karna.vision.ProcessRequest.verify(message.processRequest);
-                        if (error)
-                            return "processRequest." + error;
-                    }
-                }
                 if (message.getResultsRequest != null && message.hasOwnProperty("getResultsRequest")) {
-                    if (properties.method === 1)
-                        return "method: multiple values";
                     properties.method = 1;
                     {
                         let error = $root.karna.vision.GetResultsRequest.verify(message.getResultsRequest);
                         if (error)
                             return "getResultsRequest." + error;
-                    }
-                }
-                if (message.exportRequest != null && message.hasOwnProperty("exportRequest")) {
-                    if (properties.method === 1)
-                        return "method: multiple values";
-                    properties.method = 1;
-                    {
-                        let error = $root.karna.vision.ExportRequest.verify(message.exportRequest);
-                        if (error)
-                            return "exportRequest." + error;
                     }
                 }
                 if (message.updateResultsRequest != null && message.hasOwnProperty("updateResultsRequest")) {
@@ -6981,20 +6577,10 @@ export const karna = $root.karna = (() => {
                 if (object instanceof $root.karna.vision.VisionDetectRPCRequest)
                     return object;
                 let message = new $root.karna.vision.VisionDetectRPCRequest();
-                if (object.processRequest != null) {
-                    if (typeof object.processRequest !== "object")
-                        throw TypeError(".karna.vision.VisionDetectRPCRequest.processRequest: object expected");
-                    message.processRequest = $root.karna.vision.ProcessRequest.fromObject(object.processRequest);
-                }
                 if (object.getResultsRequest != null) {
                     if (typeof object.getResultsRequest !== "object")
                         throw TypeError(".karna.vision.VisionDetectRPCRequest.getResultsRequest: object expected");
                     message.getResultsRequest = $root.karna.vision.GetResultsRequest.fromObject(object.getResultsRequest);
-                }
-                if (object.exportRequest != null) {
-                    if (typeof object.exportRequest !== "object")
-                        throw TypeError(".karna.vision.VisionDetectRPCRequest.exportRequest: object expected");
-                    message.exportRequest = $root.karna.vision.ExportRequest.fromObject(object.exportRequest);
                 }
                 if (object.updateResultsRequest != null) {
                     if (typeof object.updateResultsRequest !== "object")
@@ -7017,20 +6603,10 @@ export const karna = $root.karna = (() => {
                 if (!options)
                     options = {};
                 let object = {};
-                if (message.processRequest != null && message.hasOwnProperty("processRequest")) {
-                    object.processRequest = $root.karna.vision.ProcessRequest.toObject(message.processRequest, options);
-                    if (options.oneofs)
-                        object.method = "processRequest";
-                }
                 if (message.getResultsRequest != null && message.hasOwnProperty("getResultsRequest")) {
                     object.getResultsRequest = $root.karna.vision.GetResultsRequest.toObject(message.getResultsRequest, options);
                     if (options.oneofs)
                         object.method = "getResultsRequest";
-                }
-                if (message.exportRequest != null && message.hasOwnProperty("exportRequest")) {
-                    object.exportRequest = $root.karna.vision.ExportRequest.toObject(message.exportRequest, options);
-                    if (options.oneofs)
-                        object.method = "exportRequest";
                 }
                 if (message.updateResultsRequest != null && message.hasOwnProperty("updateResultsRequest")) {
                     object.updateResultsRequest = $root.karna.vision.UpdateResultsRequest.toObject(message.updateResultsRequest, options);
@@ -7077,7 +6653,6 @@ export const karna = $root.karna = (() => {
              * @interface IVisionDetectRPCResponse
              * @property {karna.vision.IVisionDetectResultsList|null} [results] VisionDetectRPCResponse results
              * @property {karna.vision.IVisionDetectStatus|null} [status] VisionDetectRPCResponse status
-             * @property {string|null} [exportPath] VisionDetectRPCResponse exportPath
              * @property {string|null} [error] VisionDetectRPCResponse error
              */
 
@@ -7113,14 +6688,6 @@ export const karna = $root.karna = (() => {
             VisionDetectRPCResponse.prototype.status = null;
 
             /**
-             * VisionDetectRPCResponse exportPath.
-             * @member {string|null|undefined} exportPath
-             * @memberof karna.vision.VisionDetectRPCResponse
-             * @instance
-             */
-            VisionDetectRPCResponse.prototype.exportPath = null;
-
-            /**
              * VisionDetectRPCResponse error.
              * @member {string} error
              * @memberof karna.vision.VisionDetectRPCResponse
@@ -7133,12 +6700,12 @@ export const karna = $root.karna = (() => {
 
             /**
              * VisionDetectRPCResponse response.
-             * @member {"results"|"status"|"exportPath"|undefined} response
+             * @member {"results"|"status"|undefined} response
              * @memberof karna.vision.VisionDetectRPCResponse
              * @instance
              */
             Object.defineProperty(VisionDetectRPCResponse.prototype, "response", {
-                get: $util.oneOfGetter($oneOfFields = ["results", "status", "exportPath"]),
+                get: $util.oneOfGetter($oneOfFields = ["results", "status"]),
                 set: $util.oneOfSetter($oneOfFields)
             });
 
@@ -7170,10 +6737,8 @@ export const karna = $root.karna = (() => {
                     $root.karna.vision.VisionDetectResultsList.encode(message.results, writer.uint32(/* id 1, wireType 2 =*/10).fork()).ldelim();
                 if (message.status != null && Object.hasOwnProperty.call(message, "status"))
                     $root.karna.vision.VisionDetectStatus.encode(message.status, writer.uint32(/* id 2, wireType 2 =*/18).fork()).ldelim();
-                if (message.exportPath != null && Object.hasOwnProperty.call(message, "exportPath"))
-                    writer.uint32(/* id 3, wireType 2 =*/26).string(message.exportPath);
                 if (message.error != null && Object.hasOwnProperty.call(message, "error"))
-                    writer.uint32(/* id 4, wireType 2 =*/34).string(message.error);
+                    writer.uint32(/* id 3, wireType 2 =*/26).string(message.error);
                 return writer;
             };
 
@@ -7217,10 +6782,6 @@ export const karna = $root.karna = (() => {
                             break;
                         }
                     case 3: {
-                            message.exportPath = reader.string();
-                            break;
-                        }
-                    case 4: {
                             message.error = reader.string();
                             break;
                         }
@@ -7278,13 +6839,6 @@ export const karna = $root.karna = (() => {
                             return "status." + error;
                     }
                 }
-                if (message.exportPath != null && message.hasOwnProperty("exportPath")) {
-                    if (properties.response === 1)
-                        return "response: multiple values";
-                    properties.response = 1;
-                    if (!$util.isString(message.exportPath))
-                        return "exportPath: string expected";
-                }
                 if (message.error != null && message.hasOwnProperty("error"))
                     if (!$util.isString(message.error))
                         return "error: string expected";
@@ -7313,8 +6867,6 @@ export const karna = $root.karna = (() => {
                         throw TypeError(".karna.vision.VisionDetectRPCResponse.status: object expected");
                     message.status = $root.karna.vision.VisionDetectStatus.fromObject(object.status);
                 }
-                if (object.exportPath != null)
-                    message.exportPath = String(object.exportPath);
                 if (object.error != null)
                     message.error = String(object.error);
                 return message;
@@ -7344,11 +6896,6 @@ export const karna = $root.karna = (() => {
                     object.status = $root.karna.vision.VisionDetectStatus.toObject(message.status, options);
                     if (options.oneofs)
                         object.response = "status";
-                }
-                if (message.exportPath != null && message.hasOwnProperty("exportPath")) {
-                    object.exportPath = message.exportPath;
-                    if (options.oneofs)
-                        object.response = "exportPath";
                 }
                 if (message.error != null && message.hasOwnProperty("error"))
                     object.error = message.error;

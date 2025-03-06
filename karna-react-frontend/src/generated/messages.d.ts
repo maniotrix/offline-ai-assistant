@@ -1794,105 +1794,14 @@ export namespace karna {
     /** Namespace vision. */
     namespace vision {
 
-        /** Properties of a ProcessRequest. */
-        interface IProcessRequest {
-
-            /** ProcessRequest shouldCrop */
-            shouldCrop?: (boolean|null);
-        }
-
-        /** Represents a ProcessRequest. */
-        class ProcessRequest implements IProcessRequest {
-
-            /**
-             * Constructs a new ProcessRequest.
-             * @param [properties] Properties to set
-             */
-            constructor(properties?: karna.vision.IProcessRequest);
-
-            /** ProcessRequest shouldCrop. */
-            public shouldCrop: boolean;
-
-            /**
-             * Creates a new ProcessRequest instance using the specified properties.
-             * @param [properties] Properties to set
-             * @returns ProcessRequest instance
-             */
-            public static create(properties?: karna.vision.IProcessRequest): karna.vision.ProcessRequest;
-
-            /**
-             * Encodes the specified ProcessRequest message. Does not implicitly {@link karna.vision.ProcessRequest.verify|verify} messages.
-             * @param message ProcessRequest message or plain object to encode
-             * @param [writer] Writer to encode to
-             * @returns Writer
-             */
-            public static encode(message: karna.vision.IProcessRequest, writer?: $protobuf.Writer): $protobuf.Writer;
-
-            /**
-             * Encodes the specified ProcessRequest message, length delimited. Does not implicitly {@link karna.vision.ProcessRequest.verify|verify} messages.
-             * @param message ProcessRequest message or plain object to encode
-             * @param [writer] Writer to encode to
-             * @returns Writer
-             */
-            public static encodeDelimited(message: karna.vision.IProcessRequest, writer?: $protobuf.Writer): $protobuf.Writer;
-
-            /**
-             * Decodes a ProcessRequest message from the specified reader or buffer.
-             * @param reader Reader or buffer to decode from
-             * @param [length] Message length if known beforehand
-             * @returns ProcessRequest
-             * @throws {Error} If the payload is not a reader or valid buffer
-             * @throws {$protobuf.util.ProtocolError} If required fields are missing
-             */
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): karna.vision.ProcessRequest;
-
-            /**
-             * Decodes a ProcessRequest message from the specified reader or buffer, length delimited.
-             * @param reader Reader or buffer to decode from
-             * @returns ProcessRequest
-             * @throws {Error} If the payload is not a reader or valid buffer
-             * @throws {$protobuf.util.ProtocolError} If required fields are missing
-             */
-            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): karna.vision.ProcessRequest;
-
-            /**
-             * Verifies a ProcessRequest message.
-             * @param message Plain object to verify
-             * @returns `null` if valid, otherwise the reason why it is not
-             */
-            public static verify(message: { [k: string]: any }): (string|null);
-
-            /**
-             * Creates a ProcessRequest message from a plain object. Also converts values to their respective internal types.
-             * @param object Plain object
-             * @returns ProcessRequest
-             */
-            public static fromObject(object: { [k: string]: any }): karna.vision.ProcessRequest;
-
-            /**
-             * Creates a plain object from a ProcessRequest message. Also converts values to other types if specified.
-             * @param message ProcessRequest
-             * @param [options] Conversion options
-             * @returns Plain object
-             */
-            public static toObject(message: karna.vision.ProcessRequest, options?: $protobuf.IConversionOptions): { [k: string]: any };
-
-            /**
-             * Converts this ProcessRequest to JSON.
-             * @returns JSON object
-             */
-            public toJSON(): { [k: string]: any };
-
-            /**
-             * Gets the default type url for ProcessRequest
-             * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
-             * @returns The default type url
-             */
-            public static getTypeUrl(typeUrlPrefix?: string): string;
-        }
-
         /** Properties of a GetResultsRequest. */
         interface IGetResultsRequest {
+
+            /** GetResultsRequest projectUuid */
+            projectUuid?: (string|null);
+
+            /** GetResultsRequest commandUuid */
+            commandUuid?: (string|null);
         }
 
         /** Represents a GetResultsRequest. */
@@ -1903,6 +1812,12 @@ export namespace karna {
              * @param [properties] Properties to set
              */
             constructor(properties?: karna.vision.IGetResultsRequest);
+
+            /** GetResultsRequest projectUuid. */
+            public projectUuid: string;
+
+            /** GetResultsRequest commandUuid. */
+            public commandUuid: string;
 
             /**
              * Creates a new GetResultsRequest instance using the specified properties.
@@ -1976,103 +1891,6 @@ export namespace karna {
 
             /**
              * Gets the default type url for GetResultsRequest
-             * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
-             * @returns The default type url
-             */
-            public static getTypeUrl(typeUrlPrefix?: string): string;
-        }
-
-        /** Properties of an ExportRequest. */
-        interface IExportRequest {
-
-            /** ExportRequest outputDir */
-            outputDir?: (string|null);
-        }
-
-        /** Represents an ExportRequest. */
-        class ExportRequest implements IExportRequest {
-
-            /**
-             * Constructs a new ExportRequest.
-             * @param [properties] Properties to set
-             */
-            constructor(properties?: karna.vision.IExportRequest);
-
-            /** ExportRequest outputDir. */
-            public outputDir: string;
-
-            /**
-             * Creates a new ExportRequest instance using the specified properties.
-             * @param [properties] Properties to set
-             * @returns ExportRequest instance
-             */
-            public static create(properties?: karna.vision.IExportRequest): karna.vision.ExportRequest;
-
-            /**
-             * Encodes the specified ExportRequest message. Does not implicitly {@link karna.vision.ExportRequest.verify|verify} messages.
-             * @param message ExportRequest message or plain object to encode
-             * @param [writer] Writer to encode to
-             * @returns Writer
-             */
-            public static encode(message: karna.vision.IExportRequest, writer?: $protobuf.Writer): $protobuf.Writer;
-
-            /**
-             * Encodes the specified ExportRequest message, length delimited. Does not implicitly {@link karna.vision.ExportRequest.verify|verify} messages.
-             * @param message ExportRequest message or plain object to encode
-             * @param [writer] Writer to encode to
-             * @returns Writer
-             */
-            public static encodeDelimited(message: karna.vision.IExportRequest, writer?: $protobuf.Writer): $protobuf.Writer;
-
-            /**
-             * Decodes an ExportRequest message from the specified reader or buffer.
-             * @param reader Reader or buffer to decode from
-             * @param [length] Message length if known beforehand
-             * @returns ExportRequest
-             * @throws {Error} If the payload is not a reader or valid buffer
-             * @throws {$protobuf.util.ProtocolError} If required fields are missing
-             */
-            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): karna.vision.ExportRequest;
-
-            /**
-             * Decodes an ExportRequest message from the specified reader or buffer, length delimited.
-             * @param reader Reader or buffer to decode from
-             * @returns ExportRequest
-             * @throws {Error} If the payload is not a reader or valid buffer
-             * @throws {$protobuf.util.ProtocolError} If required fields are missing
-             */
-            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): karna.vision.ExportRequest;
-
-            /**
-             * Verifies an ExportRequest message.
-             * @param message Plain object to verify
-             * @returns `null` if valid, otherwise the reason why it is not
-             */
-            public static verify(message: { [k: string]: any }): (string|null);
-
-            /**
-             * Creates an ExportRequest message from a plain object. Also converts values to their respective internal types.
-             * @param object Plain object
-             * @returns ExportRequest
-             */
-            public static fromObject(object: { [k: string]: any }): karna.vision.ExportRequest;
-
-            /**
-             * Creates a plain object from an ExportRequest message. Also converts values to other types if specified.
-             * @param message ExportRequest
-             * @param [options] Conversion options
-             * @returns Plain object
-             */
-            public static toObject(message: karna.vision.ExportRequest, options?: $protobuf.IConversionOptions): { [k: string]: any };
-
-            /**
-             * Converts this ExportRequest to JSON.
-             * @returns JSON object
-             */
-            public toJSON(): { [k: string]: any };
-
-            /**
-             * Gets the default type url for ExportRequest
              * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
              * @returns The default type url
              */
@@ -2723,14 +2541,8 @@ export namespace karna {
         /** Properties of a VisionDetectRPCRequest. */
         interface IVisionDetectRPCRequest {
 
-            /** VisionDetectRPCRequest processRequest */
-            processRequest?: (karna.vision.IProcessRequest|null);
-
             /** VisionDetectRPCRequest getResultsRequest */
             getResultsRequest?: (karna.vision.IGetResultsRequest|null);
-
-            /** VisionDetectRPCRequest exportRequest */
-            exportRequest?: (karna.vision.IExportRequest|null);
 
             /** VisionDetectRPCRequest updateResultsRequest */
             updateResultsRequest?: (karna.vision.IUpdateResultsRequest|null);
@@ -2745,20 +2557,14 @@ export namespace karna {
              */
             constructor(properties?: karna.vision.IVisionDetectRPCRequest);
 
-            /** VisionDetectRPCRequest processRequest. */
-            public processRequest?: (karna.vision.IProcessRequest|null);
-
             /** VisionDetectRPCRequest getResultsRequest. */
             public getResultsRequest?: (karna.vision.IGetResultsRequest|null);
-
-            /** VisionDetectRPCRequest exportRequest. */
-            public exportRequest?: (karna.vision.IExportRequest|null);
 
             /** VisionDetectRPCRequest updateResultsRequest. */
             public updateResultsRequest?: (karna.vision.IUpdateResultsRequest|null);
 
             /** VisionDetectRPCRequest method. */
-            public method?: ("processRequest"|"getResultsRequest"|"exportRequest"|"updateResultsRequest");
+            public method?: ("getResultsRequest"|"updateResultsRequest");
 
             /**
              * Creates a new VisionDetectRPCRequest instance using the specified properties.
@@ -2847,9 +2653,6 @@ export namespace karna {
             /** VisionDetectRPCResponse status */
             status?: (karna.vision.IVisionDetectStatus|null);
 
-            /** VisionDetectRPCResponse exportPath */
-            exportPath?: (string|null);
-
             /** VisionDetectRPCResponse error */
             error?: (string|null);
         }
@@ -2869,14 +2672,11 @@ export namespace karna {
             /** VisionDetectRPCResponse status. */
             public status?: (karna.vision.IVisionDetectStatus|null);
 
-            /** VisionDetectRPCResponse exportPath. */
-            public exportPath?: (string|null);
-
             /** VisionDetectRPCResponse error. */
             public error: string;
 
             /** VisionDetectRPCResponse response. */
-            public response?: ("results"|"status"|"exportPath");
+            public response?: ("results"|"status");
 
             /**
              * Creates a new VisionDetectRPCResponse instance using the specified properties.
