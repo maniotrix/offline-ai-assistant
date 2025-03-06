@@ -16,8 +16,8 @@ export const Homepage: React.FC = () => {
   const { commandResponse, connected: commandConnected, error: commandError, pendingCommands } = useCommandStore();
   const { captureResult } = useScreenCaptureStore();
   
-  const [command, setCommand] = useState('');
-  const [domain, setDomain] = useState('');
+  const [command, setCommand] = useState('search cats on youtube');
+  const [domain, setDomain] = useState('youtube.com');
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error' | 'info'} | null>(null);
   const navigate = useNavigate();
 
