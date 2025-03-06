@@ -6,8 +6,11 @@ const rootDir = path.resolve(__dirname, '..');
 const protoDir = path.join(rootDir, 'proto');
 const outputDir = path.join(rootDir, 'karna-react-frontend', 'src', 'generated');
 
-// List of proto files to process
-const protoFiles = ['command.proto', 'status.proto', 'screen_capture.proto'];
+// Automatically find all proto files in the proto directory
+const protoFiles = fs.readdirSync(protoDir)
+    .filter(file => file.endsWith('.proto'));
+
+console.log(`Found ${protoFiles.length} proto files: ${protoFiles.join(', ')}`);
 
 try {
     // Clear output directory if it exists

@@ -252,6 +252,233 @@ export const karna = $root.karna = (() => {
             return CaptureRequest;
         })();
 
+        screen_capture.CaptureCacheRequest = (function() {
+
+            /**
+             * Properties of a CaptureCacheRequest.
+             * @memberof karna.screen_capture
+             * @interface ICaptureCacheRequest
+             * @property {string|null} [projectUuid] CaptureCacheRequest projectUuid
+             * @property {string|null} [commandUuid] CaptureCacheRequest commandUuid
+             */
+
+            /**
+             * Constructs a new CaptureCacheRequest.
+             * @memberof karna.screen_capture
+             * @classdesc Represents a CaptureCacheRequest.
+             * @implements ICaptureCacheRequest
+             * @constructor
+             * @param {karna.screen_capture.ICaptureCacheRequest=} [properties] Properties to set
+             */
+            function CaptureCacheRequest(properties) {
+                if (properties)
+                    for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                        if (properties[keys[i]] != null)
+                            this[keys[i]] = properties[keys[i]];
+            }
+
+            /**
+             * CaptureCacheRequest projectUuid.
+             * @member {string} projectUuid
+             * @memberof karna.screen_capture.CaptureCacheRequest
+             * @instance
+             */
+            CaptureCacheRequest.prototype.projectUuid = "";
+
+            /**
+             * CaptureCacheRequest commandUuid.
+             * @member {string} commandUuid
+             * @memberof karna.screen_capture.CaptureCacheRequest
+             * @instance
+             */
+            CaptureCacheRequest.prototype.commandUuid = "";
+
+            /**
+             * Creates a new CaptureCacheRequest instance using the specified properties.
+             * @function create
+             * @memberof karna.screen_capture.CaptureCacheRequest
+             * @static
+             * @param {karna.screen_capture.ICaptureCacheRequest=} [properties] Properties to set
+             * @returns {karna.screen_capture.CaptureCacheRequest} CaptureCacheRequest instance
+             */
+            CaptureCacheRequest.create = function create(properties) {
+                return new CaptureCacheRequest(properties);
+            };
+
+            /**
+             * Encodes the specified CaptureCacheRequest message. Does not implicitly {@link karna.screen_capture.CaptureCacheRequest.verify|verify} messages.
+             * @function encode
+             * @memberof karna.screen_capture.CaptureCacheRequest
+             * @static
+             * @param {karna.screen_capture.ICaptureCacheRequest} message CaptureCacheRequest message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            CaptureCacheRequest.encode = function encode(message, writer) {
+                if (!writer)
+                    writer = $Writer.create();
+                if (message.projectUuid != null && Object.hasOwnProperty.call(message, "projectUuid"))
+                    writer.uint32(/* id 1, wireType 2 =*/10).string(message.projectUuid);
+                if (message.commandUuid != null && Object.hasOwnProperty.call(message, "commandUuid"))
+                    writer.uint32(/* id 2, wireType 2 =*/18).string(message.commandUuid);
+                return writer;
+            };
+
+            /**
+             * Encodes the specified CaptureCacheRequest message, length delimited. Does not implicitly {@link karna.screen_capture.CaptureCacheRequest.verify|verify} messages.
+             * @function encodeDelimited
+             * @memberof karna.screen_capture.CaptureCacheRequest
+             * @static
+             * @param {karna.screen_capture.ICaptureCacheRequest} message CaptureCacheRequest message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            CaptureCacheRequest.encodeDelimited = function encodeDelimited(message, writer) {
+                return this.encode(message, writer).ldelim();
+            };
+
+            /**
+             * Decodes a CaptureCacheRequest message from the specified reader or buffer.
+             * @function decode
+             * @memberof karna.screen_capture.CaptureCacheRequest
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @param {number} [length] Message length if known beforehand
+             * @returns {karna.screen_capture.CaptureCacheRequest} CaptureCacheRequest
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            CaptureCacheRequest.decode = function decode(reader, length) {
+                if (!(reader instanceof $Reader))
+                    reader = $Reader.create(reader);
+                let end = length === undefined ? reader.len : reader.pos + length, message = new $root.karna.screen_capture.CaptureCacheRequest();
+                while (reader.pos < end) {
+                    let tag = reader.uint32();
+                    switch (tag >>> 3) {
+                    case 1: {
+                            message.projectUuid = reader.string();
+                            break;
+                        }
+                    case 2: {
+                            message.commandUuid = reader.string();
+                            break;
+                        }
+                    default:
+                        reader.skipType(tag & 7);
+                        break;
+                    }
+                }
+                return message;
+            };
+
+            /**
+             * Decodes a CaptureCacheRequest message from the specified reader or buffer, length delimited.
+             * @function decodeDelimited
+             * @memberof karna.screen_capture.CaptureCacheRequest
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @returns {karna.screen_capture.CaptureCacheRequest} CaptureCacheRequest
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            CaptureCacheRequest.decodeDelimited = function decodeDelimited(reader) {
+                if (!(reader instanceof $Reader))
+                    reader = new $Reader(reader);
+                return this.decode(reader, reader.uint32());
+            };
+
+            /**
+             * Verifies a CaptureCacheRequest message.
+             * @function verify
+             * @memberof karna.screen_capture.CaptureCacheRequest
+             * @static
+             * @param {Object.<string,*>} message Plain object to verify
+             * @returns {string|null} `null` if valid, otherwise the reason why it is not
+             */
+            CaptureCacheRequest.verify = function verify(message) {
+                if (typeof message !== "object" || message === null)
+                    return "object expected";
+                if (message.projectUuid != null && message.hasOwnProperty("projectUuid"))
+                    if (!$util.isString(message.projectUuid))
+                        return "projectUuid: string expected";
+                if (message.commandUuid != null && message.hasOwnProperty("commandUuid"))
+                    if (!$util.isString(message.commandUuid))
+                        return "commandUuid: string expected";
+                return null;
+            };
+
+            /**
+             * Creates a CaptureCacheRequest message from a plain object. Also converts values to their respective internal types.
+             * @function fromObject
+             * @memberof karna.screen_capture.CaptureCacheRequest
+             * @static
+             * @param {Object.<string,*>} object Plain object
+             * @returns {karna.screen_capture.CaptureCacheRequest} CaptureCacheRequest
+             */
+            CaptureCacheRequest.fromObject = function fromObject(object) {
+                if (object instanceof $root.karna.screen_capture.CaptureCacheRequest)
+                    return object;
+                let message = new $root.karna.screen_capture.CaptureCacheRequest();
+                if (object.projectUuid != null)
+                    message.projectUuid = String(object.projectUuid);
+                if (object.commandUuid != null)
+                    message.commandUuid = String(object.commandUuid);
+                return message;
+            };
+
+            /**
+             * Creates a plain object from a CaptureCacheRequest message. Also converts values to other types if specified.
+             * @function toObject
+             * @memberof karna.screen_capture.CaptureCacheRequest
+             * @static
+             * @param {karna.screen_capture.CaptureCacheRequest} message CaptureCacheRequest
+             * @param {$protobuf.IConversionOptions} [options] Conversion options
+             * @returns {Object.<string,*>} Plain object
+             */
+            CaptureCacheRequest.toObject = function toObject(message, options) {
+                if (!options)
+                    options = {};
+                let object = {};
+                if (options.defaults) {
+                    object.projectUuid = "";
+                    object.commandUuid = "";
+                }
+                if (message.projectUuid != null && message.hasOwnProperty("projectUuid"))
+                    object.projectUuid = message.projectUuid;
+                if (message.commandUuid != null && message.hasOwnProperty("commandUuid"))
+                    object.commandUuid = message.commandUuid;
+                return object;
+            };
+
+            /**
+             * Converts this CaptureCacheRequest to JSON.
+             * @function toJSON
+             * @memberof karna.screen_capture.CaptureCacheRequest
+             * @instance
+             * @returns {Object.<string,*>} JSON object
+             */
+            CaptureCacheRequest.prototype.toJSON = function toJSON() {
+                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+            };
+
+            /**
+             * Gets the default type url for CaptureCacheRequest
+             * @function getTypeUrl
+             * @memberof karna.screen_capture.CaptureCacheRequest
+             * @static
+             * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+             * @returns {string} The default type url
+             */
+            CaptureCacheRequest.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+                if (typeUrlPrefix === undefined) {
+                    typeUrlPrefix = "type.googleapis.com";
+                }
+                return typeUrlPrefix + "/karna.screen_capture.CaptureCacheRequest";
+            };
+
+            return CaptureCacheRequest;
+        })();
+
         screen_capture.CaptureUpdateRequest = (function() {
 
             /**
@@ -837,6 +1064,278 @@ export const karna = $root.karna = (() => {
             return CaptureUpdateResponse;
         })();
 
+        screen_capture.CaptureCacheResponse = (function() {
+
+            /**
+             * Properties of a CaptureCacheResponse.
+             * @memberof karna.screen_capture
+             * @interface ICaptureCacheResponse
+             * @property {string|null} [projectUuid] CaptureCacheResponse projectUuid
+             * @property {string|null} [commandUuid] CaptureCacheResponse commandUuid
+             * @property {Array.<karna.screen_capture.IRpcScreenshotEvent>|null} [screenshotEvents] CaptureCacheResponse screenshotEvents
+             */
+
+            /**
+             * Constructs a new CaptureCacheResponse.
+             * @memberof karna.screen_capture
+             * @classdesc Represents a CaptureCacheResponse.
+             * @implements ICaptureCacheResponse
+             * @constructor
+             * @param {karna.screen_capture.ICaptureCacheResponse=} [properties] Properties to set
+             */
+            function CaptureCacheResponse(properties) {
+                this.screenshotEvents = [];
+                if (properties)
+                    for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                        if (properties[keys[i]] != null)
+                            this[keys[i]] = properties[keys[i]];
+            }
+
+            /**
+             * CaptureCacheResponse projectUuid.
+             * @member {string} projectUuid
+             * @memberof karna.screen_capture.CaptureCacheResponse
+             * @instance
+             */
+            CaptureCacheResponse.prototype.projectUuid = "";
+
+            /**
+             * CaptureCacheResponse commandUuid.
+             * @member {string} commandUuid
+             * @memberof karna.screen_capture.CaptureCacheResponse
+             * @instance
+             */
+            CaptureCacheResponse.prototype.commandUuid = "";
+
+            /**
+             * CaptureCacheResponse screenshotEvents.
+             * @member {Array.<karna.screen_capture.IRpcScreenshotEvent>} screenshotEvents
+             * @memberof karna.screen_capture.CaptureCacheResponse
+             * @instance
+             */
+            CaptureCacheResponse.prototype.screenshotEvents = $util.emptyArray;
+
+            /**
+             * Creates a new CaptureCacheResponse instance using the specified properties.
+             * @function create
+             * @memberof karna.screen_capture.CaptureCacheResponse
+             * @static
+             * @param {karna.screen_capture.ICaptureCacheResponse=} [properties] Properties to set
+             * @returns {karna.screen_capture.CaptureCacheResponse} CaptureCacheResponse instance
+             */
+            CaptureCacheResponse.create = function create(properties) {
+                return new CaptureCacheResponse(properties);
+            };
+
+            /**
+             * Encodes the specified CaptureCacheResponse message. Does not implicitly {@link karna.screen_capture.CaptureCacheResponse.verify|verify} messages.
+             * @function encode
+             * @memberof karna.screen_capture.CaptureCacheResponse
+             * @static
+             * @param {karna.screen_capture.ICaptureCacheResponse} message CaptureCacheResponse message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            CaptureCacheResponse.encode = function encode(message, writer) {
+                if (!writer)
+                    writer = $Writer.create();
+                if (message.projectUuid != null && Object.hasOwnProperty.call(message, "projectUuid"))
+                    writer.uint32(/* id 1, wireType 2 =*/10).string(message.projectUuid);
+                if (message.commandUuid != null && Object.hasOwnProperty.call(message, "commandUuid"))
+                    writer.uint32(/* id 2, wireType 2 =*/18).string(message.commandUuid);
+                if (message.screenshotEvents != null && message.screenshotEvents.length)
+                    for (let i = 0; i < message.screenshotEvents.length; ++i)
+                        $root.karna.screen_capture.RpcScreenshotEvent.encode(message.screenshotEvents[i], writer.uint32(/* id 3, wireType 2 =*/26).fork()).ldelim();
+                return writer;
+            };
+
+            /**
+             * Encodes the specified CaptureCacheResponse message, length delimited. Does not implicitly {@link karna.screen_capture.CaptureCacheResponse.verify|verify} messages.
+             * @function encodeDelimited
+             * @memberof karna.screen_capture.CaptureCacheResponse
+             * @static
+             * @param {karna.screen_capture.ICaptureCacheResponse} message CaptureCacheResponse message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            CaptureCacheResponse.encodeDelimited = function encodeDelimited(message, writer) {
+                return this.encode(message, writer).ldelim();
+            };
+
+            /**
+             * Decodes a CaptureCacheResponse message from the specified reader or buffer.
+             * @function decode
+             * @memberof karna.screen_capture.CaptureCacheResponse
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @param {number} [length] Message length if known beforehand
+             * @returns {karna.screen_capture.CaptureCacheResponse} CaptureCacheResponse
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            CaptureCacheResponse.decode = function decode(reader, length) {
+                if (!(reader instanceof $Reader))
+                    reader = $Reader.create(reader);
+                let end = length === undefined ? reader.len : reader.pos + length, message = new $root.karna.screen_capture.CaptureCacheResponse();
+                while (reader.pos < end) {
+                    let tag = reader.uint32();
+                    switch (tag >>> 3) {
+                    case 1: {
+                            message.projectUuid = reader.string();
+                            break;
+                        }
+                    case 2: {
+                            message.commandUuid = reader.string();
+                            break;
+                        }
+                    case 3: {
+                            if (!(message.screenshotEvents && message.screenshotEvents.length))
+                                message.screenshotEvents = [];
+                            message.screenshotEvents.push($root.karna.screen_capture.RpcScreenshotEvent.decode(reader, reader.uint32()));
+                            break;
+                        }
+                    default:
+                        reader.skipType(tag & 7);
+                        break;
+                    }
+                }
+                return message;
+            };
+
+            /**
+             * Decodes a CaptureCacheResponse message from the specified reader or buffer, length delimited.
+             * @function decodeDelimited
+             * @memberof karna.screen_capture.CaptureCacheResponse
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @returns {karna.screen_capture.CaptureCacheResponse} CaptureCacheResponse
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            CaptureCacheResponse.decodeDelimited = function decodeDelimited(reader) {
+                if (!(reader instanceof $Reader))
+                    reader = new $Reader(reader);
+                return this.decode(reader, reader.uint32());
+            };
+
+            /**
+             * Verifies a CaptureCacheResponse message.
+             * @function verify
+             * @memberof karna.screen_capture.CaptureCacheResponse
+             * @static
+             * @param {Object.<string,*>} message Plain object to verify
+             * @returns {string|null} `null` if valid, otherwise the reason why it is not
+             */
+            CaptureCacheResponse.verify = function verify(message) {
+                if (typeof message !== "object" || message === null)
+                    return "object expected";
+                if (message.projectUuid != null && message.hasOwnProperty("projectUuid"))
+                    if (!$util.isString(message.projectUuid))
+                        return "projectUuid: string expected";
+                if (message.commandUuid != null && message.hasOwnProperty("commandUuid"))
+                    if (!$util.isString(message.commandUuid))
+                        return "commandUuid: string expected";
+                if (message.screenshotEvents != null && message.hasOwnProperty("screenshotEvents")) {
+                    if (!Array.isArray(message.screenshotEvents))
+                        return "screenshotEvents: array expected";
+                    for (let i = 0; i < message.screenshotEvents.length; ++i) {
+                        let error = $root.karna.screen_capture.RpcScreenshotEvent.verify(message.screenshotEvents[i]);
+                        if (error)
+                            return "screenshotEvents." + error;
+                    }
+                }
+                return null;
+            };
+
+            /**
+             * Creates a CaptureCacheResponse message from a plain object. Also converts values to their respective internal types.
+             * @function fromObject
+             * @memberof karna.screen_capture.CaptureCacheResponse
+             * @static
+             * @param {Object.<string,*>} object Plain object
+             * @returns {karna.screen_capture.CaptureCacheResponse} CaptureCacheResponse
+             */
+            CaptureCacheResponse.fromObject = function fromObject(object) {
+                if (object instanceof $root.karna.screen_capture.CaptureCacheResponse)
+                    return object;
+                let message = new $root.karna.screen_capture.CaptureCacheResponse();
+                if (object.projectUuid != null)
+                    message.projectUuid = String(object.projectUuid);
+                if (object.commandUuid != null)
+                    message.commandUuid = String(object.commandUuid);
+                if (object.screenshotEvents) {
+                    if (!Array.isArray(object.screenshotEvents))
+                        throw TypeError(".karna.screen_capture.CaptureCacheResponse.screenshotEvents: array expected");
+                    message.screenshotEvents = [];
+                    for (let i = 0; i < object.screenshotEvents.length; ++i) {
+                        if (typeof object.screenshotEvents[i] !== "object")
+                            throw TypeError(".karna.screen_capture.CaptureCacheResponse.screenshotEvents: object expected");
+                        message.screenshotEvents[i] = $root.karna.screen_capture.RpcScreenshotEvent.fromObject(object.screenshotEvents[i]);
+                    }
+                }
+                return message;
+            };
+
+            /**
+             * Creates a plain object from a CaptureCacheResponse message. Also converts values to other types if specified.
+             * @function toObject
+             * @memberof karna.screen_capture.CaptureCacheResponse
+             * @static
+             * @param {karna.screen_capture.CaptureCacheResponse} message CaptureCacheResponse
+             * @param {$protobuf.IConversionOptions} [options] Conversion options
+             * @returns {Object.<string,*>} Plain object
+             */
+            CaptureCacheResponse.toObject = function toObject(message, options) {
+                if (!options)
+                    options = {};
+                let object = {};
+                if (options.arrays || options.defaults)
+                    object.screenshotEvents = [];
+                if (options.defaults) {
+                    object.projectUuid = "";
+                    object.commandUuid = "";
+                }
+                if (message.projectUuid != null && message.hasOwnProperty("projectUuid"))
+                    object.projectUuid = message.projectUuid;
+                if (message.commandUuid != null && message.hasOwnProperty("commandUuid"))
+                    object.commandUuid = message.commandUuid;
+                if (message.screenshotEvents && message.screenshotEvents.length) {
+                    object.screenshotEvents = [];
+                    for (let j = 0; j < message.screenshotEvents.length; ++j)
+                        object.screenshotEvents[j] = $root.karna.screen_capture.RpcScreenshotEvent.toObject(message.screenshotEvents[j], options);
+                }
+                return object;
+            };
+
+            /**
+             * Converts this CaptureCacheResponse to JSON.
+             * @function toJSON
+             * @memberof karna.screen_capture.CaptureCacheResponse
+             * @instance
+             * @returns {Object.<string,*>} JSON object
+             */
+            CaptureCacheResponse.prototype.toJSON = function toJSON() {
+                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+            };
+
+            /**
+             * Gets the default type url for CaptureCacheResponse
+             * @function getTypeUrl
+             * @memberof karna.screen_capture.CaptureCacheResponse
+             * @static
+             * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+             * @returns {string} The default type url
+             */
+            CaptureCacheResponse.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+                if (typeUrlPrefix === undefined) {
+                    typeUrlPrefix = "type.googleapis.com";
+                }
+                return typeUrlPrefix + "/karna.screen_capture.CaptureCacheResponse";
+            };
+
+            return CaptureCacheResponse;
+        })();
+
         screen_capture.ScreenCaptureRPCRequest = (function() {
 
             /**
@@ -846,6 +1345,7 @@ export const karna = $root.karna = (() => {
              * @property {karna.screen_capture.ICaptureRequest|null} [startCapture] ScreenCaptureRPCRequest startCapture
              * @property {karna.screen_capture.ICaptureRequest|null} [stopCapture] ScreenCaptureRPCRequest stopCapture
              * @property {karna.screen_capture.ICaptureUpdateRequest|null} [updateCapture] ScreenCaptureRPCRequest updateCapture
+             * @property {karna.screen_capture.ICaptureCacheRequest|null} [getCache] ScreenCaptureRPCRequest getCache
              */
 
             /**
@@ -887,17 +1387,25 @@ export const karna = $root.karna = (() => {
              */
             ScreenCaptureRPCRequest.prototype.updateCapture = null;
 
+            /**
+             * ScreenCaptureRPCRequest getCache.
+             * @member {karna.screen_capture.ICaptureCacheRequest|null|undefined} getCache
+             * @memberof karna.screen_capture.ScreenCaptureRPCRequest
+             * @instance
+             */
+            ScreenCaptureRPCRequest.prototype.getCache = null;
+
             // OneOf field names bound to virtual getters and setters
             let $oneOfFields;
 
             /**
              * ScreenCaptureRPCRequest method.
-             * @member {"startCapture"|"stopCapture"|"updateCapture"|undefined} method
+             * @member {"startCapture"|"stopCapture"|"updateCapture"|"getCache"|undefined} method
              * @memberof karna.screen_capture.ScreenCaptureRPCRequest
              * @instance
              */
             Object.defineProperty(ScreenCaptureRPCRequest.prototype, "method", {
-                get: $util.oneOfGetter($oneOfFields = ["startCapture", "stopCapture", "updateCapture"]),
+                get: $util.oneOfGetter($oneOfFields = ["startCapture", "stopCapture", "updateCapture", "getCache"]),
                 set: $util.oneOfSetter($oneOfFields)
             });
 
@@ -931,6 +1439,8 @@ export const karna = $root.karna = (() => {
                     $root.karna.screen_capture.CaptureRequest.encode(message.stopCapture, writer.uint32(/* id 2, wireType 2 =*/18).fork()).ldelim();
                 if (message.updateCapture != null && Object.hasOwnProperty.call(message, "updateCapture"))
                     $root.karna.screen_capture.CaptureUpdateRequest.encode(message.updateCapture, writer.uint32(/* id 3, wireType 2 =*/26).fork()).ldelim();
+                if (message.getCache != null && Object.hasOwnProperty.call(message, "getCache"))
+                    $root.karna.screen_capture.CaptureCacheRequest.encode(message.getCache, writer.uint32(/* id 4, wireType 2 =*/34).fork()).ldelim();
                 return writer;
             };
 
@@ -975,6 +1485,10 @@ export const karna = $root.karna = (() => {
                         }
                     case 3: {
                             message.updateCapture = $root.karna.screen_capture.CaptureUpdateRequest.decode(reader, reader.uint32());
+                            break;
+                        }
+                    case 4: {
+                            message.getCache = $root.karna.screen_capture.CaptureCacheRequest.decode(reader, reader.uint32());
                             break;
                         }
                     default:
@@ -1041,6 +1555,16 @@ export const karna = $root.karna = (() => {
                             return "updateCapture." + error;
                     }
                 }
+                if (message.getCache != null && message.hasOwnProperty("getCache")) {
+                    if (properties.method === 1)
+                        return "method: multiple values";
+                    properties.method = 1;
+                    {
+                        let error = $root.karna.screen_capture.CaptureCacheRequest.verify(message.getCache);
+                        if (error)
+                            return "getCache." + error;
+                    }
+                }
                 return null;
             };
 
@@ -1070,6 +1594,11 @@ export const karna = $root.karna = (() => {
                     if (typeof object.updateCapture !== "object")
                         throw TypeError(".karna.screen_capture.ScreenCaptureRPCRequest.updateCapture: object expected");
                     message.updateCapture = $root.karna.screen_capture.CaptureUpdateRequest.fromObject(object.updateCapture);
+                }
+                if (object.getCache != null) {
+                    if (typeof object.getCache !== "object")
+                        throw TypeError(".karna.screen_capture.ScreenCaptureRPCRequest.getCache: object expected");
+                    message.getCache = $root.karna.screen_capture.CaptureCacheRequest.fromObject(object.getCache);
                 }
                 return message;
             };
@@ -1101,6 +1630,11 @@ export const karna = $root.karna = (() => {
                     object.updateCapture = $root.karna.screen_capture.CaptureUpdateRequest.toObject(message.updateCapture, options);
                     if (options.oneofs)
                         object.method = "updateCapture";
+                }
+                if (message.getCache != null && message.hasOwnProperty("getCache")) {
+                    object.getCache = $root.karna.screen_capture.CaptureCacheRequest.toObject(message.getCache, options);
+                    if (options.oneofs)
+                        object.method = "getCache";
                 }
                 return object;
             };
@@ -1972,6 +2506,7 @@ export const karna = $root.karna = (() => {
              * @property {karna.screen_capture.ICaptureResult|null} [captureResponse] ScreenCaptureRPCResponse captureResponse
              * @property {string|null} [error] ScreenCaptureRPCResponse error
              * @property {karna.screen_capture.ICaptureUpdateResponse|null} [updateCaptureResponse] ScreenCaptureRPCResponse updateCaptureResponse
+             * @property {karna.screen_capture.ICaptureCacheResponse|null} [cacheResponse] ScreenCaptureRPCResponse cacheResponse
              */
 
             /**
@@ -2013,17 +2548,25 @@ export const karna = $root.karna = (() => {
              */
             ScreenCaptureRPCResponse.prototype.updateCaptureResponse = null;
 
+            /**
+             * ScreenCaptureRPCResponse cacheResponse.
+             * @member {karna.screen_capture.ICaptureCacheResponse|null|undefined} cacheResponse
+             * @memberof karna.screen_capture.ScreenCaptureRPCResponse
+             * @instance
+             */
+            ScreenCaptureRPCResponse.prototype.cacheResponse = null;
+
             // OneOf field names bound to virtual getters and setters
             let $oneOfFields;
 
             /**
              * ScreenCaptureRPCResponse type.
-             * @member {"captureResponse"|"error"|"updateCaptureResponse"|undefined} type
+             * @member {"captureResponse"|"error"|"updateCaptureResponse"|"cacheResponse"|undefined} type
              * @memberof karna.screen_capture.ScreenCaptureRPCResponse
              * @instance
              */
             Object.defineProperty(ScreenCaptureRPCResponse.prototype, "type", {
-                get: $util.oneOfGetter($oneOfFields = ["captureResponse", "error", "updateCaptureResponse"]),
+                get: $util.oneOfGetter($oneOfFields = ["captureResponse", "error", "updateCaptureResponse", "cacheResponse"]),
                 set: $util.oneOfSetter($oneOfFields)
             });
 
@@ -2057,6 +2600,8 @@ export const karna = $root.karna = (() => {
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.error);
                 if (message.updateCaptureResponse != null && Object.hasOwnProperty.call(message, "updateCaptureResponse"))
                     $root.karna.screen_capture.CaptureUpdateResponse.encode(message.updateCaptureResponse, writer.uint32(/* id 3, wireType 2 =*/26).fork()).ldelim();
+                if (message.cacheResponse != null && Object.hasOwnProperty.call(message, "cacheResponse"))
+                    $root.karna.screen_capture.CaptureCacheResponse.encode(message.cacheResponse, writer.uint32(/* id 4, wireType 2 =*/34).fork()).ldelim();
                 return writer;
             };
 
@@ -2101,6 +2646,10 @@ export const karna = $root.karna = (() => {
                         }
                     case 3: {
                             message.updateCaptureResponse = $root.karna.screen_capture.CaptureUpdateResponse.decode(reader, reader.uint32());
+                            break;
+                        }
+                    case 4: {
+                            message.cacheResponse = $root.karna.screen_capture.CaptureCacheResponse.decode(reader, reader.uint32());
                             break;
                         }
                     default:
@@ -2164,6 +2713,16 @@ export const karna = $root.karna = (() => {
                             return "updateCaptureResponse." + error;
                     }
                 }
+                if (message.cacheResponse != null && message.hasOwnProperty("cacheResponse")) {
+                    if (properties.type === 1)
+                        return "type: multiple values";
+                    properties.type = 1;
+                    {
+                        let error = $root.karna.screen_capture.CaptureCacheResponse.verify(message.cacheResponse);
+                        if (error)
+                            return "cacheResponse." + error;
+                    }
+                }
                 return null;
             };
 
@@ -2190,6 +2749,11 @@ export const karna = $root.karna = (() => {
                     if (typeof object.updateCaptureResponse !== "object")
                         throw TypeError(".karna.screen_capture.ScreenCaptureRPCResponse.updateCaptureResponse: object expected");
                     message.updateCaptureResponse = $root.karna.screen_capture.CaptureUpdateResponse.fromObject(object.updateCaptureResponse);
+                }
+                if (object.cacheResponse != null) {
+                    if (typeof object.cacheResponse !== "object")
+                        throw TypeError(".karna.screen_capture.ScreenCaptureRPCResponse.cacheResponse: object expected");
+                    message.cacheResponse = $root.karna.screen_capture.CaptureCacheResponse.fromObject(object.cacheResponse);
                 }
                 return message;
             };
@@ -2221,6 +2785,11 @@ export const karna = $root.karna = (() => {
                     object.updateCaptureResponse = $root.karna.screen_capture.CaptureUpdateResponse.toObject(message.updateCaptureResponse, options);
                     if (options.oneofs)
                         object.type = "updateCaptureResponse";
+                }
+                if (message.cacheResponse != null && message.hasOwnProperty("cacheResponse")) {
+                    object.cacheResponse = $root.karna.screen_capture.CaptureCacheResponse.toObject(message.cacheResponse, options);
+                    if (options.oneofs)
+                        object.type = "cacheResponse";
                 }
                 return object;
             };

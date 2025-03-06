@@ -109,6 +109,109 @@ export namespace karna {
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
+        /** Properties of a CaptureCacheRequest. */
+        interface ICaptureCacheRequest {
+
+            /** CaptureCacheRequest projectUuid */
+            projectUuid?: (string|null);
+
+            /** CaptureCacheRequest commandUuid */
+            commandUuid?: (string|null);
+        }
+
+        /** Represents a CaptureCacheRequest. */
+        class CaptureCacheRequest implements ICaptureCacheRequest {
+
+            /**
+             * Constructs a new CaptureCacheRequest.
+             * @param [properties] Properties to set
+             */
+            constructor(properties?: karna.screen_capture.ICaptureCacheRequest);
+
+            /** CaptureCacheRequest projectUuid. */
+            public projectUuid: string;
+
+            /** CaptureCacheRequest commandUuid. */
+            public commandUuid: string;
+
+            /**
+             * Creates a new CaptureCacheRequest instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns CaptureCacheRequest instance
+             */
+            public static create(properties?: karna.screen_capture.ICaptureCacheRequest): karna.screen_capture.CaptureCacheRequest;
+
+            /**
+             * Encodes the specified CaptureCacheRequest message. Does not implicitly {@link karna.screen_capture.CaptureCacheRequest.verify|verify} messages.
+             * @param message CaptureCacheRequest message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            public static encode(message: karna.screen_capture.ICaptureCacheRequest, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified CaptureCacheRequest message, length delimited. Does not implicitly {@link karna.screen_capture.CaptureCacheRequest.verify|verify} messages.
+             * @param message CaptureCacheRequest message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            public static encodeDelimited(message: karna.screen_capture.ICaptureCacheRequest, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a CaptureCacheRequest message from the specified reader or buffer.
+             * @param reader Reader or buffer to decode from
+             * @param [length] Message length if known beforehand
+             * @returns CaptureCacheRequest
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): karna.screen_capture.CaptureCacheRequest;
+
+            /**
+             * Decodes a CaptureCacheRequest message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns CaptureCacheRequest
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): karna.screen_capture.CaptureCacheRequest;
+
+            /**
+             * Verifies a CaptureCacheRequest message.
+             * @param message Plain object to verify
+             * @returns `null` if valid, otherwise the reason why it is not
+             */
+            public static verify(message: { [k: string]: any }): (string|null);
+
+            /**
+             * Creates a CaptureCacheRequest message from a plain object. Also converts values to their respective internal types.
+             * @param object Plain object
+             * @returns CaptureCacheRequest
+             */
+            public static fromObject(object: { [k: string]: any }): karna.screen_capture.CaptureCacheRequest;
+
+            /**
+             * Creates a plain object from a CaptureCacheRequest message. Also converts values to other types if specified.
+             * @param message CaptureCacheRequest
+             * @param [options] Conversion options
+             * @returns Plain object
+             */
+            public static toObject(message: karna.screen_capture.CaptureCacheRequest, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+            /**
+             * Converts this CaptureCacheRequest to JSON.
+             * @returns JSON object
+             */
+            public toJSON(): { [k: string]: any };
+
+            /**
+             * Gets the default type url for CaptureCacheRequest
+             * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+             * @returns The default type url
+             */
+            public static getTypeUrl(typeUrlPrefix?: string): string;
+        }
+
         /** Properties of a CaptureUpdateRequest. */
         interface ICaptureUpdateRequest {
 
@@ -339,6 +442,115 @@ export namespace karna {
             public static getTypeUrl(typeUrlPrefix?: string): string;
         }
 
+        /** Properties of a CaptureCacheResponse. */
+        interface ICaptureCacheResponse {
+
+            /** CaptureCacheResponse projectUuid */
+            projectUuid?: (string|null);
+
+            /** CaptureCacheResponse commandUuid */
+            commandUuid?: (string|null);
+
+            /** CaptureCacheResponse screenshotEvents */
+            screenshotEvents?: (karna.screen_capture.IRpcScreenshotEvent[]|null);
+        }
+
+        /** Represents a CaptureCacheResponse. */
+        class CaptureCacheResponse implements ICaptureCacheResponse {
+
+            /**
+             * Constructs a new CaptureCacheResponse.
+             * @param [properties] Properties to set
+             */
+            constructor(properties?: karna.screen_capture.ICaptureCacheResponse);
+
+            /** CaptureCacheResponse projectUuid. */
+            public projectUuid: string;
+
+            /** CaptureCacheResponse commandUuid. */
+            public commandUuid: string;
+
+            /** CaptureCacheResponse screenshotEvents. */
+            public screenshotEvents: karna.screen_capture.IRpcScreenshotEvent[];
+
+            /**
+             * Creates a new CaptureCacheResponse instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns CaptureCacheResponse instance
+             */
+            public static create(properties?: karna.screen_capture.ICaptureCacheResponse): karna.screen_capture.CaptureCacheResponse;
+
+            /**
+             * Encodes the specified CaptureCacheResponse message. Does not implicitly {@link karna.screen_capture.CaptureCacheResponse.verify|verify} messages.
+             * @param message CaptureCacheResponse message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            public static encode(message: karna.screen_capture.ICaptureCacheResponse, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified CaptureCacheResponse message, length delimited. Does not implicitly {@link karna.screen_capture.CaptureCacheResponse.verify|verify} messages.
+             * @param message CaptureCacheResponse message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            public static encodeDelimited(message: karna.screen_capture.ICaptureCacheResponse, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a CaptureCacheResponse message from the specified reader or buffer.
+             * @param reader Reader or buffer to decode from
+             * @param [length] Message length if known beforehand
+             * @returns CaptureCacheResponse
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): karna.screen_capture.CaptureCacheResponse;
+
+            /**
+             * Decodes a CaptureCacheResponse message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns CaptureCacheResponse
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            public static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): karna.screen_capture.CaptureCacheResponse;
+
+            /**
+             * Verifies a CaptureCacheResponse message.
+             * @param message Plain object to verify
+             * @returns `null` if valid, otherwise the reason why it is not
+             */
+            public static verify(message: { [k: string]: any }): (string|null);
+
+            /**
+             * Creates a CaptureCacheResponse message from a plain object. Also converts values to their respective internal types.
+             * @param object Plain object
+             * @returns CaptureCacheResponse
+             */
+            public static fromObject(object: { [k: string]: any }): karna.screen_capture.CaptureCacheResponse;
+
+            /**
+             * Creates a plain object from a CaptureCacheResponse message. Also converts values to other types if specified.
+             * @param message CaptureCacheResponse
+             * @param [options] Conversion options
+             * @returns Plain object
+             */
+            public static toObject(message: karna.screen_capture.CaptureCacheResponse, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+            /**
+             * Converts this CaptureCacheResponse to JSON.
+             * @returns JSON object
+             */
+            public toJSON(): { [k: string]: any };
+
+            /**
+             * Gets the default type url for CaptureCacheResponse
+             * @param [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+             * @returns The default type url
+             */
+            public static getTypeUrl(typeUrlPrefix?: string): string;
+        }
+
         /** Properties of a ScreenCaptureRPCRequest. */
         interface IScreenCaptureRPCRequest {
 
@@ -350,6 +562,9 @@ export namespace karna {
 
             /** ScreenCaptureRPCRequest updateCapture */
             updateCapture?: (karna.screen_capture.ICaptureUpdateRequest|null);
+
+            /** ScreenCaptureRPCRequest getCache */
+            getCache?: (karna.screen_capture.ICaptureCacheRequest|null);
         }
 
         /** Represents a ScreenCaptureRPCRequest. */
@@ -370,8 +585,11 @@ export namespace karna {
             /** ScreenCaptureRPCRequest updateCapture. */
             public updateCapture?: (karna.screen_capture.ICaptureUpdateRequest|null);
 
+            /** ScreenCaptureRPCRequest getCache. */
+            public getCache?: (karna.screen_capture.ICaptureCacheRequest|null);
+
             /** ScreenCaptureRPCRequest method. */
-            public method?: ("startCapture"|"stopCapture"|"updateCapture");
+            public method?: ("startCapture"|"stopCapture"|"updateCapture"|"getCache");
 
             /**
              * Creates a new ScreenCaptureRPCRequest instance using the specified properties.
@@ -746,6 +964,9 @@ export namespace karna {
 
             /** ScreenCaptureRPCResponse updateCaptureResponse */
             updateCaptureResponse?: (karna.screen_capture.ICaptureUpdateResponse|null);
+
+            /** ScreenCaptureRPCResponse cacheResponse */
+            cacheResponse?: (karna.screen_capture.ICaptureCacheResponse|null);
         }
 
         /** Represents a ScreenCaptureRPCResponse. */
@@ -766,8 +987,11 @@ export namespace karna {
             /** ScreenCaptureRPCResponse updateCaptureResponse. */
             public updateCaptureResponse?: (karna.screen_capture.ICaptureUpdateResponse|null);
 
+            /** ScreenCaptureRPCResponse cacheResponse. */
+            public cacheResponse?: (karna.screen_capture.ICaptureCacheResponse|null);
+
             /** ScreenCaptureRPCResponse type. */
-            public type?: ("captureResponse"|"error"|"updateCaptureResponse");
+            public type?: ("captureResponse"|"error"|"updateCaptureResponse"|"cacheResponse");
 
             /**
              * Creates a new ScreenCaptureRPCResponse instance using the specified properties.
