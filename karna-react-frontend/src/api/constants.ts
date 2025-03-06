@@ -19,6 +19,7 @@ export const WebSocketEndpoints = {
     COMMAND: "/ws/command",
     STATUS: "/ws/status",
     SCREEN_CAPTURE: "/ws/screen_capture",
+    VISION_DETECT: "/ws/vision_detect",
     // Base URL for WebSocket connections
     getBaseUrl: (hostname: string = window.location.hostname, port: number = 8000): string => {
         return `ws://${hostname}:${port}`;
