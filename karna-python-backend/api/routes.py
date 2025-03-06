@@ -123,39 +123,3 @@ async def websocket_vision_detect_endpoint(websocket: WebSocket):
 async def get_active_clients():
     """Get count of active WebSocket clients by channel"""
     return websocket_manager.report_active_clients()
-
-# Route to get image data
-@router.get(REST.GET_IMAGE_DATA)
-async def get_image_data():
-    """Get image data"""
-    try:
-        # Placeholder for actual implementation
-        return {"status": "success", "message": "Image data retrieved"}
-    except Exception as e:
-        logger.error(f"Error getting image data: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get image data: {str(e)}"
-        )
-
-# Route to save bounding boxes
-@router.post(REST.SAVE_BBOXES)
-async def save_bboxes(request: Request):
-    """Save bounding boxes"""
-    try:
-        data = await request.json()
-        # Placeholder for actual implementation
-        return {"status": "success", "message": "Bounding boxes saved"}
-    except Exception as e:
-        logger.error(f"Error saving bounding boxes: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to save bounding boxes: {str(e)}"
-        )
-
-@router.get(REST.SCREENSHOT)
-async def get_screenshot():
-    # vision_service = get_vision_service_instance()
-    # screenshot = await vision_service.capture_screen()
-    # return {"screenshot": screenshot}
-    pass
