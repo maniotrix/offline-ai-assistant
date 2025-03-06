@@ -18,6 +18,7 @@ class WebSocketEndpoints:
     COMMAND = "/ws/command"
     STATUS = "/ws/status"
     SCREEN_CAPTURE = "/ws/screen_capture"
+    VISION_DETECT = "/ws/vision_detect"
     
 # Re-export for easier imports
 REST = RestEndpoints

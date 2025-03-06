@@ -72,6 +72,10 @@ class VisionDetectService(BaseService[VisionDetectResultModelList], metaclass=Si
         self._screenshot_events = screenshot_events
         # Notify observers that the state has changed
         self.set_state('screenshot_events_count', len(screenshot_events))
+        # Reset results when new events are set
+        self._vision_detect_results = None
+        self.set_state('has_results', False)
+        self.notify_observers(None)  # Notify observers that results were cleared
     
     def add_screenshot_event(self, screenshot_event: ScreenshotEvent) -> None:
         """
@@ -84,6 +88,10 @@ class VisionDetectService(BaseService[VisionDetectResultModelList], metaclass=Si
         self._screenshot_events.append(screenshot_event)
         # Notify observers that the state has changed
         self.set_state('screenshot_events_count', len(self._screenshot_events))
+        # Reset results when new events are added
+        self._vision_detect_results = None
+        self.set_state('has_results', False)
+        self.notify_observers(None)  # Notify observers that results were cleared
     
     def process_screenshot_events(self, should_crop: bool = True) -> VisionDetectResultModelList:
         """
@@ -239,6 +247,25 @@ class VisionDetectService(BaseService[VisionDetectResultModelList], metaclass=Si
         self.set_state('results_count', 0)
         # Notify observers that results have been cleared
         self.notify_observers(None)
+    
+    def update_vision_detect_results(self, results: VisionDetectResultModelList) -> None:
+        """
+        Update the vision detection results with the provided results.
+        This method is used to update results from external sources, such as the frontend.
+        
+        Args:
+            results: The updated vision detection results.
+        """
+        logger.info(f"Updating vision detection results with {len(results.vision_detect_result_models)} models")
+        self._vision_detect_results = results
+        self.set_state('has_results', True)
+        self.set_state('results_count', len(results.vision_detect_result_models))
+        self.set_state('last_processed', datetime.now().isoformat())
+        
+        # Notify observers of the updated results
+        self.notify_observers(self._vision_detect_results)
+        
+        logger.info("Vision detection results updated successfully")
 
 
 def get_vision_detect_service_instance(screenshot_events: Optional[List[ScreenshotEvent]] = None):

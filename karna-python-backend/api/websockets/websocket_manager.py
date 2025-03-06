@@ -5,6 +5,7 @@ from base import SingletonMeta
 from api.websockets.command.command_handler import CommandWebSocketHandler
 from api.websockets.status.status_handler import StatusWebSocketHandler
 from api.websockets.screen_capture.screen_capture_handler import ScreenCaptureWebSocketHandler
+from api.websockets.vision_detect.vision_detect_handler import VisionDetectWebSocketHandler
 
 class WebSocketManager(metaclass=SingletonMeta):
     def __init__(self):
@@ -12,6 +13,7 @@ class WebSocketManager(metaclass=SingletonMeta):
             self.command_handler = CommandWebSocketHandler()
             self.status_handler = StatusWebSocketHandler()
             self.screen_capture_handler = ScreenCaptureWebSocketHandler()
+            self.vision_detect_handler = VisionDetectWebSocketHandler()
             self.logger = logging.getLogger(__name__)
             self._initialized = True
 
@@ -53,13 +55,27 @@ class WebSocketManager(metaclass=SingletonMeta):
         except Exception as e:
             self.logger.error(f"Error in screen capture connection: {e}", exc_info=True)
             self.screen_capture_handler.disconnect(websocket)
+            
+    async def handle_vision_detect_connection(self, websocket: WebSocket) -> None:
+        """Handle vision detection channel connection"""
+        await self.vision_detect_handler.connect(websocket)
+        try:
+            while True:
+                message = await websocket.receive_bytes()
+                await self.vision_detect_handler.handle_message(websocket, message)
+        except WebSocketDisconnect:
+            self.vision_detect_handler.disconnect(websocket)
+        except Exception as e:
+            self.logger.error(f"Error in vision detection connection: {e}", exc_info=True)
+            self.vision_detect_handler.disconnect(websocket)
 
     def report_active_clients(self) -> Dict[str, int]:
         """Report number of active connections per channel"""
         return {
             "command": len(self.command_handler.active_connections),
             "status": len(self.status_handler.active_connections),
-            "screen_capture": len(self.screen_capture_handler.active_connections)
+            "screen_capture": len(self.screen_capture_handler.active_connections),
+            "vision_detect": len(self.vision_detect_handler.active_connections)
         }
 
 

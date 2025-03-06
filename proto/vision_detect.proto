@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+package karna.vision;
+
+option java_multiple_files = true;
+option java_package = "com.karna.vision";
+option java_outer_classname = "VisionDetectProto";
+
+// Request to process screenshot events
+message ProcessRequest {
+  bool should_crop = 1;
+}
+
+// Request to get vision detection results
+message GetResultsRequest {
+  // No parameters needed
+}
+
+// Request to export vision detection results to JSON
+message ExportRequest {
+  string output_dir = 1;
+}
+
+// Request to update vision detection results
+message UpdateResultsRequest {
+  VisionDetectResultsList results = 1;
+}
+
+// Bounding box for UI elements
+message BoundingBox {
+  string id = 1;
+  int32 x = 2;
+  int32 y = 3;
+  int32 width = 4;
+  int32 height = 5;
+  string class_name = 6;
+  float confidence = 7;
+}
+
+// Vision detection result model
+message VisionDetectResultModel {
+  string event_id = 1;
+  string project_uuid = 2;
+  string command_uuid = 3;
+  string timestamp = 4; // ISO format timestamp
+  string description = 5;
+  string original_image_path = 6;
+  int32 original_width = 7;
+  int32 original_height = 8;
+  bool is_cropped = 9;
+  repeated BoundingBox merged_ui_icon_bboxes = 10;
+  bytes cropped_image = 11; // Optional binary image data for websocket transfer
+  int32 cropped_width = 12;
+  int32 cropped_height = 13;
+}
+
+// Vision detection results list
+message VisionDetectResultsList {
+  string project_uuid = 1;
+  string command_uuid = 2;
+  repeated VisionDetectResultModel results = 3;
+}
+
+// Status of the vision detection service
+message VisionDetectStatus {
+  string status = 1;
+  int32 screenshot_events_count = 2;
+  bool has_results = 3;
+  int32 results_count = 4;
+  bool is_processing = 5;
+  string last_processed = 6;
+  string last_error = 7;
+}
+
+// RPC request for vision detection
+message VisionDetectRPCRequest {
+  oneof method {
+    ProcessRequest process_request = 1;
+    GetResultsRequest get_results_request = 2;
+    ExportRequest export_request = 3;
+    UpdateResultsRequest update_results_request = 4;
+  }
+}
+
+// RPC response for vision detection
+message VisionDetectRPCResponse {
+  oneof response {
+    VisionDetectResultsList results = 1;
+    VisionDetectStatus status = 2;
+    string export_path = 3;
+  }
+  string error = 4;
+} 
