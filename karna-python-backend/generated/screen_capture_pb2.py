@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x14screen_capture.proto\x12\x14karna.screen_capture\"<\n\x0e\x43\x61ptureRequest\x12\x14\n\x0cproject_uuid\x18\x01 \x01(\t\x12\x14\n\x0c\x63ommand_uuid\x18\x02 \x01(\t\"q\n\x14\x43\x61ptureUpdateRequest\x12\x14\n\x0cproject_uuid\x18\x01 \x01(\t\x12\x14\n\x0c\x63ommand_uuid\x18\x02 \x01(\t\x12\x0f\n\x07message\x18\x03 \x01(\t\x12\x1c\n\x14screenshot_event_ids\x18\x04 \x03(\t\"\x99\x01\n\x15\x43\x61ptureUpdateResponse\x12\x14\n\x0cproject_uuid\x18\x01 \x01(\t\x12\x14\n\x0c\x63ommand_uuid\x18\x02 \x01(\t\x12\x0f\n\x07message\x18\x03 \x01(\t\x12\x43\n\x11screenshot_events\x18\x04 \x03(\x0b\x32(.karna.screen_capture.RpcScreenshotEvent\"\xe6\x01\n\x17ScreenCaptureRPCRequest\x12=\n\rstart_capture\x18\x01 \x01(\x0b\x32$.karna.screen_capture.CaptureRequestH\x00\x12<\n\x0cstop_capture\x18\x02 \x01(\x0b\x32$.karna.screen_capture.CaptureRequestH\x00\x12\x44\n\x0eupdate_capture\x18\x03 \x01(\x0b\x32*.karna.screen_capture.CaptureUpdateRequestH\x00\x42\x08\n\x06method\"\xe9\x02\n\x12RpcScreenshotEvent\x12\x10\n\x08\x65vent_id\x18\x01 \x01(\t\x12\x14\n\x0cproject_uuid\x18\x02 \x01(\t\x12\x14\n\x0c\x63ommand_uuid\x18\x03 \x01(\t\x12\x11\n\ttimestamp\x18\x04 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x05 \x01(\t\x12\x17\n\x0fscreenshot_path\x18\x06 \x01(\t\x12\x1c\n\x0f\x61nnotation_path\x18\x07 \x01(\tH\x00\x88\x01\x01\x12\x14\n\x07mouse_x\x18\x08 \x01(\x05H\x01\x88\x01\x01\x12\x14\n\x07mouse_y\x18\t \x01(\x05H\x02\x88\x01\x01\x12\x15\n\x08key_char\x18\n \x01(\tH\x03\x88\x01\x01\x12\x15\n\x08key_code\x18\x0b \x01(\tH\x04\x88\x01\x01\x12\x16\n\x0eis_special_key\x18\x0c \x01(\x08\x42\x12\n\x10_annotation_pathB\n\n\x08_mouse_xB\n\n\x08_mouse_yB\x0b\n\t_key_charB\x0b\n\t_key_code\"\xa4\x01\n\rCaptureResult\x12\x14\n\x0cproject_uuid\x18\x01 \x01(\t\x12\x14\n\x0c\x63ommand_uuid\x18\x02 \x01(\t\x12\x11\n\tis_active\x18\x03 \x01(\x08\x12\x0f\n\x07message\x18\x04 \x01(\t\x12\x43\n\x11screenshot_events\x18\x05 \x03(\x0b\x32(.karna.screen_capture.RpcScreenshotEvent\"\xc4\x01\n\x18ScreenCaptureRPCResponse\x12?\n\x10\x63\x61pture_response\x18\x01 \x01(\x0b\x32#.karna.screen_capture.CaptureResultH\x00\x12\x0f\n\x05\x65rror\x18\x02 \x01(\tH\x00\x12N\n\x17update_capture_response\x18\x03 \x01(\x0b\x32+.karna.screen_capture.CaptureUpdateResponseH\x00\x42\x06\n\x04typeb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x14screen_capture.proto\x12\x14karna.screen_capture\"<\n\x0e\x43\x61ptureRequest\x12\x14\n\x0cproject_uuid\x18\x01 \x01(\t\x12\x14\n\x0c\x63ommand_uuid\x18\x02 \x01(\t\"A\n\x13\x43\x61ptureCacheRequest\x12\x14\n\x0cproject_uuid\x18\x01 \x01(\t\x12\x14\n\x0c\x63ommand_uuid\x18\x02 \x01(\t\"q\n\x14\x43\x61ptureUpdateRequest\x12\x14\n\x0cproject_uuid\x18\x01 \x01(\t\x12\x14\n\x0c\x63ommand_uuid\x18\x02 \x01(\t\x12\x0f\n\x07message\x18\x03 \x01(\t\x12\x1c\n\x14screenshot_event_ids\x18\x04 \x03(\t\"\x99\x01\n\x15\x43\x61ptureUpdateResponse\x12\x14\n\x0cproject_uuid\x18\x01 \x01(\t\x12\x14\n\x0c\x63ommand_uuid\x18\x02 \x01(\t\x12\x0f\n\x07message\x18\x03 \x01(\t\x12\x43\n\x11screenshot_events\x18\x04 \x03(\x0b\x32(.karna.screen_capture.RpcScreenshotEvent\"\x87\x01\n\x14\x43\x61ptureCacheResponse\x12\x14\n\x0cproject_uuid\x18\x01 \x01(\t\x12\x14\n\x0c\x63ommand_uuid\x18\x02 \x01(\t\x12\x43\n\x11screenshot_events\x18\x03 \x03(\x0b\x32(.karna.screen_capture.RpcScreenshotEvent\"\xa6\x02\n\x17ScreenCaptureRPCRequest\x12=\n\rstart_capture\x18\x01 \x01(\x0b\x32$.karna.screen_capture.CaptureRequestH\x00\x12<\n\x0cstop_capture\x18\x02 \x01(\x0b\x32$.karna.screen_capture.CaptureRequestH\x00\x12\x44\n\x0eupdate_capture\x18\x03 \x01(\x0b\x32*.karna.screen_capture.CaptureUpdateRequestH\x00\x12>\n\tget_cache\x18\x04 \x01(\x0b\x32).karna.screen_capture.CaptureCacheRequestH\x00\x42\x08\n\x06method\"\xe9\x02\n\x12RpcScreenshotEvent\x12\x10\n\x08\x65vent_id\x18\x01 \x01(\t\x12\x14\n\x0cproject_uuid\x18\x02 \x01(\t\x12\x14\n\x0c\x63ommand_uuid\x18\x03 \x01(\t\x12\x11\n\ttimestamp\x18\x04 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x05 \x01(\t\x12\x17\n\x0fscreenshot_path\x18\x06 \x01(\t\x12\x1c\n\x0f\x61nnotation_path\x18\x07 \x01(\tH\x00\x88\x01\x01\x12\x14\n\x07mouse_x\x18\x08 \x01(\x05H\x01\x88\x01\x01\x12\x14\n\x07mouse_y\x18\t \x01(\x05H\x02\x88\x01\x01\x12\x15\n\x08key_char\x18\n \x01(\tH\x03\x88\x01\x01\x12\x15\n\x08key_code\x18\x0b \x01(\tH\x04\x88\x01\x01\x12\x16\n\x0eis_special_key\x18\x0c \x01(\x08\x42\x12\n\x10_annotation_pathB\n\n\x08_mouse_xB\n\n\x08_mouse_yB\x0b\n\t_key_charB\x0b\n\t_key_code\"\xa4\x01\n\rCaptureResult\x12\x14\n\x0cproject_uuid\x18\x01 \x01(\t\x12\x14\n\x0c\x63ommand_uuid\x18\x02 \x01(\t\x12\x11\n\tis_active\x18\x03 \x01(\x08\x12\x0f\n\x07message\x18\x04 \x01(\t\x12\x43\n\x11screenshot_events\x18\x05 \x03(\x0b\x32(.karna.screen_capture.RpcScreenshotEvent\"\x8a\x02\n\x18ScreenCaptureRPCResponse\x12?\n\x10\x63\x61pture_response\x18\x01 \x01(\x0b\x32#.karna.screen_capture.CaptureResultH\x00\x12\x0f\n\x05\x65rror\x18\x02 \x01(\tH\x00\x12N\n\x17update_capture_response\x18\x03 \x01(\x0b\x32+.karna.screen_capture.CaptureUpdateResponseH\x00\x12\x44\n\x0e\x63\x61\x63he_response\x18\x04 \x01(\x0b\x32*.karna.screen_capture.CaptureCacheResponseH\x00\x42\x06\n\x04typeb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -33,16 +33,20 @@ if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
   _globals['_CAPTUREREQUEST']._serialized_start=46
   _globals['_CAPTUREREQUEST']._serialized_end=106
-  _globals['_CAPTUREUPDATEREQUEST']._serialized_start=108
-  _globals['_CAPTUREUPDATEREQUEST']._serialized_end=221
-  _globals['_CAPTUREUPDATERESPONSE']._serialized_start=224
-  _globals['_CAPTUREUPDATERESPONSE']._serialized_end=377
-  _globals['_SCREENCAPTURERPCREQUEST']._serialized_start=380
-  _globals['_SCREENCAPTURERPCREQUEST']._serialized_end=610
-  _globals['_RPCSCREENSHOTEVENT']._serialized_start=613
-  _globals['_RPCSCREENSHOTEVENT']._serialized_end=974
-  _globals['_CAPTURERESULT']._serialized_start=977
-  _globals['_CAPTURERESULT']._serialized_end=1141
-  _globals['_SCREENCAPTURERPCRESPONSE']._serialized_start=1144
-  _globals['_SCREENCAPTURERPCRESPONSE']._serialized_end=1340
+  _globals['_CAPTURECACHEREQUEST']._serialized_start=108
+  _globals['_CAPTURECACHEREQUEST']._serialized_end=173
+  _globals['_CAPTUREUPDATEREQUEST']._serialized_start=175
+  _globals['_CAPTUREUPDATEREQUEST']._serialized_end=288
+  _globals['_CAPTUREUPDATERESPONSE']._serialized_start=291
+  _globals['_CAPTUREUPDATERESPONSE']._serialized_end=444
+  _globals['_CAPTURECACHERESPONSE']._serialized_start=447
+  _globals['_CAPTURECACHERESPONSE']._serialized_end=582
+  _globals['_SCREENCAPTURERPCREQUEST']._serialized_start=585
+  _globals['_SCREENCAPTURERPCREQUEST']._serialized_end=879
+  _globals['_RPCSCREENSHOTEVENT']._serialized_start=882
+  _globals['_RPCSCREENSHOTEVENT']._serialized_end=1243
+  _globals['_CAPTURERESULT']._serialized_start=1246
+  _globals['_CAPTURERESULT']._serialized_end=1410
+  _globals['_SCREENCAPTURERPCRESPONSE']._serialized_start=1413
+  _globals['_SCREENCAPTURERPCRESPONSE']._serialized_end=1679
 # @@protoc_insertion_point(module_scope)

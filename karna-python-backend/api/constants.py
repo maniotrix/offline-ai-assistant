@@ -12,6 +12,7 @@ class RestEndpoints:
     ACTIVE_CLIENTS = "/ws/clients"
     GET_IMAGE_DATA = "/api/get_image_data"
     SAVE_BBOXES = "/api/save_bboxes"
+    GET_CAPTURE_CACHE = "/api/get_capture_cache"
 
 class WebSocketEndpoints:
     """Constants for WebSocket endpoints"""
