@@ -181,11 +181,13 @@ async def test_async_observer(screenshot_events):
     # Create an async observer
     update_count = 0
     results = None
+    update_event = asyncio.Event()
     
     async def handle_update(data: Optional[VisionDetectResultModelList]) -> None:
         nonlocal update_count, results
         update_count += 1
         results = data
+        update_event.set()
     
     # Set up the main event loop for the AsyncCapableObserver
     AsyncCapableObserver.set_main_loop(asyncio.get_event_loop())
@@ -198,11 +200,15 @@ async def test_async_observer(screenshot_events):
         # Add screenshot events
         service.set_screenshot_events(screenshot_events[:1])  # type: ignore # Use just first event for speed
         
-        # Process the screenshot events without try/except to show full stacktrace
+        # Wait for first update (from set_screenshot_events)
+        await asyncio.wait_for(update_event.wait(), timeout=1.0)
+        update_event.clear()
+        
+        # Process the screenshot events
         service.process_screenshot_events()
         
-        # Give the async observer time to process the update
-        await asyncio.sleep(0.1)
+        # Wait for second update (from process_screenshot_events)
+        await asyncio.wait_for(update_event.wait(), timeout=1.0)
         
         # Check that the observer was notified
         assert update_count == 2
@@ -210,7 +216,10 @@ async def test_async_observer(screenshot_events):
         
         # Clear the results
         service.clear_results()
-    
+        
+        # Wait for final update (from clear_results)
+        await asyncio.wait_for(update_event.wait(), timeout=1.0)
+        
     finally:
         # Clean up
         service.remove_observer(async_observer)
