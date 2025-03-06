@@ -15,19 +15,6 @@ from inference.yolo.icon.yolo_prediction import YOLO_ICON_Prediction
 from services.screen_capture_service import ScreenshotEvent
 from utils.image_utils import crop_to_render_area
 
-class InferenceData:
-    """
-    Class for storing inference data.
-    """
-    def __init__(self, screenshot_events: List[ScreenshotEvent], should_crop: bool = True):
-        self.screenshot_events = screenshot_events
-        self.should_crop = should_crop
-        # a dictionary of pil image and corresponding merged ui and icon bounding boxes
-        self.pil_images = {} #  if cropping is enabled, this will be a dictionary of original image path and corresponding cropped pil image
-        self.merged_ui_icon_bboxes = {} # a dictionary of event id and corresponding merged ui and icon bounding boxes
-
-
-
 class Merged_UI_IconBBoxes:
     """
     Class for merging UI and icon bounding boxes.
