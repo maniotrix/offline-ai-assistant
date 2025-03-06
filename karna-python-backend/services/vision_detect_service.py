@@ -174,54 +174,6 @@ class VisionDetectService(BaseService[VisionDetectResultModelList], metaclass=Si
         
         return self._vision_detect_results
     
-    def export_vision_detect_results_to_json(self, output_dir: str) -> Optional[str]:
-        """
-        Export the vision detect results to a JSON file.
-        
-        Args:
-            output_dir: Directory to save the JSON file.
-            
-        Returns:
-            Optional[str]: Path to the JSON file, or None if export failed.
-        """
-        if not self._vision_detect_results:
-            logger.warning("No vision detect results available to export")
-            return None
-        
-        try:
-            # Create the output directory if it doesn't exist
-            os.makedirs(output_dir, exist_ok=True)
-            
-            # Generate a unique filename
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            json_filename = f"vision_detect_results_{timestamp}.json"
-            json_path = os.path.join(output_dir, json_filename)
-            
-            # Convert the results to a dictionary
-            results_dict = {
-                "project_uuid": self._vision_detect_results.project_uuid,
-                "command_uuid": self._vision_detect_results.command_uuid,
-                "results": [model.to_dict() for model in self._vision_detect_results.vision_detect_result_models]
-            }
-            
-            # Write the results to a JSON file
-            with open(json_path, "w") as f:
-                json.dump(results_dict, f, indent=2, default=lambda o: None if isinstance(o, Image.Image) else o)
-            
-            logger.info(f"Exported vision detect results to: {json_path}")
-            
-            # Update state to indicate export was successful
-            self.set_state('last_export_path', json_path)
-            self.set_state('last_export_time', datetime.now().isoformat())
-            
-            return json_path
-        
-        except Exception as e:
-            logger.error(f"Error exporting vision detect results: {str(e)}")
-            # Update state to indicate export failed
-            self.set_state('last_export_error', str(e))
-            return None
-    
     def get_status(self) -> str:
         """
         Get the status of the service.
