@@ -242,7 +242,17 @@ export const Homepage: React.FC = () => {
 
       {captureResult?.screenshotEvents && captureResult.screenshotEvents.length > 0 && (
         // Add a button to open the editor
-        <Button variant="contained" onClick={() => navigate('/editor')}>Open Editor</Button>
+        <Button 
+          variant="contained" 
+          onClick={() => navigate('/editor', {
+            state: {
+              projectUuid: captureResult.projectUuid,
+              commandUuid: captureResult.commandUuid
+            }
+          })}
+        >
+          Open Editor
+        </Button>
       )}
       
 
@@ -250,7 +260,11 @@ export const Homepage: React.FC = () => {
         <section className="hero">
           <h1>Your AI Assistant</h1>
           <p>Your personal assistant to help you with your daily tasks.</p>
-          <button onClick={() => navigate('/editor')}>Open Editor</button>
+          <button 
+          // onClick={() => navigate('/editor')}
+          >
+            Open Editor
+          </button>
         </section>
 
         <section className="features">
