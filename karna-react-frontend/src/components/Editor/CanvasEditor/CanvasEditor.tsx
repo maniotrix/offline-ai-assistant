@@ -11,20 +11,6 @@ import {
 import useVisionDetectStore from "../../../stores/visionDetectStore";
 import { BoundingBox } from "../../../types/types";
 
-const useImage = (url: string | null) => {
-  const [image, setImage] = useState<HTMLImageElement | null>(null);
-
-  useEffect(() => {
-    if (!url) return;
-    const img = new window.Image();
-    img.src = url;
-    img.crossOrigin = "Anonymous";
-    img.onload = () => setImage(img);
-  }, [url]);
-
-  return image;
-};
-
 // ✅ Generate a random color for each class
 const generateRandomColor = (): string => {
   const letters = "0123456789ABCDEF";
@@ -51,11 +37,37 @@ const CanvasEditor: React.FC = () => {
 
   const stageRef = useRef<any>(null);
   const transformerRef = useRef<any>(null);
-
-  const imageUrl = currentImage?.croppedImage 
-    ? URL.createObjectURL(new Blob([currentImage.croppedImage], { type: 'image/png' })) 
-    : null;
-  const backgroundImage = useImage(imageUrl);
+  
+  // Use state for the image element
+  const [backgroundImage, setBackgroundImage] = useState<HTMLImageElement | null>(null);
+  
+  // Process the image data when currentImage changes
+  useEffect(() => {
+    if (!currentImage?.croppedImage) {
+      setBackgroundImage(null);
+      return;
+    }
+    
+    // Convert binary data to base64 string for Konva Image
+    const uint8Array = new Uint8Array(currentImage.croppedImage);
+    const blob = new Blob([uint8Array], { type: 'image/png' });
+    
+    // Use FileReader to get base64
+    const reader = new FileReader();
+    reader.onload = () => {
+      // Create an image element from the base64 data
+      const img = new window.Image();
+      img.crossOrigin = "Anonymous";
+      img.onload = () => {
+        setBackgroundImage(img);
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(blob);
+    
+    // In this case, the effect is only concerned with processing the image data (croppedImage), 
+    // so it makes sense to only depend on that specific property rather than the entire object.
+  }, [currentImage?.croppedImage]);
 
   // Use useRef instead of useState to maintain a persistent object that doesn't trigger re-renders
   const classColorsRef = useRef<{ [key: string]: string }>({});
