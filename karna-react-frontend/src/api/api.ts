@@ -4,15 +4,6 @@ import { karna } from '../generated/messages';
 import { REST } from './constants';
 import useVisionDetectStore from '../stores/visionDetectStore';
 
-// REST APIs for non-real-time operations
-export const fetchAnnotations = async (): Promise<ImageDataResponse> => {
-    const response = await fetch(REST.GET_IMAGE_DATA);
-    if (!response.ok) {
-        throw new Error('Failed to fetch image data');
-    }
-    return response.json();
-};
-
 export const saveAnnotations = async (): Promise<any> => {
     // Get the current state from the vision detect store
     const store = useVisionDetectStore.getState();

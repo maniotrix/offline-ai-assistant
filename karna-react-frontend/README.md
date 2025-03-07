@@ -116,10 +116,6 @@ Make sure your **Flask backend** is running at **`http://localhost:5000`**.
 - Hooks: `camelCase.ts` (e.g., `useCanvasInit.ts`).
 - Zustand Stores: `camelCase.ts` (e.g., `annotationStore.ts`).
 
-### 📌 API Guidelines
-- `GET /api/get_image_data` → Fetch image & bounding boxes.
-- `POST /api/save_bboxes` → Save updated bounding box data.
-
 ---
 
 # Karna React Frontend - WebSocket Implementation
