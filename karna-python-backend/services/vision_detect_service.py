@@ -75,23 +75,6 @@ class VisionDetectService(BaseService[VisionDetectResultModelList], metaclass=Si
         # Reset results when new events are set
         self._vision_detect_results = None
         self.set_state('has_results', False)
-        self.notify_observers(None)  # Notify observers that results were cleared
-    
-    def add_screenshot_event(self, screenshot_event: ScreenshotEvent) -> None:
-        """
-        Add a screenshot event to the list of events to process.
-        
-        Args:
-            screenshot_event: Screenshot event to add.
-        """
-        logger.info(f"Adding screenshot event: {screenshot_event.event_id}")
-        self._screenshot_events.append(screenshot_event)
-        # Notify observers that the state has changed
-        self.set_state('screenshot_events_count', len(self._screenshot_events))
-        # Reset results when new events are added
-        self._vision_detect_results = None
-        self.set_state('has_results', False)
-        self.notify_observers(None)  # Notify observers that results were cleared
     
     def process_screenshot_events(self, should_crop: bool = True) -> VisionDetectResultModelList:
         """
@@ -209,8 +192,6 @@ class VisionDetectService(BaseService[VisionDetectResultModelList], metaclass=Si
         self._vision_detect_results = None
         self.set_state('has_results', False)
         self.set_state('results_count', 0)
-        # Notify observers that results have been cleared
-        self.notify_observers(None)
     
     def update_vision_detect_results(self, results: VisionDetectResultModelList) -> None:
         """
