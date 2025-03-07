@@ -57,21 +57,28 @@ const CanvasEditor: React.FC = () => {
     : null;
   const backgroundImage = useImage(imageUrl);
 
-  const [classColors] = useState<{ [key: string]: string }>({});
+  // Clean up object URL when it changes to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (imageUrl) {
+        URL.revokeObjectURL(imageUrl);
+      }
+    };
+  }, [imageUrl]);
 
-  // Generate colors for classes only when annotations change
-  const updatedClassColors = useMemo(() => {
+  // Use useRef instead of useState to maintain a persistent object that doesn't trigger re-renders
+  const classColorsRef = useRef<{ [key: string]: string }>({});
+
+  // Update class colors when annotations change
+  useEffect(() => {
     const uniqueClasses = [...new Set(annotations.map((bbox) => bbox.class))];
-    const newClassColors: { [key: string]: string } = { ...classColors };
-
+    
     uniqueClasses.forEach((cls) => {
-      if (!newClassColors[cls]) {
-        newClassColors[cls] = generateRandomColor();
+      if (!classColorsRef.current[cls]) {
+        classColorsRef.current[cls] = generateRandomColor();
       }
     });
-
-    return newClassColors;
-  }, [annotations, classColors]);
+  }, [annotations]);
 
   useEffect(() => {
     if (transformerRef.current) {
@@ -156,7 +163,7 @@ const CanvasEditor: React.FC = () => {
                 y={bbox.y}
                 width={bbox.width}
                 height={bbox.height}
-                stroke={updatedClassColors[bbox.class] || "#00ff00"}
+                stroke={classColorsRef.current[bbox.class] || "#00ff00"}
                 strokeWidth={2}
                 draggable
                 onClick={() => handleSelect(bbox.id)}
@@ -169,7 +176,7 @@ const CanvasEditor: React.FC = () => {
                 y={bbox.y - 20}
                 text={bbox.class}
                 fontSize={12}
-                fill={updatedClassColors[bbox.class] || "#00ff00"}
+                fill={classColorsRef.current[bbox.class] || "#00ff00"}
               />
             </Group>
           ))}
