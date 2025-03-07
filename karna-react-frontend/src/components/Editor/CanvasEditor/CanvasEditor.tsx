@@ -57,15 +57,6 @@ const CanvasEditor: React.FC = () => {
     : null;
   const backgroundImage = useImage(imageUrl);
 
-  // Clean up object URL when it changes to prevent memory leaks
-  useEffect(() => {
-    return () => {
-      if (imageUrl) {
-        URL.revokeObjectURL(imageUrl);
-      }
-    };
-  }, [imageUrl]);
-
   // Use useRef instead of useState to maintain a persistent object that doesn't trigger re-renders
   const classColorsRef = useRef<{ [key: string]: string }>({});
 
