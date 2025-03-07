@@ -1044,3 +1044,44 @@ To implement this change:
 4. Update any references to the service methods in other parts of the code
 
 This approach maintains the same functionality but with a cleaner separation of concerns. It would significantly improve the codebase's maintainability and make future changes easier to implement.
+
+
+async def _handle_get_results_request(self, websocket: WebSocket, request, background_tasks: BackgroundTasks):
+    # Create a queue for communication
+    queue = asyncio.Queue()
+    
+    # Define background task
+    def process_in_background(events, result_queue):
+        try:
+            # Create a new service instance
+            service = get_vision_detect_service_instance()
+            # Process events
+            service.set_screenshot_events(events)
+            results = service.process_screenshot_events()
+            # Put results in queue
+            asyncio.run_coroutine_threadsafe(
+                result_queue.put(results), 
+                asyncio.get_event_loop()
+            )
+        except Exception as e:
+            asyncio.run_coroutine_threadsafe(
+                result_queue.put({"error": str(e)}), 
+                asyncio.get_event_loop()
+            )
+    
+    # Add to background tasks
+    background_tasks.add_task(
+        process_in_background, 
+        screenshot_events, 
+        queue
+    )
+    
+    # Monitor for results
+    async def monitor_queue():
+        results = await queue.get()
+        if isinstance(results, dict) and "error" in results:
+            raise Exception(results["error"])
+        self.service.update_vision_detect_results(results)
+        await self.broadcast_results(results)
+    
+    asyncio.create_task(monitor_queue())
