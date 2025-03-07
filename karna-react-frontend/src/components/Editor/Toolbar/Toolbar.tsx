@@ -59,7 +59,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ imageUrl, onCancel }) => {
     }
 
     try {
-      await saveAnnotations(imageUrl, currentImage.annotations);
+      await saveAnnotations();
       alert("Annotations saved successfully!");
     } catch (error) {
       alert("Error saving annotations.");
