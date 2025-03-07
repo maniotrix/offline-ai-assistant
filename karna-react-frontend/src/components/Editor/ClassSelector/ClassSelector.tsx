@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Drawer, List, ListItem, ListItemText, Checkbox, IconButton, Typography, Paper, Divider } from '@mui/material';
 import MenuOpenIcon from '@mui/icons-material/MenuOpen';
 import MenuIcon from '@mui/icons-material/Menu';
-import useAnnotationStore from '../../stores/annotationStore';
+import useAnnotationStore from '../../../stores/annotationStore';
 
 const ClassSelector: React.FC = () => {
   const { annotations, selectedClasses, toggleSelectedClass, isSidebarOpen, toggleSidebar, setSelectedClasses } = useAnnotationStore();

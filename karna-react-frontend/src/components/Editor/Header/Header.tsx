@@ -1,7 +1,7 @@
 import React from "react";
 import { AppBar, Toolbar, Typography, IconButton, Box } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
-import useAnnotationStore from "../../stores/annotationStore";
+import useAnnotationStore from "../../../stores/annotationStore";
 import ToolbarButtons from "../Toolbar/Toolbar"; // Import Toolbar buttons
 
 interface HeaderProps {

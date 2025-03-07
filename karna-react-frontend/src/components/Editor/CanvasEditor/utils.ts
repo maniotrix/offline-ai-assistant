@@ -1,4 +1,4 @@
-import { BoundingBox } from '../../types/types';
+import { BoundingBox } from '../../../types/types';
 
 /**
  * Adjusts bounding box coordinates based on the current zoom level.

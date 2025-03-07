@@ -4,8 +4,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import CanvasEditor from "./CanvasEditor/CanvasEditor";
 import ClassSelector from "./ClassSelector/ClassSelector";
 import Header from "./Header/Header";
-import useAnnotationStore from "../stores/annotationStore";
-import { fetchAnnotations } from "../api/api";
+import useAnnotationStore from "../../stores/annotationStore";
+import { fetchAnnotations } from "../../api/api";
 
 interface LocationState {
   projectUuid?: string;

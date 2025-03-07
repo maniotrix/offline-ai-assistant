@@ -8,9 +8,9 @@ import {
   Group,
   Transformer,
 } from "react-konva";
-import useAnnotationStore from "../../stores/annotationStore";
-import { BoundingBox, ImageDataResponse } from "../../types/types";
-import { fetchAnnotations } from "../../api/api";
+import useAnnotationStore from "../../../stores/annotationStore";
+import { BoundingBox, ImageDataResponse } from "../../../types/types";
+import { fetchAnnotations } from "../../../api/api";
 
 const useImage = (url: string | null) => {
   const [image, setImage] = useState<HTMLImageElement | null>(null);

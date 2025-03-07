@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogActions, DialogContent, DialogTitle, Button, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import { v4 as uuidv4 } from 'uuid';
-import useAnnotationStore from '../../stores/annotationStore';
+import useAnnotationStore from '../../../stores/annotationStore';
 
 interface AddBboxDialogProps {
   open: boolean;

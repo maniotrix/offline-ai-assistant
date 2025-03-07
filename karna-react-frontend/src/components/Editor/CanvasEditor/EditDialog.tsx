@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogActions, DialogContent, DialogTitle, Button, IconButton, Select, MenuItem, FormControl, InputLabel } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import useAnnotationStore from "../../stores/annotationStore";
+import useAnnotationStore from "../../../stores/annotationStore";
 
 interface EditDialogProps {
   open: boolean;

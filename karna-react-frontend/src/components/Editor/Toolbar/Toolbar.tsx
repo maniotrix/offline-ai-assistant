@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Button, Box } from "@mui/material";
-import { saveAnnotations } from "../../api/api";
-import useAnnotationStore from "../../stores/annotationStore";
+import { saveAnnotations } from "../../../api/api";
+import useAnnotationStore from "../../../stores/annotationStore";
 import EditDialog from "../CanvasEditor/EditDialog";
 import { v4 as uuidv4 } from 'uuid';
 import AddBboxDialog from '../CanvasEditor/AddBboxDialog';
