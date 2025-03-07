@@ -1,11 +1,13 @@
+import asyncio
 from fastapi import WebSocket
-from typing import List, Optional
+from typing import List, Optional, Dict, Any, cast
 import logging
 from datetime import datetime
 
 from api.websockets.base_handler import BaseWebSocketHandler
 from services.vision_detect_service import VisionDetectService, get_vision_detect_service_instance
 from inference import VisionDetectResultModelList, VisionDetectResultModel
+from services.screen_capture_service import ScreenshotEvent
 
 # Import the generated protobuf classes
 # Note: These will be generated after running the protoc compiler on vision_detect.proto
@@ -34,19 +36,14 @@ class VisionDetectWebSocketHandler(BaseWebSocketHandler[VisionDetectResultModelL
         self.rate_limiter.time_window = 60   # 10 requests per minute
         logger.info("VisionDetectWebSocketHandler initialized")
     
-    async def _default_observer_callable(self, data: Optional[VisionDetectResultModelList]) -> None:
+    async def _default_observer_callable(self, data: VisionDetectResultModelList) -> None:
         """Default implementation for handling vision detection result updates.
         
         Args:
             data: The updated vision detection results.
         """
         logger.info("Observer received vision detection results update")
-        if data is None:
-            # Results were cleared, send status update
-            await self.broadcast_status()
-        else:
-            # Results were updated, broadcast them
-            await self.broadcast_results(data)
+        await self.broadcast_results(data)
     
     async def handle_message(self, websocket: WebSocket, data: bytes) -> None:
         """Handle incoming WebSocket messages.
@@ -93,25 +90,36 @@ class VisionDetectWebSocketHandler(BaseWebSocketHandler[VisionDetectResultModelL
             websocket: The WebSocket connection.
             get_results_request: The get results request.
         """
+        client_id = str(id(websocket))
+        logger.info("Received get results request from client: %s", client_id)
         try:
-            # Get the vision detection results
-            results = self.service.get_vision_detect_results()
+            # Convert RpcScreenshotEvent objects to ScreenshotEvent objects
+            logger.info("Converting RPC screenshot events to Python model")
+            screenshot_events = []
+            for rpc_event in get_results_request.screenshot_events:
+                # Convert timestamp string to datetime
+                timestamp = datetime.fromisoformat(rpc_event.timestamp)
+                
+                # Create ScreenshotEvent from RpcScreenshotEvent
+                screenshot_event = ScreenshotEvent(
+                    event_id=rpc_event.event_id,
+                    project_uuid=rpc_event.project_uuid,
+                    command_uuid=rpc_event.command_uuid,
+                    timestamp=timestamp,
+                    description=rpc_event.description,
+                    screenshot_path=rpc_event.screenshot_path,
+                    annotation_path=rpc_event.annotation_path if rpc_event.annotation_path else None,
+                    mouse_x=rpc_event.mouse_x if rpc_event.mouse_x else None,
+                    mouse_y=rpc_event.mouse_y if rpc_event.mouse_y else None,
+                    key_char=rpc_event.key_char if rpc_event.key_char else None,
+                    key_code=rpc_event.key_code if rpc_event.key_code else None,
+                    is_special_key=rpc_event.is_special_key
+                )
+                screenshot_events.append(screenshot_event)
             
-            # Send the response
-            response = VisionDetectRPCResponse()
-            if results:
-                response.results.CopyFrom(self._convert_to_proto_results(results))
-            else:
-                # If no results, send status instead
-                status = VisionDetectStatus()
-                status.status = self.service.get_status()
-                status.screenshot_events_count = len(self.service._screenshot_events)
-                status.has_results = False
-                status.results_count = 0
-                status.is_processing = self.service.get_state("processing") or False
-                response.status.CopyFrom(status)
-            
-            await websocket.send_bytes(response.SerializeToString())
+            # ask service to process screenshot events
+            logger.info("Asking service to process screenshot events with length: %d", len(screenshot_events))
+            # self.service.set_and_process_screenshot_events(screenshot_events)
         
         except Exception as e:
             logger.error(f"Error getting vision detection results: {e}", exc_info=True)
@@ -126,6 +134,8 @@ class VisionDetectWebSocketHandler(BaseWebSocketHandler[VisionDetectResultModelL
             websocket: The WebSocket connection.
             update_request: The update results request.
         """
+        client_id = str(id(websocket))
+        logger.info("Received update results request from client: %s", client_id)
         try:
             # Convert proto results to Python model
             python_results = self._convert_from_proto_results(update_request.results)
