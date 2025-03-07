@@ -55,8 +55,12 @@ class WebSocketService {
         return this.screenCaptureChannel.getCache(projectUuid, commandUuid);
     }
 
-    async getVisionDetectResults(projectUuid: string, commandUuid: string): Promise<void> {
-        return this.visionDetectChannel.getResults(projectUuid, commandUuid);
+    async getVisionDetectResults(
+        projectUuid: string, 
+        commandUuid: string, 
+        screenshotEvents: karna.screen_capture.IRpcScreenshotEvent[]
+    ): Promise<void> {
+        return this.visionDetectChannel.getResults(projectUuid, commandUuid, screenshotEvents);
     }
 
     async updateVisionDetectResults(results: karna.vision.IVisionDetectResultsList): Promise<void> {

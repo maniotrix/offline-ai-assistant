@@ -1,40 +1,41 @@
 import React, { useEffect } from "react";
 import { Box } from "@mui/material";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import CanvasEditor from "./CanvasEditor/CanvasEditor";
 import ClassSelector from "./ClassSelector/ClassSelector";
 import Header from "./Header/Header";
 import useVisionDetectStore from "../../stores/visionDetectStore";
+import useScreenCaptureStore from "../../stores/screenCaptureStore";
 import { websocketService } from "../../api/websocket";
 
-interface LocationState {
-  projectUuid?: string;
-  commandUuid?: string;
-}
-
 const BboxEditor: React.FC = () => {
-  const location = useLocation();
-  const { projectUuid, commandUuid } = (location.state as LocationState) || {};
   const { currentImageId, images } = useVisionDetectStore();
+  const { captureResult } = useScreenCaptureStore();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (projectUuid && commandUuid) {
+    if (captureResult?.projectUuid && captureResult?.commandUuid) {
+      const { projectUuid, commandUuid } = captureResult;
+      
       console.log("Requesting vision detect results for:", {
         project_uuid: projectUuid,
         command_uuid: commandUuid
       });
-      websocketService.getVisionDetectResults(projectUuid, commandUuid)
+      
+      // getVisionDetectResults requires screenshotEvents parameter
+      const screenshotEvents = captureResult.screenshotEvents || [];
+      websocketService.getVisionDetectResults(projectUuid, commandUuid, screenshotEvents)
         .catch(error => {
           console.error("Error requesting vision detect results:", error);
         });
     } else {
-      console.error("Editor initialized without required parameters");
+      console.error("Editor initialized without required parameters in captureResult");
     }
-  }, [projectUuid, commandUuid]);
+  }, [captureResult]);
 
   const handleCancel = () => {
     console.log("Cancel button clicked");
+    navigate('/');
   };
 
   const currentImage = currentImageId ? images[currentImageId] : null;

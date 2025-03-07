@@ -244,12 +244,7 @@ export const Homepage: React.FC = () => {
         // Add a button to open the editor
         <Button 
           variant="contained" 
-          onClick={() => navigate('/editor', {
-            state: {
-              projectUuid: captureResult.projectUuid,
-              commandUuid: captureResult.commandUuid
-            }
-          })}
+          onClick={() => navigate('/editor')}
         >
           Open Editor
         </Button>

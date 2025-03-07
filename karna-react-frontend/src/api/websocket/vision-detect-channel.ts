@@ -24,15 +24,17 @@ export class VisionDetectChannel extends BaseWebSocketChannel {
                 return;
             }
 
-            if (response.results) {
-                console.log('Updating vision detect results:', response.results);
-                useVisionDetectStore.getState().setResults(response.results);
-            }
-
-            if (response.status) {
-                console.log('Updating vision detect status:', response.status);
-                useVisionDetectStore.getState().setStatus(response.status);
-                useVisionDetectStore.getState().setProcessing(response.status.isProcessing ?? false);
+            if (response.response) {
+                if (response.response === 'results' && response.results) {
+                    console.log('Updating vision detect results:', response.results);
+                    useVisionDetectStore.getState().setResults(response.results);
+                }
+                
+                if (response.response === 'status' && response.status) {
+                    console.log('Updating vision detect status:', response.status);
+                    useVisionDetectStore.getState().setStatus(response.status);
+                    useVisionDetectStore.getState().setProcessing(response.status.isProcessing ?? false);
+                }
             }
         } catch (error) {
             console.error('Failed to parse vision detect message:', error);
@@ -40,16 +42,21 @@ export class VisionDetectChannel extends BaseWebSocketChannel {
         }
     }
 
-    async getResults(projectUuid: string, commandUuid: string): Promise<void> {
+    async getResults(
+        projectUuid: string, 
+        commandUuid: string, 
+        screenshotEvents?: karna.screen_capture.IRpcScreenshotEvent[]
+    ): Promise<void> {
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
             throw new Error('WebSocket is not connected');
         }
 
-        console.log('Getting vision detect results:', { projectUuid, commandUuid });
+        console.log('Getting vision detect results:', { projectUuid, commandUuid, screenshotEvents });
         const request = karna.vision.VisionDetectRPCRequest.create({
             getResultsRequest: {
                 projectUuid,
-                commandUuid
+                commandUuid,
+                screenshotEvents: screenshotEvents || []
             }
         });
 

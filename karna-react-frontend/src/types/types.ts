@@ -4,7 +4,8 @@ export interface BoundingBox {
   y: number;
   width: number;
   height: number;
-  class: string;  // New field from API
+  class: string;  // Class name from the proto
+  confidence?: number; // New field from proto
 }
 
 export interface ImageDataResponse {
