@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback, useRef } from "react";
 import { Box } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import CanvasEditor from "./CanvasEditor/CanvasEditor";
@@ -12,26 +12,45 @@ const BboxEditor: React.FC = () => {
   const { currentImageId, images } = useVisionDetectStore();
   const { captureResult } = useScreenCaptureStore();
   const navigate = useNavigate();
+  
+  // This ref prevents duplicate requests when the component mounts twice
+  // (which happens in development mode due to React.StrictMode in main.tsx)
+  const hasRequestedRef = useRef(false);
+
+  // Use useCallback to create a stable function reference that won't change on re-renders
+  const requestVisionDetectResults = useCallback((projectUuid: string, commandUuid: string, screenshotEvents: any[]) => {
+    console.log("Requesting vision detect results for:", {
+      project_uuid: projectUuid,
+      command_uuid: commandUuid
+    });
+    
+    return websocketService.getVisionDetectResults(projectUuid, commandUuid, screenshotEvents)
+      .catch(error => {
+        console.error("Error requesting vision detect results:", error);
+      });
+  }, []);
 
   useEffect(() => {
-    if (captureResult?.projectUuid && captureResult?.commandUuid) {
-      const { projectUuid, commandUuid } = captureResult;
-      
-      console.log("Requesting vision detect results for:", {
-        project_uuid: projectUuid,
-        command_uuid: commandUuid
-      });
-      
-      // getVisionDetectResults requires screenshotEvents parameter
-      const screenshotEvents = captureResult.screenshotEvents || [];
-      websocketService.getVisionDetectResults(projectUuid, commandUuid, screenshotEvents)
-        .catch(error => {
-          console.error("Error requesting vision detect results:", error);
-        });
+    // Only make the request if we haven't already and we have the required parameters
+    if (!hasRequestedRef.current) {
+      if (captureResult?.projectUuid && captureResult?.commandUuid) {
+        const { projectUuid, commandUuid } = captureResult;
+        const screenshotEvents = captureResult.screenshotEvents || [];
+        
+        // Set the flag before making the request
+        hasRequestedRef.current = true;
+        
+        // Make the request
+        requestVisionDetectResults(projectUuid, commandUuid, screenshotEvents);
+      } else {
+        console.error("Editor initialized without required parameters in captureResult");
+      }
     } else {
-      console.error("Editor initialized without required parameters in captureResult");
+      console.log("Skipping duplicate request - already requested once");
     }
-  }, [captureResult]);
+    // We intentionally only want this to run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleCancel = () => {
     console.log("Cancel button clicked");
