@@ -240,6 +240,12 @@ export const Homepage: React.FC = () => {
         </Paper>
       )}
 
+      {captureResult?.screenshotEvents && captureResult.screenshotEvents.length > 0 && (
+        // Add a button to open the editor
+        <Button variant="contained" onClick={() => navigate('/editor')}>Open Editor</Button>
+      )}
+      
+
       <div className="homepage">
         <section className="hero">
           <h1>Your AI Assistant</h1>

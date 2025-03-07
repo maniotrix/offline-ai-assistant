@@ -367,4 +367,4 @@ export const getImageUrl = (imageId: string) => {
     return URL.createObjectURL(blob);
 };
 
-export default useVisionDetectStore;
+export default useVisionDetectStore; 
