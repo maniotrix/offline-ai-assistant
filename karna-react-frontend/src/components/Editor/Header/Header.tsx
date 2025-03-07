@@ -1,8 +1,8 @@
 import React from "react";
 import { AppBar, Toolbar, Typography, IconButton, Box } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
-import useAnnotationStore from "../../../stores/annotationStore";
-import ToolbarButtons from "../Toolbar/Toolbar"; // Import Toolbar buttons
+import useVisionDetectStore from "../../../stores/visionDetectStore";
+import ToolbarButtons from "../Toolbar/Toolbar";
 
 interface HeaderProps {
   imageUrl: string | null;
@@ -10,7 +10,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ imageUrl, onCancel }) => {
-  const { toggleSidebar } = useAnnotationStore();
+  const { toggleSidebar } = useVisionDetectStore();
 
   return (
     <AppBar position="fixed" sx={{ zIndex: 1200, backgroundColor: "#1976d2" }}>

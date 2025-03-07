@@ -4,8 +4,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import CanvasEditor from "./CanvasEditor/CanvasEditor";
 import ClassSelector from "./ClassSelector/ClassSelector";
 import Header from "./Header/Header";
-import useAnnotationStore from "../../stores/annotationStore";
-import { fetchAnnotations } from "../../api/api";
+import useVisionDetectStore from "../../stores/visionDetectStore";
+import { websocketService } from "../../api/websocket";
 
 interface LocationState {
   projectUuid?: string;
@@ -15,31 +15,19 @@ interface LocationState {
 const BboxEditor: React.FC = () => {
   const location = useLocation();
   const { projectUuid, commandUuid } = (location.state as LocationState) || {};
-  const { setAnnotations } = useAnnotationStore();
-  const [imageUrl, setImageUrl] = React.useState<string | null>(null);
+  const { currentImageId, images } = useVisionDetectStore();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const loadAnnotations = async () => {
-
-      try {
-        const data = await fetchAnnotations();
-        setAnnotations(data.boundingBoxes);
-        setImageUrl(data.imageUrl);
-      } catch (error) {
-        console.error("Error fetching annotations:", error);
-      }
-    };
-    loadAnnotations();
-  }, [setAnnotations]);
-
-  useEffect(() => {
-    // Only log once when the component mounts
     if (projectUuid && commandUuid) {
-      console.log("Editor initialized with:", {
+      console.log("Requesting vision detect results for:", {
         project_uuid: projectUuid,
         command_uuid: commandUuid
       });
+      websocketService.getVisionDetectResults(projectUuid, commandUuid)
+        .catch(error => {
+          console.error("Error requesting vision detect results:", error);
+        });
     } else {
       console.error("Editor initialized without required parameters");
     }
@@ -48,6 +36,9 @@ const BboxEditor: React.FC = () => {
   const handleCancel = () => {
     console.log("Cancel button clicked");
   };
+
+  const currentImage = currentImageId ? images[currentImageId] : null;
+  const imageUrl = currentImage?.croppedImage ? URL.createObjectURL(new Blob([currentImage.croppedImage], { type: 'image/png' })) : null;
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>

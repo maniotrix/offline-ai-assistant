@@ -2,25 +2,35 @@ import React, { useEffect, useState } from 'react';
 import { Drawer, List, ListItem, ListItemText, Checkbox, IconButton, Typography, Paper, Divider } from '@mui/material';
 import MenuOpenIcon from '@mui/icons-material/MenuOpen';
 import MenuIcon from '@mui/icons-material/Menu';
-import useAnnotationStore from '../../../stores/annotationStore';
+import useVisionDetectStore from '../../../stores/visionDetectStore';
 
 const ClassSelector: React.FC = () => {
-  const { annotations, selectedClasses, toggleSelectedClass, isSidebarOpen, toggleSidebar, setSelectedClasses } = useAnnotationStore();
+  const { 
+    currentImageId, 
+    images, 
+    selectedClasses, 
+    setSelectedClasses, 
+    isSidebarOpen, 
+    toggleSidebar 
+  } = useVisionDetectStore();
+  
   const [availableClasses, setAvailableClasses] = useState<string[]>([]);
   const [userMadeSelection, setUserMadeSelection] = useState(false);
 
   useEffect(() => {
-    const uniqueClasses = [...new Set(annotations.map((bbox) => bbox.class))];
+    if (!currentImageId || !images[currentImageId]) return;
+
+    const currentImage = images[currentImageId];
+    const uniqueClasses = [...new Set(currentImage.annotations.map((bbox) => bbox.class))];
     if (!uniqueClasses.includes('ignore')) {
       uniqueClasses.push('ignore');
     }
     setAvailableClasses(uniqueClasses);
 
-    // ✅ Ensure classes are only auto-selected on initial load, not when the user unchecks all
     if (!userMadeSelection && selectedClasses.size === 0 && uniqueClasses.length > 1) {
       setSelectedClasses(new Set(uniqueClasses));
     }
-  }, [annotations, selectedClasses, setSelectedClasses, userMadeSelection]);
+  }, [currentImageId, images, selectedClasses, setSelectedClasses, userMadeSelection]);
 
   const areAllClassesSelected = (): boolean => selectedClasses.size === availableClasses.length;
   const areNoClassesSelected = (): boolean => selectedClasses.size === 0;
@@ -37,8 +47,8 @@ const ClassSelector: React.FC = () => {
 
   const handleToggleClass = (cls: string) => {
     setUserMadeSelection(true);
-
     const updatedClasses = new Set(selectedClasses);
+    
     if (updatedClasses.has(cls)) {
       updatedClasses.delete(cls);
     } else {

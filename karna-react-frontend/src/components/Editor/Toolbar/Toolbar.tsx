@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { Button, Box } from "@mui/material";
+import { Button, Box, Select, MenuItem, FormControl, InputLabel } from "@mui/material";
 import { saveAnnotations } from "../../../api/api";
-import useAnnotationStore from "../../../stores/annotationStore";
+import useVisionDetectStore from "../../../stores/visionDetectStore";
 import EditDialog from "../CanvasEditor/EditDialog";
 import { v4 as uuidv4 } from 'uuid';
 import AddBboxDialog from '../CanvasEditor/AddBboxDialog';
@@ -12,7 +12,17 @@ interface ToolbarProps {
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({ imageUrl, onCancel }) => {
-  const { annotations, history, redoStack, setAnnotations, selectedAnnotationId } = useAnnotationStore();
+  const { 
+    currentImageId,
+    images,
+    setCurrentImage,
+    undo,
+    redo
+  } = useVisionDetectStore();
+
+  const currentImage = currentImageId ? images[currentImageId] : null;
+  const selectedAnnotationId = currentImage?.selectedAnnotationId || null;
+
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAddBboxDialogOpen, setIsAddBboxDialogOpen] = useState(false);
 
@@ -25,58 +35,31 @@ const Toolbar: React.FC<ToolbarProps> = ({ imageUrl, onCancel }) => {
   };
 
   const handleUndo = () => {
-    if (history.length === 0) return;
-
-    // Move current state to redo stack
-    const updatedRedoStack = [annotations, ...redoStack];
-
-    // Get the last state from history
-    const prevAnnotations = history[history.length - 1];
-
-    // Update history and annotations
-    useAnnotationStore.setState((state) => ({
-      history: state.history.slice(0, -1),
-      redoStack: updatedRedoStack,
-    }));
-
-    setAnnotations(prevAnnotations); // ✅ Force state update
+    if (currentImageId) {
+      undo(currentImageId);
+    }
   };
 
   const handleRedo = () => {
-    if (redoStack.length === 0) return;
-
-    // Move current state to history
-    const updatedHistory = [...history, annotations];
-
-    // Get the next state from redoStack
-    const nextAnnotations = redoStack[0];
-
-    // Update redo stack and annotations
-    useAnnotationStore.setState((state) => ({
-      history: updatedHistory,
-      redoStack: state.redoStack.slice(1),
-    }));
-
-    setAnnotations(nextAnnotations); // ✅ Force state update
+    if (currentImageId) {
+      redo(currentImageId);
+    }
   };
 
   const handleSave = async () => {
-    if (!imageUrl) {
-      alert("Error: No image URL found.");
+    if (!imageUrl || !currentImageId) {
+      alert("Error: No image selected.");
       return;
     }
 
-    // convert annotaions to math round values to avoid floating point errors
-    const annotations = useAnnotationStore.getState().annotations.map((bbox) => ({
-      ...bbox,
-      x: Math.round(bbox.x),
-      y: Math.round(bbox.y),
-      width: Math.round(bbox.width),
-      height: Math.round(bbox.height),
-    }));
+    const currentImage = images[currentImageId];
+    if (!currentImage) {
+      alert("Error: Current image not found.");
+      return;
+    }
 
     try {
-      await saveAnnotations(imageUrl, annotations);
+      await saveAnnotations(imageUrl, currentImage.annotations);
       alert("Annotations saved successfully!");
     } catch (error) {
       alert("Error saving annotations.");
@@ -92,83 +75,90 @@ const Toolbar: React.FC<ToolbarProps> = ({ imageUrl, onCancel }) => {
     setIsEditDialogOpen(false);
   };
 
+  const handleImageChange = (event: any) => {
+    setCurrentImage(event.target.value);
+  };
+
   return (
-    <Box sx={{ display: "flex", gap: 2 }}>
-      {/* Undo Button */}
+    <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+      <FormControl sx={{ minWidth: 200 }}>
+        <InputLabel>Select Image</InputLabel>
+        <Select
+          value={currentImageId || ""}
+          onChange={handleImageChange}
+          label="Select Image"
+        >
+          {Object.entries(images).map(([id, image]) => (
+            <MenuItem key={id} value={id}>
+              {image.originalImagePath?.split("/").pop() || id}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
       <Button
         variant="contained"
         color="primary"
         onClick={handleUndo}
-        disabled={history.length === 0} // Disable when no undo actions available
-        sx={{ minWidth: "120px" }}
+        disabled={!currentImageId}
       >
         Undo
       </Button>
 
-      {/* Redo Button */}
       <Button
         variant="contained"
-        color="secondary"
+        color="primary"
         onClick={handleRedo}
-        disabled={redoStack.length === 0} // Disable when no redo steps available
-        sx={{ minWidth: "120px" }}
+        disabled={!currentImageId}
       >
         Redo
       </Button>
 
-      {/* Edit Button */}
       <Button
         variant="contained"
-        color="warning"
-        onClick={handleEdit}
-        disabled={selectedAnnotationId === null || selectedAnnotationId === undefined} // Disable when no annotation is selected
-        sx={{ minWidth: "120px" }}
-      >
-        Edit Bbox
-      </Button>
-
-      {/* Add Bbox Button */}
-      <Button
-        variant="contained"
-        color="info"
+        color="primary"
         onClick={handleAddBboxOpen}
-        sx={{ minWidth: "120px" }}
+        disabled={!currentImageId}
       >
         Add Bbox
       </Button>
 
-      {/* Save Button */}
       <Button
         variant="contained"
-        color="success"
+        color="primary"
+        onClick={handleEdit}
+        disabled={!currentImageId || !selectedAnnotationId}
+      >
+        Edit
+      </Button>
+
+      <Button
+        variant="contained"
+        color="primary"
         onClick={handleSave}
-        sx={{ minWidth: "120px" }}
+        disabled={!currentImageId}
       >
         Save
       </Button>
 
-      {/* Cancel Button */}
-      <Button
-        variant="contained"
-        color="error"
-        onClick={onCancel}
-        sx={{ minWidth: "120px" }}
-      >
+      <Button variant="contained" color="secondary" onClick={onCancel}>
         Cancel
       </Button>
 
-      {/* Edit Dialog */}
-      <EditDialog
-        open={isEditDialogOpen}
-        onClose={handleCloseEditDialog}
-        bboxId={selectedAnnotationId}
-      />
+      {isEditDialogOpen && selectedAnnotationId && (
+        <EditDialog
+          open={isEditDialogOpen}
+          onClose={handleCloseEditDialog}
+          bboxId={selectedAnnotationId}
+        />
+      )}
 
-      {/* Add Bbox Dialog */}
-      <AddBboxDialog
-        open={isAddBboxDialogOpen}
-        onClose={handleAddBboxClose}
-      />
+      {isAddBboxDialogOpen && (
+        <AddBboxDialog
+          open={isAddBboxDialogOpen}
+          onClose={handleAddBboxClose}
+        />
+      )}
     </Box>
   );
 };

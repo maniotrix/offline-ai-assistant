@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogActions, DialogContent, DialogTitle, Button, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import { v4 as uuidv4 } from 'uuid';
-import useAnnotationStore from '../../../stores/annotationStore';
+import useVisionDetectStore from '../../../stores/visionDetectStore';
 
 interface AddBboxDialogProps {
   open: boolean;
@@ -9,9 +9,12 @@ interface AddBboxDialogProps {
 }
 
 const AddBboxDialog: React.FC<AddBboxDialogProps> = ({ open, onClose }) => {
-  const { annotations, setAnnotations, pushToHistory } = useAnnotationStore();
+  const { currentImageId, images, setAnnotations, pushToHistory } = useVisionDetectStore();
   const [selectedClass, setSelectedClass] = useState('default');
   const [availableClasses, setAvailableClasses] = useState<string[]>([]);
+
+  const currentImage = currentImageId ? images[currentImageId] : null;
+  const annotations = currentImage?.annotations || [];
 
   useEffect(() => {
     const uniqueClasses = [...new Set(annotations.map((bbox) => bbox.class))];
@@ -22,16 +25,18 @@ const AddBboxDialog: React.FC<AddBboxDialogProps> = ({ open, onClose }) => {
   }, [annotations]);
 
   const handleAddBbox = () => {
-    pushToHistory(); // Push current state to history before adding new bbox
+    if (!currentImageId || !currentImage) return;
+
+    pushToHistory(currentImageId);
     const newBbox = {
       id: uuidv4(),
-      x: window.innerWidth / 2 - 50, // Centered horizontally
-      y: window.innerHeight / 2 - 50, // Centered vertically
+      x: (currentImage.croppedWidth || 800) / 2 - 50,
+      y: (currentImage.croppedHeight || 600) / 2 - 50,
       width: 100,
       height: 100,
       class: selectedClass,
     };
-    setAnnotations([...annotations, newBbox]);
+    setAnnotations(currentImageId, [...annotations, newBbox]);
     onClose();
   };
 
