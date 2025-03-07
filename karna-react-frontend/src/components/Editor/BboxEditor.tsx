@@ -12,7 +12,7 @@ interface LocationState {
   commandUuid?: string;
 }
 
-const Editor: React.FC = () => {
+const BboxEditor: React.FC = () => {
   const location = useLocation();
   const { projectUuid, commandUuid } = (location.state as LocationState) || {};
   const { setAnnotations } = useAnnotationStore();
@@ -41,7 +41,7 @@ const Editor: React.FC = () => {
         command_uuid: commandUuid
       });
     } else {
-      console.warn("Editor initialized without required parameters, using defaults");
+      console.error("Editor initialized without required parameters");
     }
   }, [projectUuid, commandUuid]);
 
@@ -60,4 +60,4 @@ const Editor: React.FC = () => {
   );
 };
 
-export default Editor;
+export default BboxEditor;
