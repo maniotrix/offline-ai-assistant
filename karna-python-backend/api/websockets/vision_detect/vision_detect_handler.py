@@ -119,7 +119,9 @@ class VisionDetectWebSocketHandler(BaseWebSocketHandler[VisionDetectResultModelL
             
             # ask service to process screenshot events
             logger.info("Asking service to process screenshot events with length: %d", len(screenshot_events))
-            # self.service.set_and_process_screenshot_events(screenshot_events)
+            # The service method is synchronous, not a coroutine, so we can't use create_task directly
+            # Instead, run it in a thread pool to avoid blocking
+            await asyncio.to_thread(self.service.set_and_process_screenshot_events, screenshot_events)
         
         except Exception as e:
             logger.error(f"Error getting vision detection results: {e}", exc_info=True)
@@ -280,6 +282,7 @@ class VisionDetectWebSocketHandler(BaseWebSocketHandler[VisionDetectResultModelL
         Args:
             results: The vision detection results to broadcast.
         """
+        logger.info("Broadcasting vision detection results to all connected clients")
         response = VisionDetectRPCResponse()
         response.results.CopyFrom(self._convert_to_proto_results(results))
         await self.broadcast(response)
