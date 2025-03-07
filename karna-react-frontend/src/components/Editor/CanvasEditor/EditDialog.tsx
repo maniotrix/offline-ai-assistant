@@ -17,9 +17,40 @@ const EditDialog: React.FC<EditDialogProps> = ({ open, onClose, bboxId }) => {
   const currentImage = currentImageId ? images[currentImageId] : null;
   const annotations = currentImage?.annotations || [];
 
+  /**
+   * Adds mandatory class names to the list of classes if they don't already exist
+   * @param classes - The current list of class names
+   * @returns The updated list with mandatory class names included
+   */
+  const addMandatoryClasses = (classes: string[]): string[] => {
+    const mandatoryClasses = [
+      'ignore', 
+      'button', 
+      'field', 
+      'heading', 
+      'iframe', 
+      'image', 
+      'label', 
+      'link', 
+      'text'
+    ];
+    
+    const updatedClasses = [...classes];
+    
+    mandatoryClasses.forEach(className => {
+      if (!updatedClasses.includes(className)) {
+        updatedClasses.push(className);
+      }
+    });
+    
+    return updatedClasses;
+  };
+
   useEffect(() => {
     const uniqueClasses = [...new Set(annotations.map((bbox) => bbox.class))];
-    setAvailableClasses([...uniqueClasses, "ignore"]);
+    const classesWithMandatory = addMandatoryClasses(uniqueClasses);
+    setAvailableClasses(classesWithMandatory);
+    
     if (bboxId) {
       const selectedBbox = annotations.find((bbox) => bbox.id === bboxId);
       if (selectedBbox) {
