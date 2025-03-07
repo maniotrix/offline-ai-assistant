@@ -1085,3 +1085,7 @@ async def _handle_get_results_request(self, websocket: WebSocket, request, backg
         await self.broadcast_results(results)
     
     asyncio.create_task(monitor_queue())
+
+    Should use mulitprocessing at the service level. for eg in vision detect, implement multiprocessing pipeline before notifying observers
+
+    
