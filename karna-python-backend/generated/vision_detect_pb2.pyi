@@ -8,6 +8,7 @@ import collections.abc
 import google.protobuf.descriptor
 import google.protobuf.internal.containers
 import google.protobuf.message
+import screen_capture_pb2
 import typing
 
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
@@ -20,15 +21,19 @@ class GetResultsRequest(google.protobuf.message.Message):
 
     PROJECT_UUID_FIELD_NUMBER: builtins.int
     COMMAND_UUID_FIELD_NUMBER: builtins.int
+    SCREENSHOT_EVENTS_FIELD_NUMBER: builtins.int
     project_uuid: builtins.str
     command_uuid: builtins.str
+    @property
+    def screenshot_events(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[screen_capture_pb2.RpcScreenshotEvent]: ...
     def __init__(
         self,
         *,
         project_uuid: builtins.str = ...,
         command_uuid: builtins.str = ...,
+        screenshot_events: collections.abc.Iterable[screen_capture_pb2.RpcScreenshotEvent] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["command_uuid", b"command_uuid", "project_uuid", b"project_uuid"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["command_uuid", b"command_uuid", "project_uuid", b"project_uuid", "screenshot_events", b"screenshot_events"]) -> None: ...
 
 global___GetResultsRequest = GetResultsRequest
 

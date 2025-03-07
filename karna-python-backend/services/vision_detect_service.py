@@ -161,6 +161,18 @@ class VisionDetectService(BaseService[VisionDetectResultModelList], metaclass=Si
             self.set_state('last_error', str(e))
             raise
     
+    def set_and_process_screenshot_events(self, screenshot_events: List[ScreenshotEvent]) -> None:
+        """
+        Set the screenshot events and process them.
+        """
+        try:
+            logger.info(f"Setting and processing {len(screenshot_events)} screenshot events")
+            self.set_screenshot_events(screenshot_events)
+            self.process_screenshot_events()
+        except Exception as e:
+            logger.error(f"Error setting and processing screenshot events: {str(e)}")
+            raise
+    
     def get_vision_detect_results(self) -> Optional[VisionDetectResultModelList]:
         """
         Get the processed vision detect results.

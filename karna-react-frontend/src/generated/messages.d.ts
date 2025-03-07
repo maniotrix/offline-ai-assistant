@@ -1802,6 +1802,9 @@ export namespace karna {
 
             /** GetResultsRequest commandUuid */
             commandUuid?: (string|null);
+
+            /** GetResultsRequest screenshotEvents */
+            screenshotEvents?: (karna.screen_capture.IRpcScreenshotEvent[]|null);
         }
 
         /** Represents a GetResultsRequest. */
@@ -1818,6 +1821,9 @@ export namespace karna {
 
             /** GetResultsRequest commandUuid. */
             public commandUuid: string;
+
+            /** GetResultsRequest screenshotEvents. */
+            public screenshotEvents: karna.screen_capture.IRpcScreenshotEvent[];
 
             /**
              * Creates a new GetResultsRequest instance using the specified properties.

@@ -22,9 +22,10 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
+import screen_capture_pb2 as screen__capture__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13vision_detect.proto\x12\x0ckarna.vision\"?\n\x11GetResultsRequest\x12\x14\n\x0cproject_uuid\x18\x01 \x01(\t\x12\x14\n\x0c\x63ommand_uuid\x18\x02 \x01(\t\"N\n\x14UpdateResultsRequest\x12\x36\n\x07results\x18\x01 \x01(\x0b\x32%.karna.vision.VisionDetectResultsList\"v\n\x0b\x42oundingBox\x12\n\n\x02id\x18\x01 \x01(\t\x12\t\n\x01x\x18\x02 \x01(\x05\x12\t\n\x01y\x18\x03 \x01(\x05\x12\r\n\x05width\x18\x04 \x01(\x05\x12\x0e\n\x06height\x18\x05 \x01(\x05\x12\x12\n\nclass_name\x18\x06 \x01(\t\x12\x12\n\nconfidence\x18\x07 \x01(\x02\"\xe1\x02\n\x17VisionDetectResultModel\x12\x10\n\x08\x65vent_id\x18\x01 \x01(\t\x12\x14\n\x0cproject_uuid\x18\x02 \x01(\t\x12\x14\n\x0c\x63ommand_uuid\x18\x03 \x01(\t\x12\x11\n\ttimestamp\x18\x04 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x05 \x01(\t\x12\x1b\n\x13original_image_path\x18\x06 \x01(\t\x12\x16\n\x0eoriginal_width\x18\x07 \x01(\x05\x12\x17\n\x0foriginal_height\x18\x08 \x01(\x05\x12\x12\n\nis_cropped\x18\t \x01(\x08\x12\x38\n\x15merged_ui_icon_bboxes\x18\n \x03(\x0b\x32\x19.karna.vision.BoundingBox\x12\x15\n\rcropped_image\x18\x0b \x01(\x0c\x12\x15\n\rcropped_width\x18\x0c \x01(\x05\x12\x16\n\x0e\x63ropped_height\x18\r \x01(\x05\"}\n\x17VisionDetectResultsList\x12\x14\n\x0cproject_uuid\x18\x01 \x01(\t\x12\x14\n\x0c\x63ommand_uuid\x18\x02 \x01(\t\x12\x36\n\x07results\x18\x03 \x03(\x0b\x32%.karna.vision.VisionDetectResultModel\"\xb4\x01\n\x12VisionDetectStatus\x12\x0e\n\x06status\x18\x01 \x01(\t\x12\x1f\n\x17screenshot_events_count\x18\x02 \x01(\x05\x12\x13\n\x0bhas_results\x18\x03 \x01(\x08\x12\x15\n\rresults_count\x18\x04 \x01(\x05\x12\x15\n\ris_processing\x18\x05 \x01(\x08\x12\x16\n\x0elast_processed\x18\x06 \x01(\t\x12\x12\n\nlast_error\x18\x07 \x01(\t\"\xa8\x01\n\x16VisionDetectRPCRequest\x12>\n\x13get_results_request\x18\x01 \x01(\x0b\x32\x1f.karna.vision.GetResultsRequestH\x00\x12\x44\n\x16update_results_request\x18\x02 \x01(\x0b\x32\".karna.vision.UpdateResultsRequestH\x00\x42\x08\n\x06method\"\xa2\x01\n\x17VisionDetectRPCResponse\x12\x38\n\x07results\x18\x01 \x01(\x0b\x32%.karna.vision.VisionDetectResultsListH\x00\x12\x32\n\x06status\x18\x02 \x01(\x0b\x32 .karna.vision.VisionDetectStatusH\x00\x12\r\n\x05\x65rror\x18\x03 \x01(\tB\n\n\x08responseB\'\n\x10\x63om.karna.visionB\x11VisionDetectProtoP\x01\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13vision_detect.proto\x12\x0ckarna.vision\x1a\x14screen_capture.proto\"\x84\x01\n\x11GetResultsRequest\x12\x14\n\x0cproject_uuid\x18\x01 \x01(\t\x12\x14\n\x0c\x63ommand_uuid\x18\x02 \x01(\t\x12\x43\n\x11screenshot_events\x18\x03 \x03(\x0b\x32(.karna.screen_capture.RpcScreenshotEvent\"N\n\x14UpdateResultsRequest\x12\x36\n\x07results\x18\x01 \x01(\x0b\x32%.karna.vision.VisionDetectResultsList\"v\n\x0b\x42oundingBox\x12\n\n\x02id\x18\x01 \x01(\t\x12\t\n\x01x\x18\x02 \x01(\x05\x12\t\n\x01y\x18\x03 \x01(\x05\x12\r\n\x05width\x18\x04 \x01(\x05\x12\x0e\n\x06height\x18\x05 \x01(\x05\x12\x12\n\nclass_name\x18\x06 \x01(\t\x12\x12\n\nconfidence\x18\x07 \x01(\x02\"\xe1\x02\n\x17VisionDetectResultModel\x12\x10\n\x08\x65vent_id\x18\x01 \x01(\t\x12\x14\n\x0cproject_uuid\x18\x02 \x01(\t\x12\x14\n\x0c\x63ommand_uuid\x18\x03 \x01(\t\x12\x11\n\ttimestamp\x18\x04 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x05 \x01(\t\x12\x1b\n\x13original_image_path\x18\x06 \x01(\t\x12\x16\n\x0eoriginal_width\x18\x07 \x01(\x05\x12\x17\n\x0foriginal_height\x18\x08 \x01(\x05\x12\x12\n\nis_cropped\x18\t \x01(\x08\x12\x38\n\x15merged_ui_icon_bboxes\x18\n \x03(\x0b\x32\x19.karna.vision.BoundingBox\x12\x15\n\rcropped_image\x18\x0b \x01(\x0c\x12\x15\n\rcropped_width\x18\x0c \x01(\x05\x12\x16\n\x0e\x63ropped_height\x18\r \x01(\x05\"}\n\x17VisionDetectResultsList\x12\x14\n\x0cproject_uuid\x18\x01 \x01(\t\x12\x14\n\x0c\x63ommand_uuid\x18\x02 \x01(\t\x12\x36\n\x07results\x18\x03 \x03(\x0b\x32%.karna.vision.VisionDetectResultModel\"\xb4\x01\n\x12VisionDetectStatus\x12\x0e\n\x06status\x18\x01 \x01(\t\x12\x1f\n\x17screenshot_events_count\x18\x02 \x01(\x05\x12\x13\n\x0bhas_results\x18\x03 \x01(\x08\x12\x15\n\rresults_count\x18\x04 \x01(\x05\x12\x15\n\ris_processing\x18\x05 \x01(\x08\x12\x16\n\x0elast_processed\x18\x06 \x01(\t\x12\x12\n\nlast_error\x18\x07 \x01(\t\"\xa8\x01\n\x16VisionDetectRPCRequest\x12>\n\x13get_results_request\x18\x01 \x01(\x0b\x32\x1f.karna.vision.GetResultsRequestH\x00\x12\x44\n\x16update_results_request\x18\x02 \x01(\x0b\x32\".karna.vision.UpdateResultsRequestH\x00\x42\x08\n\x06method\"\xa2\x01\n\x17VisionDetectRPCResponse\x12\x38\n\x07results\x18\x01 \x01(\x0b\x32%.karna.vision.VisionDetectResultsListH\x00\x12\x32\n\x06status\x18\x02 \x01(\x0b\x32 .karna.vision.VisionDetectStatusH\x00\x12\r\n\x05\x65rror\x18\x03 \x01(\tB\n\n\x08responseB\'\n\x10\x63om.karna.visionB\x11VisionDetectProtoP\x01\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -32,20 +33,20 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'vision_detect_pb2', _global
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'\n\020com.karna.visionB\021VisionDetectProtoP\001'
-  _globals['_GETRESULTSREQUEST']._serialized_start=37
-  _globals['_GETRESULTSREQUEST']._serialized_end=100
-  _globals['_UPDATERESULTSREQUEST']._serialized_start=102
-  _globals['_UPDATERESULTSREQUEST']._serialized_end=180
-  _globals['_BOUNDINGBOX']._serialized_start=182
-  _globals['_BOUNDINGBOX']._serialized_end=300
-  _globals['_VISIONDETECTRESULTMODEL']._serialized_start=303
-  _globals['_VISIONDETECTRESULTMODEL']._serialized_end=656
-  _globals['_VISIONDETECTRESULTSLIST']._serialized_start=658
-  _globals['_VISIONDETECTRESULTSLIST']._serialized_end=783
-  _globals['_VISIONDETECTSTATUS']._serialized_start=786
-  _globals['_VISIONDETECTSTATUS']._serialized_end=966
-  _globals['_VISIONDETECTRPCREQUEST']._serialized_start=969
-  _globals['_VISIONDETECTRPCREQUEST']._serialized_end=1137
-  _globals['_VISIONDETECTRPCRESPONSE']._serialized_start=1140
-  _globals['_VISIONDETECTRPCRESPONSE']._serialized_end=1302
+  _globals['_GETRESULTSREQUEST']._serialized_start=60
+  _globals['_GETRESULTSREQUEST']._serialized_end=192
+  _globals['_UPDATERESULTSREQUEST']._serialized_start=194
+  _globals['_UPDATERESULTSREQUEST']._serialized_end=272
+  _globals['_BOUNDINGBOX']._serialized_start=274
+  _globals['_BOUNDINGBOX']._serialized_end=392
+  _globals['_VISIONDETECTRESULTMODEL']._serialized_start=395
+  _globals['_VISIONDETECTRESULTMODEL']._serialized_end=748
+  _globals['_VISIONDETECTRESULTSLIST']._serialized_start=750
+  _globals['_VISIONDETECTRESULTSLIST']._serialized_end=875
+  _globals['_VISIONDETECTSTATUS']._serialized_start=878
+  _globals['_VISIONDETECTSTATUS']._serialized_end=1058
+  _globals['_VISIONDETECTRPCREQUEST']._serialized_start=1061
+  _globals['_VISIONDETECTRPCREQUEST']._serialized_end=1229
+  _globals['_VISIONDETECTRPCRESPONSE']._serialized_start=1232
+  _globals['_VISIONDETECTRPCRESPONSE']._serialized_end=1394
 # @@protoc_insertion_point(module_scope)
