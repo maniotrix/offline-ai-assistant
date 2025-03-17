@@ -1,6 +1,5 @@
 from datetime import datetime
-from dataclasses import dataclass, field
-import uuid
+from dataclasses import dataclass
 from typing import List
 import pandas as pd
 from util.omniparser import OmniparserResult, Omniparser
@@ -18,10 +17,10 @@ class ParsedContentResult:
     """
     type: str
     bbox: List[int]
-    interactivity: str
+    interactivity: bool
     content: str
     source: str
-    id: str
+    id: int
     
     def to_dict(self):
         """
