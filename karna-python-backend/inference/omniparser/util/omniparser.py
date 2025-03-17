@@ -35,6 +35,7 @@ def encode_image(image_path : str) -> str:
 @dataclass
 class OmniparserResult(object):
     dino_labled_img: Any
+    label_coordinates: Any
     parsed_content_list: Any
     original_image_path: str
 
@@ -65,10 +66,10 @@ class Omniparser(object):
                                                                                       caption_model_processor=self.caption_model_processor, ocr_text=text,use_local_semantics=True, 
                                                                                       iou_threshold=0.7, scale_img=False, batch_size=128)
 
-        return dino_labled_img, parsed_content_list
+        return dino_labled_img, label_coordinates, parsed_content_list
     
     def parse_image_path(self, image_path: str) -> OmniparserResult:
         image_base64 = encode_image(image_path)
-        dino_labled_img, parsed_content_list = self.parse(image_base64)
-        return OmniparserResult(dino_labled_img, parsed_content_list, image_path)
+        dino_labled_img, label_coordinates, parsed_content_list = self.parse(image_base64)
+        return OmniparserResult(dino_labled_img, label_coordinates, parsed_content_list, image_path)
 
