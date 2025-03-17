@@ -6,6 +6,8 @@ from PIL import Image
 import io
 import base64
 import os
+import logging
+logger = logging.getLogger(__name__)
 
 weights_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'weights')
 # Config for the Omniparser
@@ -20,17 +22,33 @@ import base64
 
 def is_image_path(text : str) -> bool:
     image_extensions = (".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".tif")
-    if text.endswith(image_extensions):
-        return True
-    else:
+    # AttributeError: 'WindowsPath' object has no attribute 'endswith'
+    try:
+        if isinstance(text, str) and text.endswith(image_extensions):
+            return True
+        else:
+            return False
+    except Exception as e:
+        logger.error(f"Error checking if {text} is an image path: {e}")
         return False
 
 def encode_image(image_path : str) -> str:
     """Encode image file to base64."""
-    if not is_image_path(image_path):
+    try:
+        if not is_image_path(image_path):
+            # even if the image path is not a valid image path, we will try to encode it
+            # this is to avoid the error when the image path is not a valid image path
+            try:
+                with open(image_path, "rb") as image_file:
+                    return base64.b64encode(image_file.read()).decode("utf-8")
+            except Exception as e:
+                logger.error(f"Error encoding image path: {image_path}: {e}")
+                raise ValueError(f"Invalid image path: {image_path}")
+        with open(image_path, "rb") as image_file:
+            return base64.b64encode(image_file.read()).decode("utf-8")
+    except Exception as e:
+        logger.error(f"Error encoding image path: {image_path}: {e}")
         raise ValueError(f"Invalid image path: {image_path}")
-    with open(image_path, "rb") as image_file:
-        return base64.b64encode(image_file.read()).decode("utf-8")
     
 @dataclass
 class OmniparserResult(object):
@@ -38,6 +56,15 @@ class OmniparserResult(object):
     label_coordinates: Any
     parsed_content_list: Any
     original_image_path: str
+    original_image_width: int
+    original_image_height: int
+    
+    def to_dict(self):
+        return {
+            'dino_labled_img': self.dino_labled_img,
+            'label_coordinates': self.label_coordinates,
+            'parsed_content_list': self.parsed_content_list,
+        }
 
 class Omniparser(object):
     def __init__(self):
@@ -70,6 +97,10 @@ class Omniparser(object):
     
     def parse_image_path(self, image_path: str) -> OmniparserResult:
         image_base64 = encode_image(image_path)
+        image = Image.open(image_path)
         dino_labled_img, label_coordinates, parsed_content_list = self.parse(image_base64)
-        return OmniparserResult(dino_labled_img, label_coordinates, parsed_content_list, image_path)
+        return OmniparserResult(dino_labled_img, label_coordinates, parsed_content_list, image_path, image.size[0], image.size[1])
+    
+    # def parse_batch_image_path(self, image_paths: list[str]) -> list[OmniparserResult]:
+    #     return [self.parse_image_path(image_path) for image_path in image_paths]
 
