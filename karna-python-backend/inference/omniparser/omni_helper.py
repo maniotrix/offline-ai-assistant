@@ -107,7 +107,7 @@ def get_omniparser_result_model(omniparser_result: OmniparserResult
     logger.info(f"Created omniparser result model for event_id: {event_id}")
     return result
     
-def get_omniparser_inference_data(screenshot_events: List[ScreenshotEvent]) -> List[OmniParserResultModel]:
+def get_omniparser_inference_data(screenshot_events: List[ScreenshotEvent]) -> OmniParserResultModelList:
     omniparser = Omniparser()
     result : List[OmniParserResultModel] = []
     for screenshot_event in screenshot_events:
@@ -121,9 +121,14 @@ def get_omniparser_inference_data(screenshot_events: List[ScreenshotEvent]) -> L
                                                 screenshot_event.timestamp, 
                                                 screenshot_event.description))
     logger.info(f"Completed getting omniparser result models for {len(result)} events")
-    return result
+    result_list = OmniParserResultModelList(
+        project_uuid=screenshot_events[0].project_uuid,
+        command_uuid=screenshot_events[0].command_uuid,
+        omniparser_result_models=result
+    )
+    return result_list
 
-def get_omniparser_inference_data_from_json(json_file_path: str) -> List[OmniParserResultModel]:
+def get_omniparser_inference_data_from_json(json_file_path: str) -> OmniParserResultModelList:
     logger.info(f"Loading screenshot events from JSON file: {json_file_path}")
         
     if not os.path.exists(json_file_path):
@@ -154,5 +159,65 @@ def get_omniparser_inference_data_from_json(json_file_path: str) -> List[OmniPar
     
     logger.info(f"Loaded {len(screenshot_events)} screenshot events from JSON file")
     return get_omniparser_inference_data(screenshot_events)
+
+def update_parsed_content_result_list(parsed_content_result_list: List[ParsedContentResult], 
+                                    filter_id: int,
+                                    update_content: str | None = None, # this is optional
+                                    update_interactivity: bool | None = None, # this is optional
+                                    update_bbox: List[int] | None = None # this is optional
+                                    ) -> List[ParsedContentResult]:
+    for result in parsed_content_result_list:
+        if result.id == filter_id:
+            if update_content is not None:
+                result.content = update_content
+            if update_interactivity is not None:
+                result.interactivity = update_interactivity
+            if update_bbox is not None:
+                result.bbox = update_bbox
+            break
+    return parsed_content_result_list
+
+def delete_item_from_parsed_content_result_list(parsed_content_result_list: List[ParsedContentResult], 
+                                                filter_id: int) -> List[ParsedContentResult]:
+    for result in parsed_content_result_list:
+        if result.id == filter_id:
+            parsed_content_result_list.remove(result)
+            break
+    return parsed_content_result_list
+
+def add_item_to_parsed_content_result_list(parsed_content_result_list: List[ParsedContentResult], 
+                                            item: ParsedContentResult) -> List[ParsedContentResult]:
+    parsed_content_result_list.append(item)
+    return parsed_content_result_list
+
+# new functions for above functions to accept OmniParserResultModel
+def update_omniparser_result_model(omniparser_result_model: OmniParserResultModel, 
+                                    filter_id: int,
+                                    update_content: str | None = None, # this is optional
+                                    update_interactivity: bool | None = None, # this is optional
+                                    update_bbox: List[int] | None = None # this is optional
+                                    ) -> OmniParserResultModel:
+    omniparser_result_model.parsed_content_results = update_parsed_content_result_list(omniparser_result_model.parsed_content_results, 
+                                                                                        filter_id, 
+                                                                                        update_content, 
+                                                                                        update_interactivity, 
+                                                                                        update_bbox)
+    return omniparser_result_model  
+
+def delete_item_from_omniparser_result_model(omniparser_result_model: OmniParserResultModel, 
+                                            filter_id: int) -> OmniParserResultModel:
+    omniparser_result_model.parsed_content_results = delete_item_from_parsed_content_result_list(omniparser_result_model.parsed_content_results, 
+                                                                                                    filter_id)
+    return omniparser_result_model
+
+def add_item_to_omniparser_result_model(omniparser_result_model: OmniParserResultModel, 
+                                        item: ParsedContentResult) -> OmniParserResultModel:
+    omniparser_result_model.parsed_content_results = add_item_to_parsed_content_result_list(omniparser_result_model.parsed_content_results, 
+                                                                                                item)
+    return omniparser_result_model
+
+
+
+
 
 
