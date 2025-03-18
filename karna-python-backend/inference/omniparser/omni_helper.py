@@ -1,12 +1,20 @@
+import base64
 from datetime import datetime
 from dataclasses import dataclass
-from typing import List
+import io
+from typing import List, Union
+import numpy as np
 import pandas as pd
+import torch
 from util.omniparser import OmniparserResult, Omniparser
 from services.screen_capture_service import ScreenshotEvent
 import logging
 import os
 import json
+from PIL import Image
+import supervision as sv
+from util.utils import annotate, box_convert
+from util.box_annotator import BoxAnnotator
 logger = logging.getLogger(__name__)
 
 @dataclass
@@ -215,6 +223,75 @@ def add_item_to_omniparser_result_model(omniparser_result_model: OmniParserResul
     omniparser_result_model.parsed_content_results = add_item_to_parsed_content_result_list(omniparser_result_model.parsed_content_results, 
                                                                                                 item)
     return omniparser_result_model
+
+def append_omniparser_result_model(omniparser_result_model: OmniParserResultModel, 
+                                    content: str,
+                                    bbox: List[int],
+                                    interactivity: bool,
+                                    source: str,
+                                    type: str
+                                    ) -> OmniParserResultModel:
+    # find the max id
+    max_id = max([result.id for result in omniparser_result_model.parsed_content_results])
+    item = ParsedContentResult(id=max_id + 1, content=content, bbox=bbox, interactivity=interactivity, source=source, type=type)
+    omniparser_result_model.parsed_content_results = add_item_to_parsed_content_result_list(omniparser_result_model.parsed_content_results, 
+                                                                                                item)
+    return omniparser_result_model
+
+def annotate_omniparser_result_model(omniparser_result_model: OmniParserResultModel):
+    """Process either an image path or Image object
+    
+    Args:
+        image_source: Either a file path (str) or PIL Image object
+        ...
+    """
+    # get the parsed content results
+    filtered_boxes_elem = omniparser_result_model.parsed_content_results
+    
+    #    get the image
+    image_path = omniparser_result_model.omniparser_result.original_image_path
+    image_source = Image.open(image_path)
+    image_source = image_source.convert("RGB") # for CLIP
+    image_source = np.asarray(image_source)
+    h, w, _ = image_source.shape # type: ignore
+    
+    print("image size: ", w, h)
+    
+    filtered_boxes = torch.tensor([box.bbox for box in filtered_boxes_elem])
+    filtered_boxes = box_convert(boxes=filtered_boxes, in_fmt="xyxy", out_fmt="cxcywh")
+
+    phrases = [i for i in range(len(filtered_boxes))]
+    
+    box_overlay_ratio = max(w, h) / 3200
+    draw_bbox_config = {
+        'text_scale': 0.8 * box_overlay_ratio,
+        'text_thickness': max(int(2 * box_overlay_ratio), 1),
+        'text_padding': max(int(3 * box_overlay_ratio), 1),
+        'thickness': max(int(3 * box_overlay_ratio), 1),
+    }
+    
+    annotated_frame, label_coordinates = annotate(image_source=image_source, 
+                                                boxes=filtered_boxes, 
+                                                logits=None, 
+                                                phrases=phrases, 
+                                                **draw_bbox_config)
+    
+    pil_img = Image.fromarray(annotated_frame)
+    buffered = io.BytesIO()
+    pil_img.save(buffered, format="PNG")
+    encoded_image = base64.b64encode(buffered.getvalue()).decode('ascii')
+    
+    return encoded_image
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
 
 
