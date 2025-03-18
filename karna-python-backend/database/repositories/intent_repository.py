@@ -40,7 +40,7 @@ class IntentRepository(BaseRepository[CachedIntent]):
         return IntentPrediction(
             intent=intent,
             confidence=db_intent.confidence,
-            metadata=db_intent.meta_data or {}
+            metadata=db_intent.meta_data or {} # type: ignore
         )
 
     def from_domain(self, prediction: IntentPrediction) -> dict:

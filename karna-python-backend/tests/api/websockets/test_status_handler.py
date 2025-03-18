@@ -1,3 +1,4 @@
+# type: ignore
 import pytest
 import pytest_asyncio
 from api.websockets.status.status_handler import StatusWebSocketHandler
