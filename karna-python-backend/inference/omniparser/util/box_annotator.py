@@ -1,3 +1,4 @@
+# type: ignore
 from typing import List, Optional, Union, Tuple
 
 import cv2
