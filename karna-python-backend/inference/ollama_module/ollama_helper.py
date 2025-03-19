@@ -827,6 +827,122 @@ def get_identify_object_tool_definition() -> Dict[str, Any]:
         }
     }
 
+# New functions for continuous chat with LLM with streaming
+
+async def async_continuous_chat_stream(
+    messages: List[Dict[str, str]],
+    new_user_message: str,
+    model: str,
+    callback: Optional[Callable[[str], None]] = None,
+    system: Optional[str] = None,
+    template: Optional[str] = None,
+    options: Optional[Dict[str, Any]] = None,
+    keep_alive: Optional[str] = None
+) -> List[Dict[str, str]]:
+    """
+    Stream a response from an LLM in a continuous conversation, maintaining chat history.
+    
+    Args:
+        messages: List of previous message dictionaries with 'role' and 'content' fields
+        new_user_message: The new user message to add to the conversation
+        model: The name of the LLM model to use (e.g. "llama2", "smollm2")
+        callback: Optional callback function to process streamed content
+        system: System prompt to use (default: None)
+        template: Custom prompt template (default: None)
+        options: Additional parameters to pass to the Ollama API (default: None)
+        keep_alive: Duration to keep the model loaded (default: None)
+        
+    Returns:
+        Updated messages list with the new user message and assistant response
+    """
+    # Initialize the client
+    client = OllamaLLMClient(model_name=model)
+    
+    # Create a working copy of the messages
+    updated_messages = messages.copy()
+    
+    # Check if a system message exists and ensure it's first
+    has_system_message = any(msg.get("role") == "system" for msg in updated_messages)
+    
+    # If system prompt is provided but no system message exists, add it at the beginning
+    if system and not has_system_message:
+        updated_messages.insert(0, {"role": "system", "content": system})
+    # If system prompt is provided and there's already a system message, update it
+    elif system and has_system_message:
+        for msg in updated_messages:
+            if msg.get("role") == "system":
+                msg["content"] = system
+                break
+    
+    # Add the new user message to the conversation
+    updated_messages.append({"role": "user", "content": new_user_message})
+    
+    print("\nStreaming response in continuous chat:")
+    print("-" * 50)
+    print(f"Model: {model}")
+    print(f"Chat history length: {len(updated_messages)} messages")
+    print(f"Latest user message: {new_user_message}")
+    print("-" * 50)
+    
+    # Stream the response
+    full_response = ""
+    
+    try:
+        async for chunk in client.stream_chat(
+            messages=updated_messages,
+            template=template,
+            options=options,
+            keep_alive=keep_alive
+        ):
+            # Handle text content
+            if "message" in chunk and "content" in chunk["message"]:
+                chunk_text = chunk["message"]["content"]
+                full_response += chunk_text
+                print(chunk_text, end="", flush=True)
+                
+                # Call the callback if provided
+                if callback:
+                    callback(chunk_text)
+            
+        # After streaming completes, add the full response to the conversation
+        updated_messages.append({"role": "assistant", "content": full_response})
+        
+        print("\n" + "-" * 50)
+        print("Streaming complete!")
+        
+        return updated_messages
+    
+    except Exception as e:
+        print(f"\nError during continuous chat streaming: {str(e)}")
+        # Still add the partial response if we got one before the error
+        if full_response:
+            updated_messages.append({"role": "assistant", "content": full_response})
+        raise
+
+def continuous_chat_stream(
+    messages: List[Dict[str, str]],
+    new_user_message: str,
+    model: str,
+    callback: Optional[Callable[[str], None]] = None,
+    system: Optional[str] = None,
+    template: Optional[str] = None,
+    options: Optional[Dict[str, Any]] = None,
+    keep_alive: Optional[str] = None
+) -> List[Dict[str, str]]:
+    """
+    Synchronous wrapper for async_continuous_chat_stream.
+    """
+    return asyncio.run(async_continuous_chat_stream(
+        messages=messages,
+        new_user_message=new_user_message,
+        model=model,
+        callback=callback,
+        system=system,
+        template=template,
+        options=options,
+        keep_alive=keep_alive
+    ))
+
 if __name__ == "__main__":
     # Test functions for LLM
     def test_regular_generation():
@@ -938,12 +1054,71 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Error: {str(e)}")
     
+    # Test functions for continuous chat streaming
+    def test_continuous_chat_streaming():
+        """Test continuous chat streaming with conversation history"""
+        test_model = "smollm2"
+        
+        # Initialize an empty conversation, optionally with a system message
+        conversation = [
+            {"role": "system", "content": "You are a helpful, friendly AI assistant."}
+        ]
+        
+        # First message
+        print("\nTesting continuous chat streaming with model: {test_model}")
+        print("Starting a new conversation...")
+        
+        try:
+            # First user message
+            first_message = "Hi there! Tell me about yourself."
+            print(f"\nUser: {first_message}")
+            
+            # Get response and updated conversation
+            conversation = continuous_chat_stream(
+                messages=conversation,
+                new_user_message=first_message,
+                model=test_model
+            )
+            
+            # Second user message
+            second_message = "What can you help me with today?"
+            print(f"\nUser: {second_message}")
+            
+            # Get response and updated conversation
+            conversation = continuous_chat_stream(
+                messages=conversation,
+                new_user_message=second_message,
+                model=test_model
+            )
+            
+            # Third user message referencing previous context
+            third_message = "Can you give me more specific examples of how you can assist me?"
+            print(f"\nUser: {third_message}")
+            
+            # Get response and updated conversation
+            conversation = continuous_chat_stream(
+                messages=conversation,
+                new_user_message=third_message,
+                model=test_model
+            )
+            
+            # Print the full conversation history
+            print("\nFull conversation history:")
+            for i, msg in enumerate(conversation):
+                role = msg.get("role", "unknown")
+                content = msg.get("content", "")
+                print(f"{i+1}. {role.capitalize()}: {content[:50]}..." if len(content) > 50 else f"{i+1}. {role.capitalize()}: {content}")
+            
+        except Exception as e:
+            print(f"Error in continuous chat test: {str(e)}")
+    
     # Run the test functions
     if __name__ == "__main__":
         # LLM tests
         #test_regular_generation()
         #test_streaming_generation()
-        test_real_time_streaming(use_system_prompt=True)  # You can set to False to disable system prompt
+        #test_real_time_streaming(use_system_prompt=True)
+        test_continuous_chat_streaming()  # Add this line to run the new test
         
         # VLM tests
         #test_regular_vlm_generation()
