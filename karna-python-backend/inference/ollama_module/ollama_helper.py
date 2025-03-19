@@ -859,7 +859,7 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Error: {str(e)}")
             
-    def test_real_time_streaming():
+    def test_real_time_streaming(use_system_prompt=True):
         """Test real-time streaming where chunks are displayed as they arrive"""
         test_prompt = "Tell me a short story about a robot learning to feel emotions."
         test_model = "smollm2"
@@ -867,8 +867,14 @@ if __name__ == "__main__":
         print(f"\nTesting real-time streaming with model: {test_model}")
         print(f"Prompt: {test_prompt}")
         
+        # Define system prompt if enabled
+        system_prompt = None
+        if use_system_prompt:
+            system_prompt = "You are a creative storyteller from India, specialized in emotional narratives about robots and AI."
+            print(f"Using system prompt: {system_prompt}")
+        
         try:
-            stream_llm_generate(prompt=test_prompt, model=test_model)
+            stream_llm_generate(prompt=test_prompt, model=test_model, system=system_prompt)
         except Exception as e:
             print(f"Error: {str(e)}")
     
@@ -909,9 +915,9 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Error: {str(e)}")
             
-    def test_real_time_vlm_streaming():
+    def test_real_time_vlm_streaming(use_system_prompt=True):
         """Test real-time VLM streaming where chunks are displayed as they arrive"""
-        test_prompt = "briefly Describe the image in 300 words"
+        test_prompt = "Find the bounding box coordinates of the open requests and output as a json object"
         # Use absolute path to ensure the file is found
         test_image = str(Path(__file__).parent / "test.png")
         test_model = "granite3.2-vision:latest"
@@ -920,8 +926,15 @@ if __name__ == "__main__":
         print(f"Prompt: {test_prompt}")
         print(f"Image: {test_image}")
         
+        # Define system prompt if enabled
+        system_prompt = None
+        if use_system_prompt:
+            system_prompt = """You are a good webpage screenshot reader. 
+            You will be given a screenshot of a webpage and you properly analyse the image before answering the user's question."""
+            print(f"Using system prompt: {system_prompt}")
+        
         try:
-            stream_vlm_generate(prompt=test_prompt, image_path=test_image, model=test_model)
+            stream_vlm_generate(prompt=test_prompt, image_path=test_image, model=test_model, system=system_prompt)
         except Exception as e:
             print(f"Error: {str(e)}")
     
@@ -930,7 +943,7 @@ if __name__ == "__main__":
         # LLM tests
         #test_regular_generation()
         #test_streaming_generation()
-        test_real_time_streaming()
+        test_real_time_streaming(use_system_prompt=True)  # You can set to False to disable system prompt
         
         # VLM tests
         #test_regular_vlm_generation()
