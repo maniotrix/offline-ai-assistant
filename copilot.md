@@ -1088,4 +1088,170 @@ async def _handle_get_results_request(self, websocket: WebSocket, request, backg
 
     Should use mulitprocessing at the service level. for eg in vision detect, implement multiprocessing pipeline before notifying observers
 
+    # Using Multi-Image VLM Analysis Functions
+
+## Basic Usage: `analyze_images_in_sequence`
+
+This is the main programmable function for analyzing multiple images in sequence:
+
+```python
+from karna-python-backend.inference.ollama_module.ollama_helper import analyze_images_in_sequence
+
+# Basic usage with default settings (sorts by timestamp)
+result = analyze_images_in_sequence(
+    image_dir="/path/to/images",
+    model="granite3.2-vision:latest"
+)
+
+# Access the response
+print(result["response"])
+```
+
+## Options for Image Sorting
+
+```python
+# Sort by timestamp (oldest to newest)
+result = analyze_images_in_sequence(
+    image_dir="/path/to/images",
+    model="granite3.2-vision:latest",
+    sort_method="timestamp",
+    reverse_order=False
+)
+
+# Sort by filename (alphabetical)
+result = analyze_images_in_sequence(
+    image_dir="/path/to/images",
+    model="granite3.2-vision:latest",
+    sort_method="filename"
+)
+
+# Sort by numeric pattern in filenames (useful for sequence images like img_001.jpg)
+result = analyze_images_in_sequence(
+    image_dir="/path/to/images",
+    model="granite3.2-vision:latest",
+    sort_method="numeric"
+)
+
+# Reverse the order (newest first)
+result = analyze_images_in_sequence(
+    image_dir="/path/to/images",
+    model="granite3.2-vision:latest",
+    reverse_order=True
+)
+```
+
+## Filtering and Limiting Images
+
+```python
+# Exclude thumbnails or other patterns
+result = analyze_images_in_sequence(
+    image_dir="/path/to/images",
+    model="granite3.2-vision:latest",
+    exclusion_pattern="thumb|small"  # Regex pattern
+)
+
+# Process only the first 5 images
+result = analyze_images_in_sequence(
+    image_dir="/path/to/images",
+    model="granite3.2-vision:latest",
+    max_images=5
+)
+```
+
+## Custom Prompts and Streaming
+
+```python
+# Custom prompt and system prompt
+result = analyze_images_in_sequence(
+    image_dir="/path/to/images",
+    model="granite3.2-vision:latest",
+    prompt="Compare these images and highlight any differences in the UI design.",
+    system_prompt="You are an expert UI designer analyzing sequential screenshots."
+)
+
+# Streaming response with callback
+def my_callback(text, tool_calls):
+    print(f"Received: {text}")
+    # Process tool calls if needed
+
+result = analyze_images_in_sequence(
+    image_dir="/path/to/images",
+    model="granite3.2-vision:latest",
+    stream=True,
+    callback=my_callback
+)
+```
+
+## Interactive Usage
+
+For interactive use, you can run the module directly with:
+
+```bash
+python -m karna-python-backend.inference.ollama_module.ollama_helper
+```
+
+This will run the test function `test_chronological_image_vlm()` which provides an interactive interface to:
+- Select images directory
+- Choose sorting method (timestamp, filename, or numeric)
+- Set exclusion patterns
+- Preview the sorted images
+- Customize prompts and system messages
+- Toggle streaming mode
+
+## Error Handling
+
+```python
+result = analyze_images_in_sequence(
+    image_dir="/path/to/images",
+    model="granite3.2-vision:latest"
+)
+
+if "error" in result:
+    print(f"Error occurred: {result['error']}")
+    print(f"Found {result['image_count']} images before error")
+else:
+    print(result["response"])
+```
+
+## Advanced: Tool Usage with Images
+
+```python
+from karna-python-backend.inference.ollama_module.ollama_helper import analyze_images_in_sequence, get_identify_object_tool_definition
+
+# Define tools
+tools = [get_identify_object_tool_definition()]
+
+result = analyze_images_in_sequence(
+    image_dir="/path/to/images",
+    model="granite3.2-vision:latest",
+    tools=tools,
+    prompt="Identify all UI elements across these sequential screenshots"
+)
+
+# Check for tool calls in the response
+if "tool_calls" in result:
+    print(f"Found {len(result['tool_calls'])} tool calls")
+```
+
+## Using the Interactive Multi-Image Session
+
+For a full interactive chat session with multi-image support:
+
+```python
+from karna-python-backend.inference.ollama_module.ollama_helper import interactive_multi_image_vlm_session
+
+# Start an interactive session
+conversation_history = interactive_multi_image_vlm_session(
+    model="granite3.2-vision:latest",
+    images_dir="/path/to/images",
+    system_prompt="You are a helpful AI analyzing multiple images."
+)
+```
+
+During the session, use commands like:
+- `images: img1.jpg, img2.jpg, img3.jpg` to analyze multiple images
+- `image: img1.jpg` to analyze a single image
+- Regular text for text-only messages
+
+
     
