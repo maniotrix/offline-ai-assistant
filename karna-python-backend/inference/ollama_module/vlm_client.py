@@ -1,4 +1,5 @@
-from typing import Dict, List, Optional, AsyncIterator, Any, Union
+# type: ignore
+from typing import Dict, List, Optional, AsyncIterator, Any, Union, Callable
 import logging
 import base64
 from pathlib import Path
@@ -56,6 +57,7 @@ class OllamaVLMClient(BaseOllamaClient):
                                 images: List[Union[str, bytes]],
                                 system: Optional[str] = None,
                                 template: Optional[str] = None,
+                                tools: Optional[List[Dict[str, Any]]] = None,
                                 options: Optional[Dict[str, Any]] = None,
                                 keep_alive: Optional[str] = None) -> Any:
         """Generate a response from the VLM using text and images.
@@ -65,6 +67,7 @@ class OllamaVLMClient(BaseOllamaClient):
             images (List[Union[str, bytes]]): Images as file paths, base64 strings, or bytes
             system (str, optional): System prompt to use. Defaults to None.
             template (str, optional): Custom prompt template. Defaults to None.
+            tools (List[Dict[str, Any]], optional): List of tool definitions. Defaults to None.
             options (dict, optional): Additional model parameters. Defaults to None.
             keep_alive (str, optional): Duration to keep the model loaded (e.g., "5m", "1h"). Defaults to None.
         
@@ -75,15 +78,31 @@ class OllamaVLMClient(BaseOllamaClient):
         processed_images = self._process_images(images)
         
         try:
-            return await self.ollama_client.generate(
-                model=self.model_name,
-                prompt=prompt,
-                system=system,
-                template=template,
-                images=processed_images,
-                options=options,
-                keep_alive=keep_alive
-            ) # type: ignore
+            # Always use chat API with modern features
+            messages = [{"role": "user", "content": prompt, "images": processed_images}]
+            
+            # If system prompt is provided, include it as first message with system role
+            if system:
+                messages = [{"role": "system", "content": system}] + messages
+            
+            logger.info(f"Using chat API with VLM model: {self.model_name}")
+            if tools:
+                logger.info(f"Including {len(tools)} tools in the request")
+                
+            # Create request parameters without system as a direct parameter
+            request_params = {
+                "model": self.model_name,
+                "messages": messages,
+                "tools": tools,
+                "options": options,
+                "keep_alive": keep_alive
+            }
+            
+            # Add template if provided
+            if template:
+                request_params["template"] = template
+                
+            return await self.ollama_client.chat(**request_params)
         except Exception as e:
             logger.error(f"Error generating vision response: {e}")
             raise
@@ -93,6 +112,7 @@ class OllamaVLMClient(BaseOllamaClient):
                                        images: List[Union[str, bytes]],
                                        system: Optional[str] = None,
                                        template: Optional[str] = None,
+                                       tools: Optional[List[Dict[str, Any]]] = None,
                                        options: Optional[Dict[str, Any]] = None,
                                        keep_alive: Optional[str] = None) -> AsyncIterator[Any]:
         """Stream a response from the VLM using text and images.
@@ -102,6 +122,7 @@ class OllamaVLMClient(BaseOllamaClient):
             images (List[Union[str, bytes]]): Images as file paths, base64 strings, or bytes
             system (str, optional): System prompt to use. Defaults to None.
             template (str, optional): Custom prompt template. Defaults to None.
+            tools (List[Dict[str, Any]], optional): List of tool definitions. Defaults to None.
             options (dict, optional): Additional model parameters. Defaults to None.
             keep_alive (str, optional): Duration to keep the model loaded (e.g., "5m", "1h"). Defaults to None.
             
@@ -112,26 +133,43 @@ class OllamaVLMClient(BaseOllamaClient):
         processed_images = self._process_images(images)
         
         try:
-            async for chunk in await self.ollama_client.generate(
-                model=self.model_name,
-                prompt=prompt,
-                system=system,
-                template=template,
-                images=processed_images,
-                options=options,
-                keep_alive=keep_alive,
-                stream=True
-            ): # type: ignore
+            # Always use chat API with modern features and streaming
+            messages = [{"role": "user", "content": prompt, "images": processed_images}]
+            
+            # If system prompt is provided, include it as first message with system role
+            if system:
+                messages = [{"role": "system", "content": system}] + messages
+            
+            logger.info(f"Using streaming chat API with VLM model: {self.model_name}")
+            if tools:
+                logger.info(f"Including {len(tools)} tools in the streaming request")
+                
+            # Create request parameters without system as a direct parameter
+            request_params = {
+                "model": self.model_name,
+                "messages": messages,
+                "tools": tools,
+                "options": options,
+                "keep_alive": keep_alive,
+                "stream": True
+            }
+            
+            # Add template if provided
+            if template:
+                request_params["template"] = template
+                
+            async for chunk in await self.ollama_client.chat(**request_params):
                 yield chunk
         except Exception as e:
             logger.error(f"Error in stream vision generate: {e}")
             raise
-    
+            
     async def chat_with_vision(self, 
-                            messages: List[Dict[str, str]], 
-                            images: List[Union[str, bytes]],
+                            messages: List[Dict[str, Any]],
+                            images: List[Union[str, bytes]], 
                             system: Optional[str] = None,
                             template: Optional[str] = None,
+                            tools: Optional[List[Dict[str, Any]]] = None,
                             options: Optional[Dict[str, Any]] = None,
                             keep_alive: Optional[str] = None) -> Any:
         """Chat with the VLM using a conversation history and images.
@@ -141,13 +179,14 @@ class OllamaVLMClient(BaseOllamaClient):
             images (List[Union[str, bytes]]): Images as file paths, base64 strings, or bytes
             system (str, optional): System prompt to use. Defaults to None.
             template (str, optional): Custom prompt template. Defaults to None.
+            tools (List[Dict[str, Any]], optional): List of tool definitions. Defaults to None.
             options (dict, optional): Additional model parameters. Defaults to None.
             keep_alive (str, optional): Duration to keep the model loaded (e.g., "5m", "1h"). Defaults to None.
         
         Returns:
             Any: The model's response
         """
-        # Find the last user message and add the image to it
+        # Process images
         processed_images = self._process_images(images)
         
         # Modify messages to include images in the last user message
@@ -156,25 +195,46 @@ class OllamaVLMClient(BaseOllamaClient):
             if updated_messages[i].get("role") == "user":
                 updated_messages[i]["images"] = processed_images
                 break
+        
+        # If system prompt is provided, include it as first message with system role
+        if system:
+            # Check if the first message is already a system message
+            if updated_messages and updated_messages[0].get("role") == "system":
+                # Replace existing system message
+                updated_messages[0]["content"] = system
+            else:
+                # Add new system message at the beginning
+                updated_messages = [{"role": "system", "content": system}] + updated_messages
                 
         try:
-            return await self.ollama_client.chat(
-                model=self.model_name,
-                messages=updated_messages,
-                system=system,
-                template=template,
-                options=options,
-                keep_alive=keep_alive
-            ) # type: ignore
+            logger.info(f"Using chat API with {len(updated_messages)} messages")
+            if tools:
+                logger.info(f"Including {len(tools)} tools in the chat request")
+                
+            # Create request parameters without system as a direct parameter
+            request_params = {
+                "model": self.model_name,
+                "messages": updated_messages,
+                "tools": tools,
+                "options": options,
+                "keep_alive": keep_alive
+            }
+            
+            # Add template if provided
+            if template:
+                request_params["template"] = template
+                
+            return await self.ollama_client.chat(**request_params)
         except Exception as e:
-            logger.error(f"Error in vision chat: {e}")
+            logger.error(f"Error in chat with vision: {e}")
             raise
             
     async def stream_chat_with_vision(self, 
-                                   messages: List[Dict[str, str]], 
+                                   messages: List[Dict[str, Any]], 
                                    images: List[Union[str, bytes]],
                                    system: Optional[str] = None,
                                    template: Optional[str] = None,
+                                   tools: Optional[List[Dict[str, Any]]] = None,
                                    options: Optional[Dict[str, Any]] = None,
                                    keep_alive: Optional[str] = None) -> AsyncIterator[Any]:
         """Stream a chat response from the VLM with images.
@@ -184,13 +244,14 @@ class OllamaVLMClient(BaseOllamaClient):
             images (List[Union[str, bytes]]): Images as file paths, base64 strings, or bytes
             system (str, optional): System prompt to use. Defaults to None.
             template (str, optional): Custom prompt template. Defaults to None.
+            tools (List[Dict[str, Any]], optional): List of tool definitions. Defaults to None.
             options (dict, optional): Additional model parameters. Defaults to None.
             keep_alive (str, optional): Duration to keep the model loaded (e.g., "5m", "1h"). Defaults to None.
             
         Yields:
             Any: Chunks of the model's response
         """
-        # Find the last user message and add the image to it
+        # Process images
         processed_images = self._process_images(images)
         
         # Modify messages to include images in the last user message
@@ -199,17 +260,37 @@ class OllamaVLMClient(BaseOllamaClient):
             if updated_messages[i].get("role") == "user":
                 updated_messages[i]["images"] = processed_images
                 break
+        
+        # If system prompt is provided, include it as first message with system role
+        if system:
+            # Check if the first message is already a system message
+            if updated_messages and updated_messages[0].get("role") == "system":
+                # Replace existing system message
+                updated_messages[0]["content"] = system
+            else:
+                # Add new system message at the beginning
+                updated_messages = [{"role": "system", "content": system}] + updated_messages
                 
         try:
-            async for chunk in await self.ollama_client.chat(
-                model=self.model_name,
-                messages=updated_messages,
-                system=system,
-                template=template,
-                options=options,
-                keep_alive=keep_alive,
-                stream=True
-            ): # type: ignore
+            logger.info(f"Using streaming chat API with {len(updated_messages)} messages")
+            if tools:
+                logger.info(f"Including {len(tools)} tools in the streaming chat request")
+                
+            # Create request parameters without system as a direct parameter
+            request_params = {
+                "model": self.model_name,
+                "messages": updated_messages,
+                "tools": tools,
+                "options": options,
+                "keep_alive": keep_alive,
+                "stream": True
+            }
+            
+            # Add template if provided
+            if template:
+                request_params["template"] = template
+                
+            async for chunk in await self.ollama_client.chat(**request_params):
                 yield chunk
         except Exception as e:
             logger.error(f"Error in stream vision chat: {e}")
