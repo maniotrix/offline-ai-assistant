@@ -948,7 +948,9 @@ async def async_interactive_chat_session(
     system_prompt: Optional[str] = "You are a helpful, friendly AI assistant.",
     template: Optional[str] = None,
     options: Optional[Dict[str, Any]] = None,
-    keep_alive: Optional[str] = None
+    keep_alive: Optional[str] = None,
+    include_user_messages: bool = True,
+    include_assistant_responses: bool = True
 ) -> List[Dict[str, str]]:
     """
     Asynchronous implementation of an interactive chat session with an LLM.
@@ -959,6 +961,8 @@ async def async_interactive_chat_session(
         template: Custom prompt template (default: None)
         options: Additional parameters to pass to the Ollama API (default: None)
         keep_alive: Duration to keep the model loaded (default: None)
+        include_user_messages: Whether to include previous user messages in context (default: True)
+        include_assistant_responses: Whether to include previous assistant responses in context (default: True)
         
     Returns:
         The complete conversation history when the session ends
@@ -971,11 +975,22 @@ async def async_interactive_chat_session(
     if system_prompt:
         conversation = [{"role": "system", "content": system_prompt}]
     
+    # Keep a complete history for returning at the end
+    full_history = conversation.copy()
+    
     print(f"\nStarting interactive chat with model: {model}")
     print("-" * 50)
     if system_prompt:
         print(f"System prompt: {system_prompt[:100]}..." if len(system_prompt) > 100 else f"System prompt: {system_prompt}")
     print("Type 'exit' or 'quit' to end the conversation.")
+    if not include_user_messages and not include_assistant_responses:
+        print("Context retention: DISABLED (no conversation history will be sent to the model)")
+    elif include_user_messages and not include_assistant_responses:
+        print("Context retention: Only USER messages will be retained")
+    elif not include_user_messages and include_assistant_responses:
+        print("Context retention: Only ASSISTANT responses will be retained")
+    else:
+        print("Context retention: FULL (both user messages and assistant responses)")
     print("-" * 50)
     
     while True:
@@ -988,11 +1003,14 @@ async def async_interactive_chat_session(
                 print("Ending conversation.")
                 break
             
-            # Create a working copy of the messages
-            updated_messages = conversation.copy()
+            # Add user message to full history
+            full_history.append({"role": "user", "content": user_message})
             
-            # Add the new user message to the conversation
-            updated_messages.append({"role": "user", "content": user_message})
+            # Create context for this turn based on retention settings
+            turn_context = conversation.copy()
+            
+            # Add the new user message to the current turn context
+            turn_context.append({"role": "user", "content": user_message})
             
             print("\nAssistant: ", end="", flush=True)
             
@@ -1001,7 +1019,7 @@ async def async_interactive_chat_session(
             
             # Directly use the client's stream_chat method without creating a new event loop
             async for chunk in client.stream_chat(
-                messages=updated_messages,
+                messages=turn_context,
                 template=template,
                 options=options,
                 keep_alive=keep_alive
@@ -1012,10 +1030,22 @@ async def async_interactive_chat_session(
                     full_response += chunk_text
                     print(chunk_text, end="", flush=True)
             
-            # After streaming completes, add the assistant's response to the conversation
-            conversation.append({"role": "user", "content": user_message})
-            conversation.append({"role": "assistant", "content": full_response})
+            # Add assistant's response to full history
+            full_history.append({"role": "assistant", "content": full_response})
             
+            # Update the conversation context based on retention settings
+            conversation = []
+            if system_prompt:
+                conversation = [{"role": "system", "content": system_prompt}]
+                
+            # Add previous messages based on settings
+            for msg in full_history[1:]:  # Skip the system message
+                role = msg.get("role", "")
+                if role == "user" and include_user_messages:
+                    conversation.append(msg)
+                elif role == "assistant" and include_assistant_responses:
+                    conversation.append(msg)
+                    
         except KeyboardInterrupt:
             print("\nConversation interrupted by user.")
             break
@@ -1025,7 +1055,7 @@ async def async_interactive_chat_session(
     
     # Print the full conversation history at the end
     print("\nFull conversation history:")
-    for i, msg in enumerate(conversation):
+    for i, msg in enumerate(full_history):
         role = msg.get("role", "unknown")
         content = msg.get("content", "")
         if len(content) > 50:
@@ -1033,14 +1063,16 @@ async def async_interactive_chat_session(
         else:
             print(f"{i+1}. {role.capitalize()}: {content}")
     
-    return conversation
+    return full_history
 
 def interactive_chat_session(
     model: str,
     system_prompt: Optional[str] = "You are a helpful, friendly AI assistant.",
     template: Optional[str] = None,
     options: Optional[Dict[str, Any]] = None,
-    keep_alive: Optional[str] = None
+    keep_alive: Optional[str] = None,
+    include_user_messages: bool = True,
+    include_assistant_responses: bool = True
 ) -> List[Dict[str, str]]:
     """
     Start an interactive chat session with an LLM that maintains conversation context.
@@ -1052,6 +1084,8 @@ def interactive_chat_session(
         template: Custom prompt template (default: None)
         options: Additional parameters to pass to the Ollama API (default: None)
         keep_alive: Duration to keep the model loaded (default: None)
+        include_user_messages: Whether to include previous user messages in context (default: True)
+        include_assistant_responses: Whether to include previous assistant responses in context (default: True)
         
     Returns:
         The complete conversation history when the session ends
@@ -1068,7 +1102,9 @@ def interactive_chat_session(
                 system_prompt=system_prompt,
                 template=template,
                 options=options,
-                keep_alive=keep_alive
+                keep_alive=keep_alive,
+                include_user_messages=include_user_messages,
+                include_assistant_responses=include_assistant_responses
             )
         )
     finally:
@@ -1192,11 +1228,41 @@ if __name__ == "__main__":
         test_model = "smollm2"
         system_prompt = "You are a helpful, friendly AI assistant."
         
-        # Simply call the interactive chat session function
-        interactive_chat_session(
-            model=test_model,
-            system_prompt=system_prompt
-        )
+        print("\nContext Retention Options:")
+        print("1. Full context retention (default)")
+        print("2. Only retain user messages")
+        print("3. Only retain assistant responses")
+        print("4. No context retention (stateless)")
+        
+        try:
+            choice = int(input("\nSelect an option (1-4): "))
+            
+            include_user = True
+            include_assistant = True
+            
+            if choice == 2:
+                include_assistant = False
+            elif choice == 3:
+                include_user = False
+            elif choice == 4:
+                include_user = False
+                include_assistant = False
+                
+            # Call interactive chat with selected options
+            interactive_chat_session(
+                model=test_model,
+                system_prompt=system_prompt,
+                include_user_messages=include_user,
+                include_assistant_responses=include_assistant
+            )
+        except ValueError:
+            print("Invalid choice. Using default (full context retention).")
+            interactive_chat_session(
+                model=test_model,
+                system_prompt=system_prompt
+            )
+        except Exception as e:
+            print(f"Error: {str(e)}")
     
     # Run the test functions
     if __name__ == "__main__":
