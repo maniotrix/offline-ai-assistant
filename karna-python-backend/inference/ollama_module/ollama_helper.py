@@ -1111,6 +1111,281 @@ def interactive_chat_session(
         # Clean up the loop
         loop.close()
 
+async def async_interactive_vlm_session(
+    model: str,
+    images_dir: str,
+    system_prompt: Optional[str] = "You are a helpful vision assistant that can analyze images.",
+    template: Optional[str] = None,
+    options: Optional[Dict[str, Any]] = None,
+    keep_alive: Optional[str] = None,
+    include_user_messages: bool = True,
+    include_assistant_responses: bool = True,
+    tools: Optional[List[Dict[str, Any]]] = None
+) -> List[Dict[str, Any]]:
+    """
+    Asynchronous implementation of an interactive chat session with a VLM.
+    
+    Args:
+        model: The name of the VLM model to use (e.g. "llava", "gemini-pro-vision")
+        images_dir: Directory containing images to analyze
+        system_prompt: System prompt to define assistant behavior (default: helpful vision assistant)
+        template: Custom prompt template (default: None)
+        options: Additional parameters to pass to the Ollama API (default: None)
+        keep_alive: Duration to keep the model loaded (default: None)
+        include_user_messages: Whether to include previous user messages in context (default: True)
+        include_assistant_responses: Whether to include previous assistant responses in context (default: True)
+        tools: List of tool definitions to provide to the model (default: None)
+        
+    Returns:
+        The complete conversation history when the session ends
+    """
+    # Initialize the client - one client for the entire session
+    client = OllamaVLMClient(model_name=model)
+    
+    # Initialize conversation with system message
+    conversation = []
+    if system_prompt:
+        conversation = [{"role": "system", "content": system_prompt}]
+    
+    # Keep a complete history for returning at the end
+    full_history = conversation.copy()
+    
+    print(f"\nStarting interactive VLM chat with model: {model}")
+    print("-" * 50)
+    if system_prompt:
+        print(f"System prompt: {system_prompt[:100]}..." if len(system_prompt) > 100 else f"System prompt: {system_prompt}")
+    print(f"Images directory: {images_dir}")
+    print("Type 'exit' or 'quit' to end the conversation.")
+    print("Type 'image:filename.jpg' to analyze a specific image from the images directory.")
+    
+    if not include_user_messages and not include_assistant_responses:
+        print("Context retention: DISABLED (no conversation history will be sent to the model)")
+    elif include_user_messages and not include_assistant_responses:
+        print("Context retention: Only USER messages will be retained")
+    elif not include_user_messages and include_assistant_responses:
+        print("Context retention: Only ASSISTANT responses will be retained")
+    else:
+        print("Context retention: FULL (both user messages and assistant responses)")
+    print("-" * 50)
+    
+    while True:
+        try:
+            # Get user input
+            user_input = input("\nYou: ")
+            
+            # Check if user wants to exit
+            if user_input.lower() in ['exit', 'quit']:
+                print("Ending conversation.")
+                break
+            
+            # Check if this is an image analysis request
+            current_image_path = None
+            if user_input.startswith('image:'):
+                # Extract image filename
+                image_filename = user_input.split(':', 1)[1].strip()
+                current_image_path = str(Path(images_dir) / image_filename)
+                
+                if not Path(current_image_path).exists():
+                    print(f"Error: Image file not found: {current_image_path}")
+                    continue
+                
+                # Ask for the prompt to analyze this image
+                user_message = input("Enter prompt to analyze this image: ")
+            else:
+                # Regular text prompt without image
+                user_message = user_input
+                
+            # Create user message object
+            user_msg = {"role": "user", "content": user_message}
+            if current_image_path:
+                # For messages with images, add the image path
+                user_msg["images"] = [current_image_path]
+            
+            # Add user message to full history
+            full_history.append(user_msg)
+            
+            # Create context for this turn based on retention settings
+            turn_context = conversation.copy()
+            
+            # Add the new user message to the current turn context
+            turn_context.append(user_msg)
+            
+            print("\nAssistant: ", end="", flush=True)
+            
+            # Stream the response
+            full_response = ""
+            collected_tool_calls = []
+            
+            if current_image_path:
+                # Using vision capabilities
+                images = [current_image_path]
+                
+                # Process based on whether tools are provided
+                stream_method = client.stream_complete_with_vision
+                if tools:
+                    print(f"Using {len(tools)} tools for this request")
+                
+                # Stream the VLM response
+                async for chunk in stream_method(
+                    prompt=user_message,
+                    images=images,
+                    system=system_prompt,
+                    template=template,
+                    tools=tools,
+                    options=options,
+                    keep_alive=keep_alive
+                ):
+                    # Handle text content
+                    if "response" in chunk:
+                        chunk_text = chunk["response"]
+                        full_response += chunk_text
+                        print(chunk_text, end="", flush=True)
+                    elif "message" in chunk and "content" in chunk["message"]:
+                        chunk_text = chunk["message"]["content"]
+                        full_response += chunk_text
+                        print(chunk_text, end="", flush=True)
+                    
+                    # Handle tool calls if present
+                    if "message" in chunk and "tool_calls" in chunk["message"]:
+                        tool_calls = chunk["message"]["tool_calls"]
+                        
+                        for tool_call in tool_calls:
+                            # Check if tool call already processed
+                            tool_call_id = tool_call.get("id", "")
+                            existing_ids = [tc.get("id", "") for tc in collected_tool_calls]
+                            
+                            if tool_call_id not in existing_ids:
+                                collected_tool_calls.append(tool_call)
+                                function_info = tool_call.get("function", {})
+                                function_name = function_info.get("name", "unknown")
+                                function_args = function_info.get("arguments", "{}")
+                                
+                                # Pretty-print the tool call
+                                print(f"\n\nTool Call: {function_name}")
+                                try:
+                                    # Try to parse and pretty-print JSON arguments
+                                    args_obj = json.loads(function_args)
+                                    print(f"Arguments: {json.dumps(args_obj, indent=2)}")
+                                except json.JSONDecodeError:
+                                    # If not valid JSON, print as is
+                                    print(f"Arguments: {function_args}")
+            else:
+                # Text-only interaction (no image)
+                # Stream chat using the existing context
+                async for chunk in client.stream_chat(
+                    messages=turn_context,
+                    template=template,
+                    options=options,
+                    keep_alive=keep_alive
+                ):
+                    # Handle text content
+                    if "message" in chunk and "content" in chunk["message"]:
+                        chunk_text = chunk["message"]["content"]
+                        full_response += chunk_text
+                        print(chunk_text, end="", flush=True)
+            
+            # Create assistant response object
+            assistant_msg = {"role": "assistant", "content": full_response}
+            if collected_tool_calls:
+                assistant_msg["tool_calls"] = collected_tool_calls
+            
+            # Add assistant's response to full history
+            full_history.append(assistant_msg)
+            
+            # Update the conversation context based on retention settings
+            conversation = []
+            if system_prompt:
+                conversation = [{"role": "system", "content": system_prompt}]
+                
+            # Add previous messages based on settings
+            for msg in full_history[1:]:  # Skip the system message
+                role = msg.get("role", "")
+                if role == "user" and include_user_messages:
+                    conversation.append(msg)
+                elif role == "assistant" and include_assistant_responses:
+                    conversation.append(msg)
+                    
+        except KeyboardInterrupt:
+            print("\nConversation interrupted by user.")
+            break
+        except Exception as e:
+            print(f"\nError: {str(e)}")
+            print("Continuing conversation...")
+    
+    # Print the full conversation history at the end
+    print("\nFull conversation history:")
+    for i, msg in enumerate(full_history):
+        role = msg.get("role", "unknown")
+        content = msg.get("content", "")
+        
+        # Show if message had an image
+        has_image = "images" in msg and msg["images"]
+        image_indicator = " [with image]" if has_image else ""
+        
+        # Show if message had tool calls
+        has_tools = "tool_calls" in msg and msg["tool_calls"]
+        tools_indicator = f" [with {len(msg['tool_calls'])} tool calls]" if has_tools else ""
+        
+        # Print message summary
+        indicators = image_indicator + tools_indicator
+        if len(content) > 50:
+            print(f"{i+1}. {role.capitalize()}{indicators}: {content[:50]}...")
+        else:
+            print(f"{i+1}. {role.capitalize()}{indicators}: {content}")
+    
+    return full_history
+
+def interactive_vlm_session(
+    model: str,
+    images_dir: str,
+    system_prompt: Optional[str] = "You are a helpful vision assistant that can analyze images.",
+    template: Optional[str] = None,
+    options: Optional[Dict[str, Any]] = None,
+    keep_alive: Optional[str] = None,
+    include_user_messages: bool = True,
+    include_assistant_responses: bool = True,
+    tools: Optional[List[Dict[str, Any]]] = None
+) -> List[Dict[str, Any]]:
+    """
+    Start an interactive chat session with a VLM that maintains conversation context.
+    
+    Args:
+        model: The name of the VLM model to use (e.g. "llava", "gemini-pro-vision")
+        images_dir: Directory containing images to analyze
+        system_prompt: System prompt to define assistant behavior (default: helpful vision assistant)
+        template: Custom prompt template (default: None)
+        options: Additional parameters to pass to the Ollama API (default: None)
+        keep_alive: Duration to keep the model loaded (default: None)
+        include_user_messages: Whether to include previous user messages in context (default: True)
+        include_assistant_responses: Whether to include previous assistant responses in context (default: True)
+        tools: List of tool definitions to provide to the model (default: None)
+        
+    Returns:
+        The complete conversation history when the session ends
+    """
+    # Create a single event loop for the entire session
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    
+    try:
+        # Run the async function in this loop
+        return loop.run_until_complete(
+            async_interactive_vlm_session(
+                model=model,
+                images_dir=images_dir,
+                system_prompt=system_prompt,
+                template=template,
+                options=options,
+                keep_alive=keep_alive,
+                include_user_messages=include_user_messages,
+                include_assistant_responses=include_assistant_responses,
+                tools=tools
+            )
+        )
+    finally:
+        # Clean up the loop
+        loop.close()
+
 if __name__ == "__main__":
     # Test functions for LLM
     def test_regular_generation():
@@ -1264,15 +1539,77 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Error: {str(e)}")
     
+    # Test function for continuous VLM chat streaming
+    def test_continuous_vlm_chat():
+        """Test continuous chat streaming with a VLM using runtime user input and images"""
+        test_model = "granite3.2-vision:latest"  # Set to an appropriate VLM model available in your Ollama instance
+        system_prompt = "You are a helpful vision assistant that can analyze images."
+        
+        # Get images directory from user
+        default_images_dir = str(Path(__file__).parent)
+        images_dir = input(f"\nEnter directory with images (default: {default_images_dir}): ") or default_images_dir
+        
+        print("\nContext Retention Options:")
+        print("1. Full context retention (default)")
+        print("2. Only retain user messages")
+        print("3. Only retain assistant responses")
+        print("4. No context retention (stateless)")
+        
+        try:
+            choice = int(input("\nSelect an option (1-4): "))
+            
+            include_user = True
+            include_assistant = True
+            
+            if choice == 2:
+                include_assistant = False
+            elif choice == 3:
+                include_user = False
+            elif choice == 4:
+                include_user = False
+                include_assistant = False
+            
+            # Check if user wants to use tools
+            use_tools = input("\nDo you want to use vision tools? (y/n, default: n): ").lower().startswith('y')
+            
+            tools = None
+            if use_tools:
+                tools = [
+                    get_weather_tool_definition(),
+                    get_search_tool_definition(),
+                    get_identify_object_tool_definition()
+                ]
+                print(f"Enabled {len(tools)} vision tools")
+                
+            # Call interactive VLM chat with selected options
+            interactive_vlm_session(
+                model=test_model,
+                images_dir=images_dir,
+                system_prompt=system_prompt,
+                include_user_messages=include_user,
+                include_assistant_responses=include_assistant,
+                tools=tools
+            )
+        except ValueError:
+            print("Invalid choice. Using default (full context retention).")
+            interactive_vlm_session(
+                model=test_model,
+                images_dir=images_dir,
+                system_prompt=system_prompt
+            )
+        except Exception as e:
+            print(f"Error: {str(e)}")
+    
     # Run the test functions
     if __name__ == "__main__":
         # LLM tests
         #test_regular_generation()
         #test_streaming_generation()
         #test_real_time_streaming(use_system_prompt=True)
-        test_continuous_chat_streaming()  # Add this line to run the new test
+        # test_continuous_chat_streaming()
         
         # VLM tests
         #test_regular_vlm_generation()
         #test_streaming_vlm_generation()
         #test_real_time_vlm_streaming()
+        test_continuous_vlm_chat()  # Run the VLM continuous chat test
