@@ -1271,18 +1271,51 @@ async def async_interactive_vlm_session(
                                     print(f"Arguments: {function_args}")
             else:
                 # Text-only interaction (no image)
-                # Stream chat using the existing context
-                async for chunk in client.stream_chat(
-                    messages=turn_context,
+                # For VLM client, we should use the same stream_complete_with_vision but without images
+                # VLM client doesn't have stream_chat, so we use stream_complete_with_vision with empty images list
+                async for chunk in client.stream_complete_with_vision(
+                    prompt=user_message,
+                    images=[],  # Empty images list for text-only interaction
+                    system=system_prompt,
                     template=template,
+                    tools=tools,
                     options=options,
                     keep_alive=keep_alive
                 ):
                     # Handle text content
-                    if "message" in chunk and "content" in chunk["message"]:
+                    if "response" in chunk:
+                        chunk_text = chunk["response"]
+                        full_response += chunk_text
+                        print(chunk_text, end="", flush=True)
+                    elif "message" in chunk and "content" in chunk["message"]:
                         chunk_text = chunk["message"]["content"]
                         full_response += chunk_text
                         print(chunk_text, end="", flush=True)
+                    
+                    # Handle tool calls if present
+                    if "message" in chunk and "tool_calls" in chunk["message"]:
+                        tool_calls = chunk["message"]["tool_calls"]
+                        
+                        for tool_call in tool_calls:
+                            # Check if tool call already processed
+                            tool_call_id = tool_call.get("id", "")
+                            existing_ids = [tc.get("id", "") for tc in collected_tool_calls]
+                            
+                            if tool_call_id not in existing_ids:
+                                collected_tool_calls.append(tool_call)
+                                function_info = tool_call.get("function", {})
+                                function_name = function_info.get("name", "unknown")
+                                function_args = function_info.get("arguments", "{}")
+                                
+                                # Pretty-print the tool call
+                                print(f"\n\nTool Call: {function_name}")
+                                try:
+                                    # Try to parse and pretty-print JSON arguments
+                                    args_obj = json.loads(function_args)
+                                    print(f"Arguments: {json.dumps(args_obj, indent=2)}")
+                                except json.JSONDecodeError:
+                                    # If not valid JSON, print as is
+                                    print(f"Arguments: {function_args}")
             
             # Create assistant response object
             assistant_msg = {"role": "assistant", "content": full_response}
