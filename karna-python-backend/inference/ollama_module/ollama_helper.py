@@ -943,6 +943,138 @@ def continuous_chat_stream(
         keep_alive=keep_alive
     ))
 
+async def async_interactive_chat_session(
+    model: str,
+    system_prompt: Optional[str] = "You are a helpful, friendly AI assistant.",
+    template: Optional[str] = None,
+    options: Optional[Dict[str, Any]] = None,
+    keep_alive: Optional[str] = None
+) -> List[Dict[str, str]]:
+    """
+    Asynchronous implementation of an interactive chat session with an LLM.
+    
+    Args:
+        model: The name of the LLM model to use (e.g. "llama2", "smollm2")
+        system_prompt: System prompt to define assistant behavior (default: helpful assistant)
+        template: Custom prompt template (default: None)
+        options: Additional parameters to pass to the Ollama API (default: None)
+        keep_alive: Duration to keep the model loaded (default: None)
+        
+    Returns:
+        The complete conversation history when the session ends
+    """
+    # Initialize the client - one client for the entire session
+    client = OllamaLLMClient(model_name=model)
+    
+    # Initialize conversation with system message
+    conversation = []
+    if system_prompt:
+        conversation = [{"role": "system", "content": system_prompt}]
+    
+    print(f"\nStarting interactive chat with model: {model}")
+    print("-" * 50)
+    if system_prompt:
+        print(f"System prompt: {system_prompt[:100]}..." if len(system_prompt) > 100 else f"System prompt: {system_prompt}")
+    print("Type 'exit' or 'quit' to end the conversation.")
+    print("-" * 50)
+    
+    while True:
+        try:
+            # Get user input
+            user_message = input("\nYou: ")
+            
+            # Check if user wants to exit
+            if user_message.lower() in ['exit', 'quit']:
+                print("Ending conversation.")
+                break
+            
+            # Create a working copy of the messages
+            updated_messages = conversation.copy()
+            
+            # Add the new user message to the conversation
+            updated_messages.append({"role": "user", "content": user_message})
+            
+            print("\nAssistant: ", end="", flush=True)
+            
+            # Stream the response
+            full_response = ""
+            
+            # Directly use the client's stream_chat method without creating a new event loop
+            async for chunk in client.stream_chat(
+                messages=updated_messages,
+                template=template,
+                options=options,
+                keep_alive=keep_alive
+            ):
+                # Handle text content
+                if "message" in chunk and "content" in chunk["message"]:
+                    chunk_text = chunk["message"]["content"]
+                    full_response += chunk_text
+                    print(chunk_text, end="", flush=True)
+            
+            # After streaming completes, add the assistant's response to the conversation
+            conversation.append({"role": "user", "content": user_message})
+            conversation.append({"role": "assistant", "content": full_response})
+            
+        except KeyboardInterrupt:
+            print("\nConversation interrupted by user.")
+            break
+        except Exception as e:
+            print(f"\nError: {str(e)}")
+            print("Continuing conversation...")
+    
+    # Print the full conversation history at the end
+    print("\nFull conversation history:")
+    for i, msg in enumerate(conversation):
+        role = msg.get("role", "unknown")
+        content = msg.get("content", "")
+        if len(content) > 50:
+            print(f"{i+1}. {role.capitalize()}: {content[:50]}...")
+        else:
+            print(f"{i+1}. {role.capitalize()}: {content}")
+    
+    return conversation
+
+def interactive_chat_session(
+    model: str,
+    system_prompt: Optional[str] = "You are a helpful, friendly AI assistant.",
+    template: Optional[str] = None,
+    options: Optional[Dict[str, Any]] = None,
+    keep_alive: Optional[str] = None
+) -> List[Dict[str, str]]:
+    """
+    Start an interactive chat session with an LLM that maintains conversation context.
+    Uses a single event loop for the entire session.
+    
+    Args:
+        model: The name of the LLM model to use (e.g. "llama2", "smollm2")
+        system_prompt: System prompt to define assistant behavior (default: helpful assistant)
+        template: Custom prompt template (default: None)
+        options: Additional parameters to pass to the Ollama API (default: None)
+        keep_alive: Duration to keep the model loaded (default: None)
+        
+    Returns:
+        The complete conversation history when the session ends
+    """
+    # Create a single event loop for the entire session
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    
+    try:
+        # Run the async function in this loop
+        return loop.run_until_complete(
+            async_interactive_chat_session(
+                model=model,
+                system_prompt=system_prompt,
+                template=template,
+                options=options,
+                keep_alive=keep_alive
+            )
+        )
+    finally:
+        # Clean up the loop
+        loop.close()
+
 if __name__ == "__main__":
     # Test functions for LLM
     def test_regular_generation():
@@ -1056,61 +1188,15 @@ if __name__ == "__main__":
     
     # Test functions for continuous chat streaming
     def test_continuous_chat_streaming():
-        """Test continuous chat streaming with conversation history"""
+        """Test continuous chat streaming with conversation history using runtime user input"""
         test_model = "smollm2"
+        system_prompt = "You are a helpful, friendly AI assistant."
         
-        # Initialize an empty conversation, optionally with a system message
-        conversation = [
-            {"role": "system", "content": "You are a helpful, friendly AI assistant."}
-        ]
-        
-        # First message
-        print("\nTesting continuous chat streaming with model: {test_model}")
-        print("Starting a new conversation...")
-        
-        try:
-            # First user message
-            first_message = "Hi there! Tell me about yourself."
-            print(f"\nUser: {first_message}")
-            
-            # Get response and updated conversation
-            conversation = continuous_chat_stream(
-                messages=conversation,
-                new_user_message=first_message,
-                model=test_model
-            )
-            
-            # Second user message
-            second_message = "What can you help me with today?"
-            print(f"\nUser: {second_message}")
-            
-            # Get response and updated conversation
-            conversation = continuous_chat_stream(
-                messages=conversation,
-                new_user_message=second_message,
-                model=test_model
-            )
-            
-            # Third user message referencing previous context
-            third_message = "Can you give me more specific examples of how you can assist me?"
-            print(f"\nUser: {third_message}")
-            
-            # Get response and updated conversation
-            conversation = continuous_chat_stream(
-                messages=conversation,
-                new_user_message=third_message,
-                model=test_model
-            )
-            
-            # Print the full conversation history
-            print("\nFull conversation history:")
-            for i, msg in enumerate(conversation):
-                role = msg.get("role", "unknown")
-                content = msg.get("content", "")
-                print(f"{i+1}. {role.capitalize()}: {content[:50]}..." if len(content) > 50 else f"{i+1}. {role.capitalize()}: {content}")
-            
-        except Exception as e:
-            print(f"Error in continuous chat test: {str(e)}")
+        # Simply call the interactive chat session function
+        interactive_chat_session(
+            model=test_model,
+            system_prompt=system_prompt
+        )
     
     # Run the test functions
     if __name__ == "__main__":
