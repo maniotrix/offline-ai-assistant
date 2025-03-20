@@ -2246,8 +2246,8 @@ async def async_vlm_analyze_screenshot_events(
     
     # Add descriptions to user prompt if available
     enriched_prompt = user_prompt
-    if descriptions:
-        enriched_prompt = f"{user_prompt}\n\nContext about the screenshots:\n" + "\n".join(descriptions)
+    # if descriptions:
+    #     enriched_prompt = f"{user_prompt}\n\nContext about the screenshots:\n" + "\n".join(descriptions)
     
     # Call the multi-image VLM function
     return await async_vlm_generate_multi_image(
@@ -2369,8 +2369,8 @@ async def async_stream_vlm_analyze_screenshot_events(
     
     # Add descriptions to user prompt if available
     enriched_prompt = user_prompt
-    if descriptions:
-        enriched_prompt = f"{user_prompt}\n\nContext about the screenshots:\n" + "\n".join(descriptions)
+    # if descriptions:
+    #     enriched_prompt = f"{user_prompt}\n\nContext about the screenshots:\n" + "\n".join(descriptions)
     
     # Call the multi-image streaming VLM function
     await async_stream_vlm_multi_image(

@@ -592,9 +592,10 @@ If timestamps or sequence indicators are visible in the images, note them and us
         
         # this function should stream the vlm analysis of the screenshot events
         #  and also save the response to a string and print it after the stream is complete
+        # ask multiple questions and print the response for each question at runtime in loop from inp
         response = stream_vlm_analyze_screenshot_events(
             screenshot_events=screenshot_events,
-            user_prompt="Analyze what the user is doing in these screenshots",
+            user_prompt="Where should I click to search on the given website screenshot?",
             model="granite3.2-vision:latest",
             # system_prompt="You are a helpful vision assistant that can analyze multiple images in sequence."
         )
