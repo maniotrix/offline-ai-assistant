@@ -1,16 +1,14 @@
 # type: ignore
 import asyncio
 import json
-from typing import Dict, Any, Union, List, Optional, Callable
-import base64
+from typing import Dict, Any, List, Optional, Callable
 from pathlib import Path
 import os
-from datetime import datetime
-import re
 
 # Use proper relative imports
 from llm_client import OllamaLLMClient
 from vlm_client import OllamaVLMClient
+from services.screen_capture_service import ScreenshotEvent
 
 async def async_llm_generate(prompt: str, model: str, stream: bool = False, **kwargs) -> Dict[str, Any]:
     """
@@ -2171,529 +2169,241 @@ If timestamps or sequence indicators are visible in the images, note them and us
             "status": "failed",
             "image_count": len(image_files) if 'image_files' in locals() else 0
         }
+        
+async def async_vlm_analyze_screenshot_events(
+    screenshot_events: List[ScreenshotEvent],
+    user_prompt: str,
+    model: str,
+    prefer_annotated: bool = True,
+    system_prompt: Optional[str] = None,
+    stream: bool = False,
+    **kwargs
+) -> Dict[str, Any]:
+    """
+    Generate a response from a vision language model analyzing a sequence of screenshot events.
+    
+    Args:
+        screenshot_events: List of ScreenshotEvent objects containing screenshot metadata
+        user_prompt: The text prompt to send to the model to analyze the screenshots
+        model: The name of the VLM model to use (e.g. "llava", "granite3.2-vision")
+        prefer_annotated: Whether to use annotated images when available (default: True)
+        system_prompt: Custom system prompt to use (default: None)
+        stream: Whether to stream the response (default: False)
+        **kwargs: Additional parameters to pass to the Ollama API
+        
+    Returns:
+        The response from the Ollama API as a dictionary
+    """
+    # Extract image paths from screenshot events
+    image_paths = []
+    descriptions = []
+    
+    # Generate event sequence information for each image
+    for i, event in enumerate(screenshot_events):
+        # Determine which image path to use (annotated or raw)
+        if prefer_annotated and event.annotation_path:
+            image_path = event.annotation_path
+        elif event.screenshot_path:
+            image_path = event.screenshot_path
+        else:
+            continue  # Skip events without valid image paths
+        
+        # Check if file exists
+        if not os.path.exists(image_path):
+            continue
+            
+        image_paths.append(image_path)
+        
+        # Extract event description
+        if event.description:
+            descriptions.append(f"Screenshot {i+1}: {event.description}")
+            
+            # Add context about mouse/keyboard interaction if available
+            interaction_details = []
+            if event.mouse_x is not None and event.mouse_y is not None:
+                interaction_details.append(f"Mouse position: ({event.mouse_x}, {event.mouse_y})")
+            if event.key_char:
+                interaction_details.append(f"Key pressed: {event.key_char}")
+            elif event.key_code:
+                interaction_details.append(f"Special key pressed: {event.key_code}")
+                
+            if interaction_details:
+                descriptions[-1] += f" [{' | '.join(interaction_details)}]"
+    
+    if not image_paths:
+        return {"error": "No valid images found in the provided screenshot events"}
+    
+    # Create a sequence-aware system prompt if not provided
+    if system_prompt is None:
+        system_prompt = (
+            f"You are analyzing a sequence of {len(image_paths)} screenshots captured during a user session. "
+            f"These screenshots show steps of user interaction with an application. "
+            f"Analyze them in sequence and provide insights based on the user's prompt."
+        )
+    
+    # Add descriptions to user prompt if available
+    enriched_prompt = user_prompt
+    if descriptions:
+        enriched_prompt = f"{user_prompt}\n\nContext about the screenshots:\n" + "\n".join(descriptions)
+    
+    # Call the multi-image VLM function
+    return await async_vlm_generate_multi_image(
+        prompt=enriched_prompt,
+        image_paths=image_paths,
+        model=model,
+        stream=stream,
+        sequence_aware_system=True,
+        system=system_prompt,
+        **kwargs
+    )
 
-if __name__ == "__main__":
-    # Test functions for LLM
-    def test_regular_generation():
-        """Test regular (non-streaming) LLM generation"""
-        test_prompt = "Explain how to make a cup of coffee in three steps."
-        test_model = "smollm2"
-        
-        print(f"Testing regular LLM generation with model: {test_model}")
-        print(f"Prompt: {test_prompt}")
-        
-        try:
-            response = llm_generate(prompt=test_prompt, model=test_model)
-            print("\nResponse:")
-            print(response.get("response", "No response found"))
-        except Exception as e:
-            print(f"Error: {str(e)}")
+def vlm_analyze_screenshot_events(
+    screenshot_events: List[ScreenshotEvent],
+    user_prompt: str,
+    model: str,
+    prefer_annotated: bool = True,
+    system_prompt: Optional[str] = None,
+    stream: bool = False,
+    **kwargs
+) -> Dict[str, Any]:
+    """
+    Synchronous wrapper for async_vlm_analyze_screenshot_events.
     
-    def test_streaming_generation():
-        """Test streaming LLM generation (collected response)"""
-        test_prompt = "Write a short poem about artificial intelligence."
-        test_model = "smollm2"
+    Args:
+        screenshot_events: List of ScreenshotEvent objects containing screenshot metadata
+        user_prompt: The text prompt to send to the model to analyze the screenshots
+        model: The name of the VLM model to use (e.g. "llava", "granite3.2-vision")
+        prefer_annotated: Whether to use annotated images when available (default: True)
+        system_prompt: Custom system prompt to use (default: None)
+        stream: Whether to stream the response (default: False)
+        **kwargs: Additional parameters to pass to the Ollama API
         
-        print(f"\nTesting streaming LLM generation with model: {test_model}")
-        print(f"Prompt: {test_prompt}")
-        
-        try:
-            response = llm_generate(prompt=test_prompt, model=test_model, stream=True)
-            print("\nStreamed Response (collected):")
-            print(response.get("response", "No response found"))
-        except Exception as e:
-            print(f"Error: {str(e)}")
-            
-    def test_real_time_streaming(use_system_prompt=True):
-        """Test real-time streaming where chunks are displayed as they arrive"""
-        test_prompt = "Tell me a short story about a robot learning to feel emotions."
-        test_model = "smollm2"
-        
-        print(f"\nTesting real-time streaming with model: {test_model}")
-        print(f"Prompt: {test_prompt}")
-        
-        # Define system prompt if enabled
-        system_prompt = None
-        if use_system_prompt:
-            system_prompt = "You are a creative storyteller from India, specialized in emotional narratives about robots and AI."
-            print(f"Using system prompt: {system_prompt}")
-        
-        try:
-            stream_llm_generate(prompt=test_prompt, model=test_model, system=system_prompt)
-        except Exception as e:
-            print(f"Error: {str(e)}")
+    Returns:
+        The response from the Ollama API as a dictionary
+    """
+    return asyncio.run(async_vlm_analyze_screenshot_events(
+        screenshot_events=screenshot_events,
+        user_prompt=user_prompt,
+        model=model,
+        prefer_annotated=prefer_annotated,
+        system_prompt=system_prompt,
+        stream=stream,
+        **kwargs
+    ))
+
+async def async_stream_vlm_analyze_screenshot_events(
+    screenshot_events: List[ScreenshotEvent],
+    user_prompt: str,
+    model: str,
+    callback: Optional[Callable[[str, List[Dict[str, Any]]], None]] = None,
+    prefer_annotated: bool = True,
+    system_prompt: Optional[str] = None,
+    **kwargs
+) -> None:
+    """
+    Stream a response from a vision language model analyzing a sequence of screenshot events.
     
-    # Test functions for VLM
-    def test_regular_vlm_generation():
-        """Test regular (non-streaming) VLM generation"""
-        test_prompt = "What can you see in this image?"
-        # Use absolute path to ensure the file is found
-        test_image = str(Path(__file__).parent / "test.png")
-        test_model = "granite3.2-vision:latest"
-        
-        print(f"\nTesting regular VLM generation with model: {test_model}")
-        print(f"Prompt: {test_prompt}")
-        print(f"Image: {test_image}")
-        
-        try:
-            response = vlm_generate(prompt=test_prompt, image_path=test_image, model=test_model)
-            print("\nVLM Response:")
-            print(response.get("response", "No response found"))
-        except Exception as e:
-            print(f"Error: {str(e)}")
+    Args:
+        screenshot_events: List of ScreenshotEvent objects containing screenshot metadata
+        user_prompt: The text prompt to send to the model to analyze the screenshots
+        model: The name of the VLM model to use (e.g. "llava", "granite3.2-vision")
+        callback: Optional callback function to process content and tool calls
+        prefer_annotated: Whether to use annotated images when available (default: True)
+        system_prompt: Custom system prompt to use (default: None)
+        **kwargs: Additional parameters to pass to the Ollama API
+    """
+    # Extract image paths from screenshot events
+    image_paths = []
+    descriptions = []
     
-    def test_streaming_vlm_generation():
-        """Test streaming VLM generation (collected response)"""
-        test_prompt = "Describe this image in detail."
-        # Use absolute path to ensure the file is found
-        test_image = str(Path(__file__).parent / "test.png")
-        test_model = "granite3.2-vision:latest"
+    # Generate event sequence information for each image
+    for i, event in enumerate(screenshot_events):
+        # Determine which image path to use (annotated or raw)
+        if prefer_annotated and event.annotation_path:
+            image_path = event.annotation_path
+        elif event.screenshot_path:
+            image_path = event.screenshot_path
+        else:
+            continue  # Skip events without valid image paths
         
-        print(f"\nTesting streaming VLM generation with model: {test_model}")
-        print(f"Prompt: {test_prompt}")
-        print(f"Image: {test_image}")
-        
-        try:
-            response = vlm_generate(prompt=test_prompt, image_path=test_image, model=test_model, stream=True)
-            print("\nStreamed VLM Response (collected):")
-            print(response.get("response", "No response found"))
-        except Exception as e:
-            print(f"Error: {str(e)}")
+        # Check if file exists
+        if not os.path.exists(image_path):
+            continue
             
-    def test_real_time_vlm_streaming(use_system_prompt=True):
-        """Test real-time VLM streaming where chunks are displayed as they arrive"""
-        test_prompt = "Find the bounding box coordinates of the open requests and output as a json object"
-        # Use absolute path to ensure the file is found
-        test_image = str(Path(__file__).parent / "test.png")
-        test_model = "granite3.2-vision:latest"
+        image_paths.append(image_path)
         
-        print(f"\nTesting real-time VLM streaming with model: {test_model}")
-        print(f"Prompt: {test_prompt}")
-        print(f"Image: {test_image}")
-        
-        # Define system prompt if enabled
-        system_prompt = None
-        if use_system_prompt:
-            system_prompt = """You are a good webpage screenshot reader. 
-            You will be given a screenshot of a webpage and you properly analyse the image before answering the user's question."""
-            print(f"Using system prompt: {system_prompt}")
-        
-        try:
-            stream_vlm_generate(prompt=test_prompt, image_path=test_image, model=test_model, system=system_prompt)
-        except Exception as e:
-            print(f"Error: {str(e)}")
-    
-    # Test functions for continuous chat streaming
-    def test_continuous_chat_streaming():
-        """Test continuous chat streaming with conversation history using runtime user input"""
-        test_model = "smollm2"
-        system_prompt = "You are a helpful, friendly AI assistant."
-        
-        print("\nContext Retention Options:")
-        print("1. Full context retention (default)")
-        print("2. Only retain user messages")
-        print("3. Only retain assistant responses")
-        print("4. No context retention (stateless)")
-        
-        try:
-            choice = int(input("\nSelect an option (1-4): "))
+        # Extract event description
+        if event.description:
+            descriptions.append(f"Screenshot {i+1}: {event.description}")
             
-            include_user = True
-            include_assistant = True
-            
-            if choice == 2:
-                include_assistant = False
-            elif choice == 3:
-                include_user = False
-            elif choice == 4:
-                include_user = False
-                include_assistant = False
+            # Add context about mouse/keyboard interaction if available
+            interaction_details = []
+            if event.mouse_x is not None and event.mouse_y is not None:
+                interaction_details.append(f"Mouse position: ({event.mouse_x}, {event.mouse_y})")
+            if event.key_char:
+                interaction_details.append(f"Key pressed: {event.key_char}")
+            elif event.key_code:
+                interaction_details.append(f"Special key pressed: {event.key_code}")
                 
-            # Call interactive chat with selected options
-            interactive_chat_session(
-                model=test_model,
-                system_prompt=system_prompt,
-                include_user_messages=include_user,
-                include_assistant_responses=include_assistant
-            )
-        except ValueError:
-            print("Invalid choice. Using default (full context retention).")
-            interactive_chat_session(
-                model=test_model,
-                system_prompt=system_prompt
-            )
-        except Exception as e:
-            print(f"Error: {str(e)}")
+            if interaction_details:
+                descriptions[-1] += f" [{' | '.join(interaction_details)}]"
     
-    # Test function for continuous VLM chat streaming
-    def test_continuous_vlm_chat():
-        """Test continuous chat streaming with a VLM using runtime user input and images"""
-        test_model = "granite3.2-vision:latest"  # Set to an appropriate VLM model available in your Ollama instance
-        system_prompt = "You are a helpful vision assistant that can analyze images."
-        
-        # Get images directory from user
-        default_images_dir = str(Path(__file__).parent)
-        images_dir = input(f"\nEnter directory with images (default: {default_images_dir}): ") or default_images_dir
-        
-        print("\nContext Retention Options:")
-        print("1. Full context retention (default)")
-        print("2. Only retain user messages")
-        print("3. Only retain assistant responses")
-        print("4. No context retention (stateless)")
-        
-        try:
-            choice = int(input("\nSelect an option (1-4): "))
-            
-            include_user = True
-            include_assistant = True
-            
-            if choice == 2:
-                include_assistant = False
-            elif choice == 3:
-                include_user = False
-            elif choice == 4:
-                include_user = False
-                include_assistant = False
-            
-            # Check if user wants to use tools
-            use_tools = input("\nDo you want to use vision tools? (y/n, default: n): ").lower().startswith('y')
-            
-            tools = None
-            if use_tools:
-                tools = [
-                    get_weather_tool_definition(),
-                    get_search_tool_definition(),
-                    get_identify_object_tool_definition()
-                ]
-                print(f"Enabled {len(tools)} vision tools")
-                
-            # Call interactive VLM chat with selected options
-            interactive_vlm_session(
-                model=test_model,
-                images_dir=images_dir,
-                system_prompt=system_prompt,
-                include_user_messages=include_user,
-                include_assistant_responses=include_assistant,
-                tools=tools
-            )
-        except ValueError:
-            print("Invalid choice. Using default (full context retention).")
-            interactive_vlm_session(
-                model=test_model,
-                images_dir=images_dir,
-                system_prompt=system_prompt
-            )
-        except Exception as e:
-            print(f"Error: {str(e)}")
+    if not image_paths:
+        if callback:
+            callback("Error: No valid images found in the provided screenshot events", [])
+        return
     
-    # Test function for multi-image VLM
-    def test_multi_image_vlm():
-        """Test the multi-image VLM functionality"""
-        test_prompt = "Compare these images and describe the key differences between them."
-        
-        # Get list of test images from user (default to current directory)
-        default_images_dir = str(Path(__file__).parent)
-        images_dir = input(f"\nEnter directory with test images (default: {default_images_dir}): ") or default_images_dir
-        
-        # Let user select which images to use
-        image_files = list(Path(images_dir).glob("*.jpg")) + list(Path(images_dir).glob("*.png"))
-        if not image_files:
-            print(f"No image files found in {images_dir}. Please add some .jpg or .png files.")
-            return
-            
-        print("\nAvailable images:")
-        for i, img in enumerate(image_files):
-            print(f"{i+1}. {img.name}")
-            
-        # Get user selection
-        try:
-            selections = input("\nEnter image numbers to use (comma-separated, e.g. '1,3'): ")
-            selected_indices = [int(idx.strip()) - 1 for idx in selections.split(",")]
-            selected_images = [str(image_files[idx]) for idx in selected_indices if 0 <= idx < len(image_files)]
-            
-            if not selected_images:
-                # If no valid selection, use first two images
-                selected_images = [str(image_files[0])]
-                if len(image_files) > 1:
-                    selected_images.append(str(image_files[1]))
-                print(f"Using default selection: {[Path(img).name for img in selected_images]}")
-        except Exception as e:
-            # On any error, use first two images
-            selected_images = [str(image_files[0])]
-            if len(image_files) > 1:
-                selected_images.append(str(image_files[1]))
-            print(f"Using default selection due to error: {[Path(img).name for img in selected_images]}")
-        
-        # Get model from user
-        default_model = "granite3.2-vision:latest"
-        model = input(f"\nEnter model name (default: {default_model}): ") or default_model
-        
-        # Custom prompt option
-        custom_prompt = input(f"\nEnter custom prompt (default: '{test_prompt}'): ")
-        if custom_prompt:
-            test_prompt = custom_prompt
-            
-        # Custom system prompt option
-        default_system = f"You are a detailed image analyzer that carefully examines multiple images in sequence."
-        custom_system = input(f"\nEnter custom system prompt (default: '{default_system}'): ")
-        system_prompt = custom_system if custom_system else default_system
-        
-        print(f"\nRunning multi-image VLM test with:")
-        print(f"Model: {model}")
-        print(f"Images: {[Path(img).name for img in selected_images]}")
-        print(f"Prompt: {test_prompt}")
-        print(f"System: {system_prompt}")
-        
-        # Use real-time streaming for the best user experience
-        try:
-            stream_vlm_multi_image(
-                prompt=test_prompt,
-                image_paths=selected_images,
-                model=model,
-                system=system_prompt
-            )
-        except Exception as e:
-            print(f"\nError during multi-image VLM test: {str(e)}")
+    # Create a sequence-aware system prompt if not provided
+    if system_prompt is None:
+        system_prompt = (
+            f"You are analyzing a sequence of {len(image_paths)} screenshots captured during a user session. "
+            f"These screenshots show steps of user interaction with an application. "
+            f"Analyze them in sequence and provide insights based on the user's prompt."
+        )
     
-    # Test function for interactive multi-image VLM
-    def test_interactive_multi_image_vlm():
-        """Test the interactive multi-image VLM session functionality"""
-        test_model = "granite3.2-vision:latest"  # Set to an appropriate VLM model available in Ollama
-        
-        # Get images directory from user
-        default_images_dir = str(Path(__file__).parent)
-        images_dir = input(f"\nEnter directory with images (default: {default_images_dir}): ") or default_images_dir
-        
-        print("\nContext Retention Options:")
-        print("1. Full context retention (default)")
-        print("2. Only retain user messages")
-        print("3. Only retain assistant responses")
-        print("4. No context retention (stateless)")
-        
-        try:
-            choice = int(input("\nSelect an option (1-4): "))
-            
-            include_user = True
-            include_assistant = True
-            
-            if choice == 2:
-                include_assistant = False
-            elif choice == 3:
-                include_user = False
-            elif choice == 4:
-                include_user = False
-                include_assistant = False
-            
-            # Check if user wants to use tools
-            use_tools = input("\nDo you want to use vision tools? (y/n, default: n): ").lower().startswith('y')
-            
-            tools = None
-            if use_tools:
-                tools = [
-                    get_weather_tool_definition(),
-                    get_search_tool_definition(),
-                    get_identify_object_tool_definition()
-                ]
-                print(f"Enabled {len(tools)} vision tools")
-                
-            # Custom system prompt option
-            default_system = "You are a helpful vision assistant that can analyze multiple images in sequence."
-            custom_system = input(f"\nEnter custom system prompt (default: '{default_system}'): ")
-            system_prompt = custom_system if custom_system else default_system
-            
-            # Call interactive multi-image VLM chat with selected options
-            interactive_multi_image_vlm_session(
-                model=test_model,
-                images_dir=images_dir,
-                system_prompt=system_prompt,
-                include_user_messages=include_user,
-                include_assistant_responses=include_assistant,
-                tools=tools
-            )
-        except ValueError:
-            print("Invalid choice. Using default (full context retention).")
-            interactive_multi_image_vlm_session(
-                model=test_model,
-                images_dir=images_dir
-            )
-        except Exception as e:
-            print(f"Error: {str(e)}")
+    # Add descriptions to user prompt if available
+    enriched_prompt = user_prompt
+    if descriptions:
+        enriched_prompt = f"{user_prompt}\n\nContext about the screenshots:\n" + "\n".join(descriptions)
     
-    # Test function for chronological image analysis
-    def test_chronological_image_vlm():
-        """Test the VLM with all images from a directory, sorted by timestamp or filename."""
-        import os
-        import re
-        from datetime import datetime
-        
-        # Get images directory from user
-        default_images_dir = str(Path(__file__).parent)
-        images_dir = input(f"\nEnter directory with images (default: {default_images_dir}): ") or default_images_dir
-        
-        # Sorting option
-        print("\nSort images by:")
-        print("1. Modification timestamp (default)")
-        print("2. Filename (alphabetical)")
-        print("3. Filename with numerical pattern (e.g., img_001.jpg, img_002.jpg)")
-        
-        sort_choice = input("\nSelect sorting method (1-3): ") or "1"
-        
-        # Exclusion pattern
-        exclusion_pattern = input("\nEnter pattern to exclude files (optional, e.g. 'thumb' or '.*.thumb.*'): ")
-        
-        # Find all image files in the directory
-        image_files = []
-        supported_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
-        
-        for file in os.listdir(images_dir):
-            file_path = os.path.join(images_dir, file)
-            if os.path.isfile(file_path):
-                _, ext = os.path.splitext(file_path)
-                if ext.lower() in supported_extensions:
-                    # Skip if it matches exclusion pattern
-                    if exclusion_pattern and re.search(exclusion_pattern, file_path):
-                        print(f"Excluding: {file}")
-                        continue
-                        
-                    # Store relevant sorting key based on user choice
-                    if sort_choice == "1":  # Sort by timestamp
-                        sort_key = os.path.getmtime(file_path)
-                        display_info = ("timestamp", sort_key)
-                    elif sort_choice == "2":  # Sort by filename (alphabetical)
-                        sort_key = file.lower()  # Case-insensitive sort
-                        display_info = ("filename", file)
-                    elif sort_choice == "3":  # Sort by numeric pattern in filename
-                        # Try to extract numbers from the filename for natural sorting
-                        numbers = re.findall(r'\d+', file)
-                        # If numbers found, use the last number group for sorting
-                        if numbers:
-                            # Create a sortable key by padding the number with zeros
-                            numeric_part = numbers[-1]
-                            sort_key = file.replace(numeric_part, numeric_part.zfill(10))
-                        else:
-                            # If no numbers, just use the filename
-                            sort_key = file.lower()
-                        display_info = ("numeric pattern", file)
-                    else:
-                        sort_key = os.path.getmtime(file_path)  # Default to timestamp
-                        display_info = ("timestamp", sort_key)
-                    
-                    image_files.append((file_path, sort_key, display_info))
-        
-        # Sort images by the chosen method
-        image_files.sort(key=lambda x: x[1])  # Sort by the sort_key (second element of tuple)
-        
-        # Convert to list of just paths
-        sorted_image_paths = [img[0] for img in image_files]
-        
-        if not sorted_image_paths:
-            print(f"No image files found in {images_dir}. Please add some images and try again.")
-            return
-        
-        # Print the sorted images with sorting information
-        sort_method = "timestamp" if sort_choice == "1" else "filename" if sort_choice == "2" else "numeric pattern"
-        print(f"\nImages sorted by {sort_method} (ascending order):")
-        for i, (img_path, _, display_info) in enumerate(image_files):
-            method, value = display_info
-            if method == "timestamp":
-                # Convert timestamp to readable date
-                info = datetime.fromtimestamp(value).strftime('%Y-%m-%d %H:%M:%S')
-            else:
-                info = value
-            print(f"{i+1}. {os.path.basename(img_path)} - {info}")
-        
-        # Ask if user wants to proceed with this order
-        proceed = input("\nProceed with this order? (y/n, default: y): ").lower() != 'n'
-        if not proceed:
-            print("Operation cancelled by user.")
-            return
-            
-        # Ask if the user wants to reverse the order
-        reverse_order = input("\nReverse the order (newest/last first)? (y/n, default: n): ").lower() == 'y'
-        if reverse_order:
-            sorted_image_paths.reverse()
-            print("Order reversed.")
-        
-        # Get model from user
-        default_model = "granite3.2-vision:latest"
-        model = input(f"\nEnter model name (default: {default_model}): ") or default_model
-        
-        # Get prompt from user
-        chronological_terms = "chronologically" if sort_choice == "1" else "sequentially"
-        default_prompt = f"Analyze these images that are sorted {chronological_terms}. Describe what you see and any changes or progression across the sequence."
-        custom_prompt = input(f"\nEnter custom prompt (default: '{default_prompt}'): ")
-        prompt = custom_prompt if custom_prompt else default_prompt
-        
-        # Create a specialized system prompt based on sorting method
-        if sort_choice == "1":  # Timestamp
-            order_description = "CHRONOLOGICAL ORDER (sorted by timestamp from oldest to newest)"
-            if reverse_order:
-                order_description = "REVERSE CHRONOLOGICAL ORDER (sorted by timestamp from newest to oldest)"
-        else:  # Filename-based
-            order_description = "SEQUENTIAL ORDER (sorted by filename)"
-            if reverse_order:
-                order_description = "REVERSE SEQUENTIAL ORDER (sorted by filename in reverse)"
-        
-        default_system = f"""You are an advanced vision assistant analyzing a sequence of {len(sorted_image_paths)} images.
-IMPORTANT: These images are provided in {order_description}.
-When referring to the images, use 'first image', 'second image', etc. through to 'image {len(sorted_image_paths)}'.
-Analyze both individual images and the progression/changes across the sequence.
-If timestamps or sequence indicators are visible in the images, note them and use them to enhance your analysis.
-"""
-        
-        custom_system = input(f"\nEnter custom system prompt (or press Enter for default): ")
-        system_prompt = custom_system if custom_system else default_system
-        
-        print(f"\nRunning sequential image analysis with:")
-        print(f"Model: {model}")
-        print(f"Number of images: {len(sorted_image_paths)}")
-        print(f"Prompt: {prompt}")
-        print(f"System: {system_prompt[:100]}..." if len(system_prompt) > 100 else f"System: {system_prompt}")
-        
-        # Determine whether to use streaming based on user preference
-        use_streaming = input("\nUse streaming mode? (y/n, default: y): ").lower() != 'n'
-        
-        try:
-            if use_streaming:
-                # Use real-time streaming for better user experience
-                stream_vlm_multi_image(
-                    prompt=prompt,
-                    image_paths=sorted_image_paths,
-                    model=model,
-                    system=system_prompt,
-                    sequence_aware_system=True  # Ensure sequence awareness is enabled
-                )
-            else:
-                # Use non-streaming version
-                response = vlm_generate_multi_image(
-                    prompt=prompt,
-                    image_paths=sorted_image_paths,
-                    model=model,
-                    system=system_prompt,
-                    sequence_aware_system=True  # Ensure sequence awareness is enabled
-                )
-                
-                # Display the response
-                print("\nVLM Response:")
-                print("-" * 50)
-                print(response.get("response", "No response found"))
-                print("-" * 50)
-        except Exception as e:
-            print(f"\nError during sequential image analysis: {str(e)}")
+    # Call the multi-image streaming VLM function
+    await async_stream_vlm_multi_image(
+        prompt=enriched_prompt,
+        image_paths=image_paths,
+        model=model,
+        callback=callback,
+        sequence_aware_system=True,
+        system=system_prompt,
+        **kwargs
+    )
+
+def stream_vlm_analyze_screenshot_events(
+    screenshot_events: List[ScreenshotEvent],
+    user_prompt: str,
+    model: str,
+    callback: Optional[Callable[[str, List[Dict[str, Any]]], None]] = None,
+    prefer_annotated: bool = True,
+    system_prompt: Optional[str] = None,
+    **kwargs
+) -> None:
+    """
+    Synchronous wrapper for async_stream_vlm_analyze_screenshot_events.
     
-    # Run the test functions
-    if __name__ == "__main__":
-        # LLM tests
-        #test_regular_generation()
-        #test_streaming_generation()
-        #test_real_time_streaming(use_system_prompt=True)
-        # test_continuous_chat_streaming()
-        
-        # VLM tests
-        #test_regular_vlm_generation()
-        #test_streaming_vlm_generation()
-        #test_real_time_vlm_streaming()
-        #test_continuous_vlm_chat()  # Run the VLM continuous chat test
-        #test_multi_image_vlm()  # Run the multi-image VLM test
-        #test_interactive_multi_image_vlm()  # Run the interactive multi-image VLM test
-        test_chronological_image_vlm()  # Run the chronological image analysis test
+    Args:
+        screenshot_events: List of ScreenshotEvent objects containing screenshot metadata
+        user_prompt: The text prompt to send to the model to analyze the screenshots
+        model: The name of the VLM model to use (e.g. "llava", "granite3.2-vision")
+        callback: Optional callback function to process content and tool calls
+        prefer_annotated: Whether to use annotated images when available (default: True)
+        system_prompt: Custom system prompt to use (default: None)
+        **kwargs: Additional parameters to pass to the Ollama API
+    """
+    asyncio.run(async_stream_vlm_analyze_screenshot_events(
+        screenshot_events=screenshot_events,
+        user_prompt=user_prompt,
+        model=model,
+        callback=callback,
+        prefer_annotated=prefer_annotated,
+        system_prompt=system_prompt,
+        **kwargs
+    ))
