@@ -2,6 +2,20 @@
 import sys
 sys.path.append('C:/Users/Prince/Documents/GitHub/Proejct-Karna/offline-ai-assistant/karna-python-backend')
 
+from importlib import reload  # Not needed in Python 2
+import logging
+reload(logging)
+logging.basicConfig(format='%(asctime)s %(levelname)s:%(message)s', level=logging.INFO, datefmt='%I:%M:%S')
+
+logger = logging.getLogger(__name__)
+
+import os
+import json
+
+from pathlib import Path
+from datetime import datetime
+from config.paths import workspace_data_dir, workspace_dir
+
 
 from ollama_helper import *
 
@@ -514,109 +528,63 @@ If timestamps or sequence indicators are visible in the images, note them and us
         except Exception as e:
             print(f"\nError during sequential image analysis: {str(e)}")
     
-    def test_screenshot_events_analysis():
-        """Test screenshot events analysis feature using mock ScreenshotEvent objects"""
-        from datetime import datetime
-        import tempfile
-        import os
-        from PIL import Image, ImageDraw, ImageFont
-        from services.screen_capture_service import ScreenshotEvent
+    def get_screenshot_events_from_json():
+        """Get screenshot events from a JSON file"""
+        json_file_path = os.path.join(workspace_data_dir,
+                                    'youtube.com/123e4567-e89b-12d3-a456-426614174000/screenshot_events_123e4567-e89b-12d3-a456-426614174000.json'
+                                                                        )
+        logger.info(f"Loading screenshot events from JSON file: {json_file_path}")
+            
+        if not os.path.exists(json_file_path):
+            raise FileNotFoundError(f"JSON file not found: {json_file_path}")
         
-        # Create a temporary directory with test screenshots
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            # Create mock screenshot events
-            screenshot_events = []
+        try:
+            with open(json_file_path, 'r', encoding='utf-8') as f:
+                events_data = json.load(f)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON in file: {str(e)}")
+        
+        if not events_data or not isinstance(events_data, list):
+            raise ValueError("JSON file does not contain a list of screenshot events")
+        
+        # Convert JSON data to ScreenshotEvent objects
+        screenshot_events = []
+        for event_dict in events_data:
+            # Convert ISO format string back to datetime
+            if 'timestamp' in event_dict:
+                event_dict['timestamp'] = datetime.fromisoformat(event_dict['timestamp']) # type: ignore
             
-            # Create some dummy screenshots with interaction details
-            for i in range(3):
-                # Create a simple colored image
-                img = Image.new('RGB', (800, 600), color=(i*50, 100, 150))
-                
-                # Add text for reference
-                draw = ImageDraw.Draw(img)
-                try:
-                    font = ImageFont.truetype("arial.ttf", 36)
-                except IOError:
-                    font = ImageFont.load_default()
-                
-                # Add different content for each screenshot
-                if i == 0:
-                    draw.text((50, 50), "Login Screen", fill=(255, 255, 255), font=font)
-                    description = "User clicked on login button"
-                    mouse_x, mouse_y = 400, 300
-                    key_char = None
-                    key_code = None
-                elif i == 1:
-                    draw.text((50, 50), "Username Field", fill=(255, 255, 255), font=font)
-                    description = "User typed username"
-                    mouse_x, mouse_y = 300, 200
-                    key_char = "t"
-                    key_code = None
-                else:
-                    draw.text((50, 50), "Dashboard", fill=(255, 255, 255), font=font)
-                    description = "User pressed Enter key"
-                    mouse_x, mouse_y = None, None
-                    key_char = None
-                    key_code = "Key.enter"
-                
-                # Save the screenshot
-                screenshot_path = os.path.join(tmp_dir, f"screenshot_{i+1}.png")
-                img.save(screenshot_path)
-                
-                # Create a copy with annotations for the annotated version
-                annotated_img = img.copy()
-                draw = ImageDraw.Draw(annotated_img)
-                
-                # Add annotation
-                if mouse_x is not None and mouse_y is not None:
-                    # Draw a circle around mouse position
-                    draw.ellipse(
-                        (mouse_x-20, mouse_y-20, mouse_x+20, mouse_y+20), 
-                        outline="red", width=3
-                    )
-                
-                # Add annotation text
-                draw.text((50, 520), f"Annotation: {description}", fill=(255, 0, 0), font=font)
-                
-                # Save the annotated version
-                annotation_path = os.path.join(tmp_dir, f"annotated_screenshot_{i+1}.png")
-                annotated_img.save(annotation_path)
-                
-                # Create a screenshot event
-                event = ScreenshotEvent(
-                    event_id=f"test-{i}",
-                    project_uuid="test-project",
-                    command_uuid="test-command",
-                    timestamp=datetime.now(),
-                    description=description,
-                    screenshot_path=screenshot_path,
-                    annotation_path=annotation_path,
-                    mouse_x=mouse_x,
-                    mouse_y=mouse_y,
-                    key_char=key_char,
-                    key_code=key_code,
-                    is_special_key=(key_code is not None)
-                )
-                screenshot_events.append(event)
-            
-            # Test the non-streaming function
-            print("\nTesting screenshot events analysis with VLM...")
-            
+            screenshot_path = event_dict["screenshot_path"] # type: ignore
+            # convert screenshot_path to proper path using paths config
+            screenshot_path = workspace_dir / screenshot_path
+            event_dict["screenshot_path"] = screenshot_path # type: ignore
+            # Create ScreenshotEvent object
             try:
-                response = vlm_analyze_screenshot_events(
-                    screenshot_events=screenshot_events,
-                    user_prompt="Analyze what the user is doing in these screenshots",
-                    model="granite3.2-vision:latest",
-                    prefer_annotated=True  # Use annotated images
-                )
-                
-                print("\nVLM Analysis Response:")
-                if "response" in response:
-                    print(response["response"])
-                else:
-                    print(response)
-            except Exception as e:
-                print(f"Error in screenshot events analysis: {str(e)}")
+                event = ScreenshotEvent(**event_dict)
+                screenshot_events.append(event)
+            except (TypeError, ValueError) as e:
+                logger.warning(f"Skipping invalid event: {str(e)}")
+        
+        logger.info(f"Loaded {len(screenshot_events)} screenshot events from JSON file")
+        return screenshot_events
+    
+    def test_screenshot_events_analysis():
+        # Test the non-streaming function
+        print("\nTesting screenshot events analysis with VLM...")
+        screenshot_events = get_screenshot_events_from_json()
+        
+        # this function should stream the vlm analysis of the screenshot events
+        #  and also save the response to a string and print it after the stream is complete
+        response = stream_vlm_analyze_screenshot_events(
+            screenshot_events=screenshot_events,
+            user_prompt="Analyze what the user is doing in these screenshots",
+            model="granite3.2-vision:latest",
+            # system_prompt="You are a helpful vision assistant that can analyze multiple images in sequence."
+        )
+        print("\nVLM Analysis Response:")
+        print(response)
+            
+            
 
     # Run the test functions
     if __name__ == "__main__":
@@ -625,7 +593,7 @@ If timestamps or sequence indicators are visible in the images, note them and us
         #test_regular_generation()
         #test_streaming_generation()
         #test_real_time_streaming(use_system_prompt=True)
-        test_continuous_chat_streaming()
+        # test_continuous_chat_streaming()
         
         # VLM tests
         #test_regular_vlm_generation()
@@ -635,4 +603,4 @@ If timestamps or sequence indicators are visible in the images, note them and us
         #test_multi_image_vlm()  # Run the multi-image VLM test
         #test_interactive_multi_image_vlm()  # Run the interactive multi-image VLM test
         # test_chronological_image_vlm()  # Run the chronological image analysis test
-        # test_screenshot_events_analysis() 
+        test_screenshot_events_analysis() 

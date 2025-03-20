@@ -2174,7 +2174,7 @@ async def async_vlm_analyze_screenshot_events(
     screenshot_events: List[ScreenshotEvent],
     user_prompt: str,
     model: str,
-    prefer_annotated: bool = True,
+    prefer_annotated: bool = False,
     system_prompt: Optional[str] = None,
     stream: bool = False,
     **kwargs
@@ -2211,6 +2211,10 @@ async def async_vlm_analyze_screenshot_events(
         # Check if file exists
         if not os.path.exists(image_path):
             continue
+            
+        # Convert WindowsPath to string to avoid type errors when processing images
+        if isinstance(image_path, Path):
+            image_path = str(image_path)
             
         image_paths.append(image_path)
         
@@ -2261,7 +2265,7 @@ def vlm_analyze_screenshot_events(
     screenshot_events: List[ScreenshotEvent],
     user_prompt: str,
     model: str,
-    prefer_annotated: bool = True,
+    prefer_annotated: bool = False,
     system_prompt: Optional[str] = None,
     stream: bool = False,
     **kwargs
@@ -2296,7 +2300,7 @@ async def async_stream_vlm_analyze_screenshot_events(
     user_prompt: str,
     model: str,
     callback: Optional[Callable[[str, List[Dict[str, Any]]], None]] = None,
-    prefer_annotated: bool = True,
+    prefer_annotated: bool = False,
     system_prompt: Optional[str] = None,
     **kwargs
 ) -> None:
@@ -2330,7 +2334,13 @@ async def async_stream_vlm_analyze_screenshot_events(
         if not os.path.exists(image_path):
             continue
             
+        # Convert WindowsPath to string to avoid type errors when processing images
+        if isinstance(image_path, Path):
+            image_path = str(image_path)
+            
         image_paths.append(image_path)
+        
+        print(f"Processing screenshot {i+1}: {image_path}")
         
         # Extract event description
         if event.description:
@@ -2382,7 +2392,7 @@ def stream_vlm_analyze_screenshot_events(
     user_prompt: str,
     model: str,
     callback: Optional[Callable[[str, List[Dict[str, Any]]], None]] = None,
-    prefer_annotated: bool = True,
+    prefer_annotated: bool = False,
     system_prompt: Optional[str] = None,
     **kwargs
 ) -> None:
