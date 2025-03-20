@@ -557,7 +557,7 @@ If timestamps or sequence indicators are visible in the images, note them and us
             screenshot_path = event_dict["screenshot_path"] # type: ignore
             # convert screenshot_path to proper path using paths config
             screenshot_path = workspace_dir / screenshot_path
-            event_dict["screenshot_path"] = screenshot_path # type: ignore
+            event_dict["screenshot_path"] = str(screenshot_path) # type: ignore
             # Create ScreenshotEvent object
             try:
                 event = ScreenshotEvent(**event_dict)
@@ -572,6 +572,23 @@ If timestamps or sequence indicators are visible in the images, note them and us
         # Test the non-streaming function
         print("\nTesting screenshot events analysis with VLM...")
         screenshot_events = get_screenshot_events_from_json()
+        
+        # Check if screenshot files actually exist
+        for i, event in enumerate(screenshot_events):
+            path = event.screenshot_path
+            exists = os.path.exists(path)
+            print(f"Screenshot {i+1} path: {path}")
+            print(f"File exists: {exists}")
+            
+            # If file doesn't exist, try to find it in a different location
+            if not exists:
+                print(f"Warning: Screenshot file doesn't exist at {path}")
+                
+                # Try different path variations
+                alt_path = Path(workspace_dir) / "data" / path.name
+                if os.path.exists(alt_path):
+                    print(f"Found at alternative path: {alt_path}")
+                    event.screenshot_path = alt_path
         
         # this function should stream the vlm analysis of the screenshot events
         #  and also save the response to a string and print it after the stream is complete

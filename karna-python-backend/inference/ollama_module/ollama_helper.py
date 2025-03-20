@@ -2210,11 +2210,10 @@ async def async_vlm_analyze_screenshot_events(
         
         # Check if file exists
         if not os.path.exists(image_path):
+            print(f"Warning: Screenshot file not found, skipping: {image_path}")
             continue
-            
-        # Convert WindowsPath to string to avoid type errors when processing images
-        if isinstance(image_path, Path):
-            image_path = str(image_path)
+        
+        print(f"Processing screenshot {i+1}: {image_path}")
             
         image_paths.append(image_path)
         
@@ -2332,15 +2331,12 @@ async def async_stream_vlm_analyze_screenshot_events(
         
         # Check if file exists
         if not os.path.exists(image_path):
+            print(f"Warning: Screenshot file not found, skipping: {image_path}")
             continue
-            
-        # Convert WindowsPath to string to avoid type errors when processing images
-        if isinstance(image_path, Path):
-            image_path = str(image_path)
-            
-        image_paths.append(image_path)
         
         print(f"Processing screenshot {i+1}: {image_path}")
+            
+        image_paths.append(image_path)
         
         # Extract event description
         if event.description:
