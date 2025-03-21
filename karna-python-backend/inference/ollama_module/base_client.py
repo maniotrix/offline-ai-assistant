@@ -2,7 +2,7 @@ import ollama
 from typing import Dict, List, Optional, Union, AsyncIterator, Any
 import logging
 import uuid
-import utils
+import ollama_utils
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ class BaseOllamaClient:
             timeout (int, optional): Request timeout in seconds. Defaults to 120.
         """
         if not host:
-            host = utils.get_ollama_host()
+            host = ollama_utils.get_ollama_host()
             
         if host:
             self.ollama_client = ollama.AsyncClient(host=host)
@@ -38,7 +38,7 @@ class BaseOllamaClient:
         try:
             return await self.ollama_client.list()
         except Exception as e:
-            utils.handle_api_error(e, "listing models")
+            ollama_utils.handle_api_error(e, "listing models")
             raise
     
     async def get_model_info(self, model_name: str) -> Any:
@@ -50,7 +50,7 @@ class BaseOllamaClient:
         try:
             return await self.ollama_client.show(model_name)
         except Exception as e:
-            utils.handle_api_error(e, f"getting model info for {model_name}")
+            ollama_utils.handle_api_error(e, f"getting model info for {model_name}")
             raise
     
     async def check_model_status(self, model_name: str) -> bool:
@@ -69,7 +69,7 @@ class BaseOllamaClient:
                     return True
             return False
         except Exception as e:
-            utils.handle_api_error(e, f"checking model status for {model_name}")
+            ollama_utils.handle_api_error(e, f"checking model status for {model_name}")
             return False
     
     async def health_check(self) -> bool:
@@ -83,7 +83,7 @@ class BaseOllamaClient:
             await self.list_models()
             return True
         except Exception as e:
-            utils.handle_api_error(e, "health check")
+            ollama_utils.handle_api_error(e, "health check")
             return False
             
     async def get_model_metrics(self, model_name: str) -> Dict[str, Any]:
@@ -111,7 +111,7 @@ class BaseOllamaClient:
             
             return metrics
         except Exception as e:
-            utils.handle_api_error(e, f"getting model metrics for {model_name}")
+            ollama_utils.handle_api_error(e, f"getting model metrics for {model_name}")
             raise
             
     async def create_session(self, model_name: str) -> str:

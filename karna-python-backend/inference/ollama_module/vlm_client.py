@@ -4,7 +4,7 @@ import logging
 import base64
 from pathlib import Path
 from base_client import BaseOllamaClient
-import utils
+import ollama_utils
 
 logger = logging.getLogger(__name__)
 
@@ -28,29 +28,31 @@ class OllamaVLMClient(BaseOllamaClient):
         Returns:
             dict: Default VLM options
         """
-        return utils.get_default_vlm_options()
+        return ollama_utils.get_default_vlm_options()
     
-    def _process_image(self, image: Union[str, bytes]) -> str:
+    def _process_image(self, image: Union[str, bytes], should_crop_to_website_render_area: bool = False) -> str:
         """Process image to base64 format.
         
         Args:
             image (Union[str, bytes]): Image path or raw bytes
+            should_crop_to_website_render_area (bool): Whether to crop the image to the website render area
             
         Returns:
             str: Base64 encoded image
         """
-        return utils.process_image(image)
+        return ollama_utils.process_image(image, should_crop_to_website_render_area=should_crop_to_website_render_area)
     
-    def _process_images(self, images: List[Union[str, bytes]]) -> List[str]:
+    def _process_images(self, images: List[Union[str, bytes]], should_crop_to_website_render_area: bool = False) -> List[str]:
         """Process multiple images to base64 format.
         
         Args:
             images (List[Union[str, bytes]]): List of image paths or raw bytes
+            should_crop_to_website_render_area (bool): Whether to crop the image to the website render area
             
         Returns:
             List[str]: List of base64 encoded images
         """
-        return utils.process_images(images)
+        return [self._process_image(img, should_crop_to_website_render_area) for img in images]
         
     async def complete_with_vision(self, 
                                 prompt: str, 
@@ -59,7 +61,8 @@ class OllamaVLMClient(BaseOllamaClient):
                                 template: Optional[str] = None,
                                 tools: Optional[List[Dict[str, Any]]] = None,
                                 options: Optional[Dict[str, Any]] = None,
-                                keep_alive: Optional[str] = None) -> Any:
+                                keep_alive: Optional[str] = None,
+                                should_crop_to_website_render_area: bool = False) -> Any:
         """Generate a response from the VLM using text and images.
         
         Args:
@@ -70,12 +73,13 @@ class OllamaVLMClient(BaseOllamaClient):
             tools (List[Dict[str, Any]], optional): List of tool definitions. Defaults to None.
             options (dict, optional): Additional model parameters. Defaults to None.
             keep_alive (str, optional): Duration to keep the model loaded (e.g., "5m", "1h"). Defaults to None.
+            should_crop_to_website_render_area (bool, optional): Whether to crop images to website render area. Defaults to False.
         
         Returns:
             Any: The model's response
         """
         # Process images
-        processed_images = self._process_images(images)
+        processed_images = self._process_images(images, should_crop_to_website_render_area)
         
         try:
             # Always use chat API with modern features
@@ -114,7 +118,8 @@ class OllamaVLMClient(BaseOllamaClient):
                                        template: Optional[str] = None,
                                        tools: Optional[List[Dict[str, Any]]] = None,
                                        options: Optional[Dict[str, Any]] = None,
-                                       keep_alive: Optional[str] = None) -> AsyncIterator[Any]:
+                                       keep_alive: Optional[str] = None,
+                                       should_crop_to_website_render_area: bool = False) -> AsyncIterator[Any]:
         """Stream a response from the VLM using text and images.
         
         Args:
@@ -125,12 +130,13 @@ class OllamaVLMClient(BaseOllamaClient):
             tools (List[Dict[str, Any]], optional): List of tool definitions. Defaults to None.
             options (dict, optional): Additional model parameters. Defaults to None.
             keep_alive (str, optional): Duration to keep the model loaded (e.g., "5m", "1h"). Defaults to None.
+            should_crop_to_website_render_area (bool, optional): Whether to crop images to website render area. Defaults to False.
             
         Yields:
             Any: Chunks of the model's response
         """
         # Process images
-        processed_images = self._process_images(images)
+        processed_images = self._process_images(images, should_crop_to_website_render_area)
         
         try:
             # Always use chat API with modern features and streaming
@@ -171,7 +177,8 @@ class OllamaVLMClient(BaseOllamaClient):
                             template: Optional[str] = None,
                             tools: Optional[List[Dict[str, Any]]] = None,
                             options: Optional[Dict[str, Any]] = None,
-                            keep_alive: Optional[str] = None) -> Any:
+                            keep_alive: Optional[str] = None,
+                            should_crop_to_website_render_area: bool = False) -> Any:
         """Chat with the VLM using a conversation history and images.
         
         Args:
@@ -182,12 +189,13 @@ class OllamaVLMClient(BaseOllamaClient):
             tools (List[Dict[str, Any]], optional): List of tool definitions. Defaults to None.
             options (dict, optional): Additional model parameters. Defaults to None.
             keep_alive (str, optional): Duration to keep the model loaded (e.g., "5m", "1h"). Defaults to None.
+            should_crop_to_website_render_area (bool, optional): Whether to crop images to website render area. Defaults to False.
         
         Returns:
             Any: The model's response
         """
         # Process images
-        processed_images = self._process_images(images)
+        processed_images = self._process_images(images, should_crop_to_website_render_area)
         
         # Modify messages to include images in the last user message
         updated_messages = messages.copy()
@@ -236,7 +244,8 @@ class OllamaVLMClient(BaseOllamaClient):
                                    template: Optional[str] = None,
                                    tools: Optional[List[Dict[str, Any]]] = None,
                                    options: Optional[Dict[str, Any]] = None,
-                                   keep_alive: Optional[str] = None) -> AsyncIterator[Any]:
+                                   keep_alive: Optional[str] = None,
+                                   should_crop_to_website_render_area: bool = False) -> AsyncIterator[Any]:
         """Stream a chat response from the VLM with images.
         
         Args:
@@ -247,12 +256,13 @@ class OllamaVLMClient(BaseOllamaClient):
             tools (List[Dict[str, Any]], optional): List of tool definitions. Defaults to None.
             options (dict, optional): Additional model parameters. Defaults to None.
             keep_alive (str, optional): Duration to keep the model loaded (e.g., "5m", "1h"). Defaults to None.
+            should_crop_to_website_render_area (bool, optional): Whether to crop images to website render area. Defaults to False.
             
         Yields:
             Any: Chunks of the model's response
         """
         # Process images
-        processed_images = self._process_images(images)
+        processed_images = self._process_images(images, should_crop_to_website_render_area)
         
         # Modify messages to include images in the last user message
         updated_messages = messages.copy()

@@ -2,7 +2,7 @@ from typing import Dict, List, Optional, Any, Union
 import logging
 import numpy as np
 from base_client import BaseOllamaClient
-import utils
+import ollama_utils
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class OllamaEmbeddingClient(BaseOllamaClient):
         Returns:
             dict: Default embedding options
         """
-        return utils.get_default_embedding_options()
+        return ollama_utils.get_default_embedding_options()
         
     async def get_embeddings(self, 
                            text: str, 

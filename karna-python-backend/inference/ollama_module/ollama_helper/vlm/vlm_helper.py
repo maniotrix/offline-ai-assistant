@@ -10,7 +10,14 @@ from llm_client import OllamaLLMClient
 from vlm_client import OllamaVLMClient
 from services.screen_capture_service import ScreenshotEvent
 
-async def async_vlm_generate(prompt: str, image_path: str, model: str, stream: bool = False, **kwargs) -> Dict[str, Any]:
+async def async_vlm_generate(
+    prompt: str, 
+    image_path: str, 
+    model: str, 
+    stream: bool = False,
+    should_crop_to_website_render_area: bool = False,
+    **kwargs
+) -> Dict[str, Any]:
     """
     Generate a response from Ollama using a vision language model (VLM).
     
@@ -19,6 +26,7 @@ async def async_vlm_generate(prompt: str, image_path: str, model: str, stream: b
         image_path: Path to the image file to analyze
         model: The name of the VLM model to use (e.g. "llava")
         stream: Whether to stream the response (default: False)
+        should_crop_to_website_render_area: Whether to crop the image to website render area (default: False)
         **kwargs: Additional parameters to pass to the Ollama API
         
     Returns:
@@ -47,7 +55,8 @@ async def async_vlm_generate(prompt: str, image_path: str, model: str, stream: b
             template=template,
             tools=tools,  # Pass tools parameter
             options=options,
-            keep_alive=keep_alive
+            keep_alive=keep_alive,
+            should_crop_to_website_render_area=should_crop_to_website_render_area
         ):
             # Handle text content - check both direct response and message.content
             if "response" in chunk:
@@ -85,18 +94,33 @@ async def async_vlm_generate(prompt: str, image_path: str, model: str, stream: b
             
         return response
 
-def vlm_generate(prompt: str, image_path: str, model: str, stream: bool = False, **kwargs) -> Dict[str, Any]:
+def vlm_generate(
+    prompt: str, 
+    image_path: str, 
+    model: str, 
+    stream: bool = False, 
+    should_crop_to_website_render_area: bool = False,
+    **kwargs
+) -> Dict[str, Any]:
     """
     Synchronous wrapper for async_vlm_generate.
     """
     # Only use asyncio.run at the top level, not inside nested functions
-    return asyncio.run(async_vlm_generate(prompt, image_path, model, stream, **kwargs))
+    return asyncio.run(async_vlm_generate(
+        prompt, 
+        image_path, 
+        model, 
+        stream, 
+        should_crop_to_website_render_area, 
+        **kwargs
+    ))
 
 async def async_stream_vlm_generate(
     prompt: str, 
     image_path: str, 
     model: str, 
     callback: Optional[Callable[[str, List[Dict[str, Any]]], None]] = None,
+    should_crop_to_website_render_area: bool = False,
     **kwargs
 ) -> None:
     """
@@ -107,6 +131,7 @@ async def async_stream_vlm_generate(
         image_path: Path to the image file to analyze
         model: The name of the VLM model to use (e.g. "llava")
         callback: Optional callback function to process content and tool calls
+        should_crop_to_website_render_area: Whether to crop the image to website render area (default: False)
         **kwargs: Additional parameters to pass to the Ollama API
     """
     # Initialize the client
@@ -140,7 +165,8 @@ async def async_stream_vlm_generate(
             template=template,
             tools=tools,
             options=options,
-            keep_alive=keep_alive
+            keep_alive=keep_alive,
+            should_crop_to_website_render_area=should_crop_to_website_render_area
         ):
             # Handle text content - check both direct response and message.content
             if "response" in chunk:
@@ -195,13 +221,21 @@ def stream_vlm_generate(
     image_path: str, 
     model: str, 
     callback: Optional[Callable[[str, List[Dict[str, Any]]], None]] = None,
+    should_crop_to_website_render_area: bool = False,
     **kwargs
 ) -> None:
     """
     Synchronous wrapper for async_stream_vlm_generate.
     """
     # Only use asyncio.run at the top level, not inside nested functions
-    asyncio.run(async_stream_vlm_generate(prompt, image_path, model, callback, **kwargs))
+    asyncio.run(async_stream_vlm_generate(
+        prompt, 
+        image_path, 
+        model, 
+        callback, 
+        should_crop_to_website_render_area, 
+        **kwargs
+    ))
 
 # New functions for VLM with tool calling capabilities
 
@@ -214,7 +248,8 @@ async def async_vlm_generate_with_tools(
     system: Optional[str] = None,
     template: Optional[str] = None,
     options: Optional[Dict[str, Any]] = None,
-    keep_alive: Optional[str] = None
+    keep_alive: Optional[str] = None,
+    should_crop_to_website_render_area: bool = False
 ) -> Dict[str, Any]:
     """
     Generate a response from Ollama using a vision language model (VLM) with tool calling support.
@@ -229,6 +264,7 @@ async def async_vlm_generate_with_tools(
         template: Custom prompt template (default: None)
         options: Additional parameters to pass to the Ollama API (default: None)
         keep_alive: Duration to keep the model loaded (e.g., "5m", "1h") (default: None)
+        should_crop_to_website_render_area: Whether to crop the image to website render area (default: False)
         
     Returns:
         The response from the Ollama API as a dictionary
@@ -250,7 +286,8 @@ async def async_vlm_generate_with_tools(
             template=template,
             tools=tools,
             options=options,
-            keep_alive=keep_alive
+            keep_alive=keep_alive,
+            should_crop_to_website_render_area=should_crop_to_website_render_area
         ):
             # Handle direct response format
             if "response" in chunk:
@@ -997,6 +1034,7 @@ async def async_stream_vlm_multi_image(
     model: str,
     callback: Optional[Callable[[str, List[Dict[str, Any]]], None]] = None,
     sequence_aware_system: bool = True,
+    should_crop_to_website_render_area: bool = False,
     **kwargs
 ) -> None:
     """
@@ -1054,7 +1092,8 @@ async def async_stream_vlm_multi_image(
             template=template,
             tools=tools,
             options=options,
-            keep_alive=keep_alive
+            keep_alive=keep_alive,
+            should_crop_to_website_render_area=should_crop_to_website_render_area
         ):
             # Handle text content - check both direct response and message.content
             if "response" in chunk:
@@ -1756,6 +1795,7 @@ async def async_stream_vlm_analyze_screenshot_events(
     callback: Optional[Callable[[str, List[Dict[str, Any]]], None]] = None,
     prefer_annotated: bool = False,
     system_prompt: Optional[str] = None,
+    should_crop_to_website_render_area: bool = False,
     **kwargs
 ) -> None:
     """
@@ -1835,6 +1875,7 @@ async def async_stream_vlm_analyze_screenshot_events(
         callback=callback,
         sequence_aware_system=True,
         system=system_prompt,
+        should_crop_to_website_render_area=should_crop_to_website_render_area,
         **kwargs
     )
 
@@ -1845,6 +1886,7 @@ def stream_vlm_analyze_screenshot_events(
     callback: Optional[Callable[[str, List[Dict[str, Any]]], None]] = None,
     prefer_annotated: bool = False,
     system_prompt: Optional[str] = None,
+    should_crop_to_website_render_area: bool = False,
     **kwargs
 ) -> None:
     """
@@ -1866,5 +1908,6 @@ def stream_vlm_analyze_screenshot_events(
         callback=callback,
         prefer_annotated=prefer_annotated,
         system_prompt=system_prompt,
+        should_crop_to_website_render_area=should_crop_to_website_render_area,
         **kwargs
     ))

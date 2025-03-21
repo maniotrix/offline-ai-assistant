@@ -604,8 +604,9 @@ If timestamps or sequence indicators are visible in the images, note them and us
         #  and also save the response to a string and print it after the stream is complete
         response = stream_vlm_analyze_screenshot_events(
             screenshot_events=screenshot_events,
-            user_prompt="Describe second image",
+            user_prompt="Extract the line level text from this screenshot of a website",
             model="granite3.2-vision:latest",
+            should_crop_to_website_render_area=True,
             # system_prompt="You are a helpful vision assistant that can analyze multiple images in sequence."
         )
         print("\nVLM Analysis Response:")

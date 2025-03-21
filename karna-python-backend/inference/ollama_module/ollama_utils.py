@@ -1,8 +1,12 @@
 import base64
 import logging
 import os
+import io
 from pathlib import Path
 from typing import Dict, Any, List, Union, Optional
+from PIL import Image
+
+from utils.image_utils import crop_to_render_area
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -24,20 +28,38 @@ def encode_image_to_base64(image_path: str) -> str:
         logger.error(f"Error encoding image {image_path}: {e}")
         raise
 
-def process_image(image: Union[str, bytes]) -> str:
+def process_image(image: Union[str, bytes], 
+                should_crop_to_website_render_area: bool = False
+                ) -> str:
     """Process image to base64 format.
     
     Args:
         image (Union[str, bytes]): Image path or raw bytes
-        
+        should_crop_to_website_render_area (bool): Whether to crop the image to the website render area
     Returns:
         str: Base64 encoded image
     """
     if isinstance(image, str):
         # Path to image file
         if Path(image).exists():
-            with open(image, "rb") as f:
-                return base64.b64encode(f.read()).decode("utf-8")
+            if should_crop_to_website_render_area:
+                # Crop image to website render area
+                try:
+                    cropped_img = crop_to_render_area(image, should_crop=True)
+                    # Convert PIL Image to base64 in memory
+                    buffer = io.BytesIO()
+                    cropped_img.save(buffer, format=cropped_img.format or 'PNG')
+                    buffer.seek(0)
+                    return base64.b64encode(buffer.read()).decode("utf-8")
+                except Exception as e:
+                    logger.error(f"Error cropping image {image}: {e}")
+                    # Fall back to original approach if cropping fails
+                    with open(image, "rb") as f:
+                        return base64.b64encode(f.read()).decode("utf-8")
+            else:
+                # Original approach without cropping
+                with open(image, "rb") as f:
+                    return base64.b64encode(f.read()).decode("utf-8")
         # Already base64 encoded
         else:
             return image
@@ -47,16 +69,17 @@ def process_image(image: Union[str, bytes]) -> str:
     else:
         raise ValueError(f"Unsupported image type: {type(image)}")
 
-def process_images(images: List[Union[str, bytes]]) -> List[str]:
+def process_images(images: List[Union[str, bytes]], should_crop_to_website_render_area: bool = False) -> List[str]:
     """Process multiple images to base64 format.
     
     Args:
         images (List[Union[str, bytes]]): List of image paths or raw bytes
+        should_crop_to_website_render_area (bool): Whether to crop the images to the website render area
         
     Returns:
         List[str]: List of base64 encoded images
     """
-    return [process_image(img) for img in images]
+    return [process_image(img, should_crop_to_website_render_area) for img in images]
 
 def get_default_llm_options() -> Dict[str, Any]:
     """Get default options optimized for LLMs.
