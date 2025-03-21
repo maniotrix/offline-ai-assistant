@@ -4,7 +4,7 @@ import os
 from typing import Dict, List, Any
 
 # Import the helper functions from ollama_helper
-from ollama_helper import (
+from ollama_helper.llm.llm_helper import (
     llm_generate,
     stream_llm_generate,
     get_weather_tool_definition,

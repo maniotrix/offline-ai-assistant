@@ -17,7 +17,8 @@ from datetime import datetime
 from config.paths import workspace_data_dir, workspace_dir
 
 
-from ollama_helper import *
+from ollama_helper.llm.llm_helper import *
+from ollama_helper.vlm.vlm_helper import *
 
 if __name__ == "__main__":
     # Test functions for LLM
@@ -568,6 +569,15 @@ If timestamps or sequence indicators are visible in the images, note them and us
         logger.info(f"Loaded {len(screenshot_events)} screenshot events from JSON file")
         return screenshot_events
     
+    
+    def get_crop_dimensions_from_json():
+        """Get crop dimensions from a JSON file"""
+        json_file_path = os.path.join(workspace_data_dir,
+                                    'youtube.com/123e4567-e89b-12d3-a456-426614174000/crop_dimensions_123e4567-e89b-12d3-a456-426614174000.json'
+                                                                        )
+        
+        
+    
     def test_screenshot_events_analysis():
         # Test the non-streaming function
         print("\nTesting screenshot events analysis with VLM...")
@@ -594,7 +604,7 @@ If timestamps or sequence indicators are visible in the images, note them and us
         #  and also save the response to a string and print it after the stream is complete
         response = stream_vlm_analyze_screenshot_events(
             screenshot_events=screenshot_events,
-            user_prompt="Where should I click to search on the given website screenshot?",
+            user_prompt="Describe second image",
             model="granite3.2-vision:latest",
             # system_prompt="You are a helpful vision assistant that can analyze multiple images in sequence."
         )

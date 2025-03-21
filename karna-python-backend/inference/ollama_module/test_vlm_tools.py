@@ -5,13 +5,16 @@ from pathlib import Path
 from typing import Dict, List, Any, Callable
 
 # Import the helper functions from ollama_helper
-from ollama_helper import (
+from ollama_helper.vlm.vlm_helper import (
     vlm_generate,
     stream_vlm_generate,
+    vlm_chat_with_tool_response
+)
+
+from ollama_helper.llm.llm_helper import (
     get_weather_tool_definition,
     get_search_tool_definition,
-    get_identify_object_tool_definition,
-    vlm_chat_with_tool_response
+    get_identify_object_tool_definition
 )
 
 # Helper to process tool calls from callback
