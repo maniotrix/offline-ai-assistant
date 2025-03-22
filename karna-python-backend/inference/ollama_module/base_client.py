@@ -2,7 +2,7 @@ import ollama
 from typing import Dict, List, Optional, Union, AsyncIterator, Any
 import logging
 import uuid
-import ollama_utils
+import inference.ollama_module.ollama_utils as ollama_utils
 
 # Setup logging
 logger = logging.getLogger(__name__)

@@ -1,8 +1,8 @@
 # type: ignore
 from typing import Dict, List, Optional, AsyncIterator, Any, Union
 import logging
-from base_client import BaseOllamaClient
-import utils
+from inference.ollama_module.base_client import BaseOllamaClient
+import inference.ollama_module.ollama_utils as utils
 
 logger = logging.getLogger(__name__)
 

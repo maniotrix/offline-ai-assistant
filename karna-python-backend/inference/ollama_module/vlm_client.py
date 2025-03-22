@@ -3,8 +3,8 @@ from typing import Dict, List, Optional, AsyncIterator, Any, Union, Callable
 import logging
 import base64
 from pathlib import Path
-from base_client import BaseOllamaClient
-import ollama_utils
+from inference.ollama_module.base_client import BaseOllamaClient
+import inference.ollama_module.ollama_utils as ollama_utils
 
 logger = logging.getLogger(__name__)
 

@@ -1,8 +1,8 @@
 from typing import Dict, List, Optional, Any, Union
 import logging
 import numpy as np
-from base_client import BaseOllamaClient
-import ollama_utils
+from inference.ollama_module.base_client import BaseOllamaClient
+import inference.ollama_module.ollama_utils as ollama_utils
 
 logger = logging.getLogger(__name__)
 

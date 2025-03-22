@@ -6,8 +6,8 @@ from pathlib import Path
 import os
 
 # Use proper relative imports
-from llm_client import OllamaLLMClient
-from vlm_client import OllamaVLMClient
+from inference.ollama_module.llm_client import OllamaLLMClient
+from inference.ollama_module.vlm_client import OllamaVLMClient
 from services.screen_capture_service import ScreenshotEvent
 
 async def async_llm_generate(prompt: str, model: str, stream: bool = False, **kwargs) -> Dict[str, Any]:
