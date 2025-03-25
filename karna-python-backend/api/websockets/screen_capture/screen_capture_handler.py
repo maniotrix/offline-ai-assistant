@@ -57,6 +57,8 @@ class ScreenCaptureWebSocketHandler(BaseWebSocketHandler[List[ScreenshotEvent]])
                 if event.key_code:
                     proto_event.key_code = event.key_code
                 proto_event.is_special_key = event.is_special_key
+                if event.mouse_event_tool_tip:
+                    proto_event.mouse_event_tool_tip = event.mouse_event_tool_tip
                 
         response.capture_response.CopyFrom(result)
         await self.broadcast(response)
@@ -145,15 +147,45 @@ class ScreenCaptureWebSocketHandler(BaseWebSocketHandler[List[ScreenshotEvent]])
             
     async def handle_update_capture(self, websocket: WebSocket, update_capture_request: CaptureUpdateRequest) -> None:
         try:
-            deleted_events_ids = [str(event_id) for event_id in update_capture_request.screenshot_event_ids]
-            updated_events = self.service.update_screenshot_events_json_file(
-                project_uuid=update_capture_request.project_uuid,
-                command_uuid=update_capture_request.command_uuid,
-                deleted_events_ids=deleted_events_ids
-            )
-            if updated_events and len(updated_events) > 0 and self.service.current_session:
-                await self.broadcast_capture_events(updated_events)
+            # Check if the request includes full screenshot events
+            if update_capture_request.screenshot_events and len(update_capture_request.screenshot_events) > 0:
+                # Convert proto events to domain events
+                updated_events = []
+                for proto_event in update_capture_request.screenshot_events:
+                    # Convert from proto format to domain model
+                    from datetime import datetime
+                    domain_event = ScreenshotEvent(
+                        event_id=proto_event.event_id,
+                        project_uuid=proto_event.project_uuid,
+                        command_uuid=proto_event.command_uuid,
+                        timestamp=datetime.fromisoformat(proto_event.timestamp),
+                        description=proto_event.description,
+                        screenshot_path=proto_event.screenshot_path,
+                        annotation_path=proto_event.annotation_path if proto_event.annotation_path else None,
+                        mouse_x=proto_event.mouse_x if proto_event.HasField('mouse_x') else None,
+                        mouse_y=proto_event.mouse_y if proto_event.HasField('mouse_y') else None,
+                        key_char=proto_event.key_char if proto_event.HasField('key_char') else None,
+                        key_code=proto_event.key_code if proto_event.HasField('key_code') else None,
+                        is_special_key=proto_event.is_special_key,
+                        mouse_event_tool_tip=proto_event.mouse_event_tool_tip if proto_event.HasField('mouse_event_tool_tip') else None
+                    )
+                    updated_events.append(domain_event)
+                
+                self.logger.info(f"Updating {len(updated_events)} screenshot events")
+                result_events = self.service.update_screenshot_events_json_file(
+                    project_uuid=update_capture_request.project_uuid,
+                    command_uuid=update_capture_request.command_uuid,
+                    updated_events=updated_events
+                )
+            else:
+                self.logger.warning("Update capture request contains no events")
+                result_events = []
+            
+            if result_events and len(result_events) > 0 and self.service.current_session:
+                await self.broadcast_capture_events(result_events)
                 self.logger.info(f"Updated screenshot events for {update_capture_request.project_uuid}/{update_capture_request.command_uuid}")
+            else:
+                self.logger.info(f"No events to broadcast after update for {update_capture_request.project_uuid}/{update_capture_request.command_uuid}")
         except Exception as e:
             self.logger.error(f"Error updating screenshot events: {e}", exc_info=True)
             response = ScreenCaptureRPCResponse()

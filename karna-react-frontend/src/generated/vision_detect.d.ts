@@ -1196,8 +1196,8 @@ export namespace karna {
             /** CaptureUpdateRequest message */
             message?: (string|null);
 
-            /** CaptureUpdateRequest screenshotEventIds */
-            screenshotEventIds?: (string[]|null);
+            /** CaptureUpdateRequest screenshotEvents */
+            screenshotEvents?: (karna.screen_capture.IRpcScreenshotEvent[]|null);
         }
 
         /** Represents a CaptureUpdateRequest. */
@@ -1218,8 +1218,8 @@ export namespace karna {
             /** CaptureUpdateRequest message. */
             public message: string;
 
-            /** CaptureUpdateRequest screenshotEventIds. */
-            public screenshotEventIds: string[];
+            /** CaptureUpdateRequest screenshotEvents. */
+            public screenshotEvents: karna.screen_capture.IRpcScreenshotEvent[];
 
             /**
              * Creates a new CaptureUpdateRequest instance using the specified properties.

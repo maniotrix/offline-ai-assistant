@@ -16,7 +16,7 @@ message CaptureUpdateRequest {
   string project_uuid = 1;
   string command_uuid = 2;
   string message = 3;
-  repeated string screenshot_event_ids = 4;
+  repeated RpcScreenshotEvent screenshot_events = 4;
 }
 
 // Request message types

@@ -2995,7 +2995,7 @@ export const karna = $root.karna = (() => {
              * @property {string|null} [projectUuid] CaptureUpdateRequest projectUuid
              * @property {string|null} [commandUuid] CaptureUpdateRequest commandUuid
              * @property {string|null} [message] CaptureUpdateRequest message
-             * @property {Array.<string>|null} [screenshotEventIds] CaptureUpdateRequest screenshotEventIds
+             * @property {Array.<karna.screen_capture.IRpcScreenshotEvent>|null} [screenshotEvents] CaptureUpdateRequest screenshotEvents
              */
 
             /**
@@ -3007,7 +3007,7 @@ export const karna = $root.karna = (() => {
              * @param {karna.screen_capture.ICaptureUpdateRequest=} [properties] Properties to set
              */
             function CaptureUpdateRequest(properties) {
-                this.screenshotEventIds = [];
+                this.screenshotEvents = [];
                 if (properties)
                     for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
                         if (properties[keys[i]] != null)
@@ -3039,12 +3039,12 @@ export const karna = $root.karna = (() => {
             CaptureUpdateRequest.prototype.message = "";
 
             /**
-             * CaptureUpdateRequest screenshotEventIds.
-             * @member {Array.<string>} screenshotEventIds
+             * CaptureUpdateRequest screenshotEvents.
+             * @member {Array.<karna.screen_capture.IRpcScreenshotEvent>} screenshotEvents
              * @memberof karna.screen_capture.CaptureUpdateRequest
              * @instance
              */
-            CaptureUpdateRequest.prototype.screenshotEventIds = $util.emptyArray;
+            CaptureUpdateRequest.prototype.screenshotEvents = $util.emptyArray;
 
             /**
              * Creates a new CaptureUpdateRequest instance using the specified properties.
@@ -3076,9 +3076,9 @@ export const karna = $root.karna = (() => {
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.commandUuid);
                 if (message.message != null && Object.hasOwnProperty.call(message, "message"))
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.message);
-                if (message.screenshotEventIds != null && message.screenshotEventIds.length)
-                    for (let i = 0; i < message.screenshotEventIds.length; ++i)
-                        writer.uint32(/* id 4, wireType 2 =*/34).string(message.screenshotEventIds[i]);
+                if (message.screenshotEvents != null && message.screenshotEvents.length)
+                    for (let i = 0; i < message.screenshotEvents.length; ++i)
+                        $root.karna.screen_capture.RpcScreenshotEvent.encode(message.screenshotEvents[i], writer.uint32(/* id 4, wireType 2 =*/34).fork()).ldelim();
                 return writer;
             };
 
@@ -3126,9 +3126,9 @@ export const karna = $root.karna = (() => {
                             break;
                         }
                     case 4: {
-                            if (!(message.screenshotEventIds && message.screenshotEventIds.length))
-                                message.screenshotEventIds = [];
-                            message.screenshotEventIds.push(reader.string());
+                            if (!(message.screenshotEvents && message.screenshotEvents.length))
+                                message.screenshotEvents = [];
+                            message.screenshotEvents.push($root.karna.screen_capture.RpcScreenshotEvent.decode(reader, reader.uint32()));
                             break;
                         }
                     default:
@@ -3175,12 +3175,14 @@ export const karna = $root.karna = (() => {
                 if (message.message != null && message.hasOwnProperty("message"))
                     if (!$util.isString(message.message))
                         return "message: string expected";
-                if (message.screenshotEventIds != null && message.hasOwnProperty("screenshotEventIds")) {
-                    if (!Array.isArray(message.screenshotEventIds))
-                        return "screenshotEventIds: array expected";
-                    for (let i = 0; i < message.screenshotEventIds.length; ++i)
-                        if (!$util.isString(message.screenshotEventIds[i]))
-                            return "screenshotEventIds: string[] expected";
+                if (message.screenshotEvents != null && message.hasOwnProperty("screenshotEvents")) {
+                    if (!Array.isArray(message.screenshotEvents))
+                        return "screenshotEvents: array expected";
+                    for (let i = 0; i < message.screenshotEvents.length; ++i) {
+                        let error = $root.karna.screen_capture.RpcScreenshotEvent.verify(message.screenshotEvents[i]);
+                        if (error)
+                            return "screenshotEvents." + error;
+                    }
                 }
                 return null;
             };
@@ -3203,12 +3205,15 @@ export const karna = $root.karna = (() => {
                     message.commandUuid = String(object.commandUuid);
                 if (object.message != null)
                     message.message = String(object.message);
-                if (object.screenshotEventIds) {
-                    if (!Array.isArray(object.screenshotEventIds))
-                        throw TypeError(".karna.screen_capture.CaptureUpdateRequest.screenshotEventIds: array expected");
-                    message.screenshotEventIds = [];
-                    for (let i = 0; i < object.screenshotEventIds.length; ++i)
-                        message.screenshotEventIds[i] = String(object.screenshotEventIds[i]);
+                if (object.screenshotEvents) {
+                    if (!Array.isArray(object.screenshotEvents))
+                        throw TypeError(".karna.screen_capture.CaptureUpdateRequest.screenshotEvents: array expected");
+                    message.screenshotEvents = [];
+                    for (let i = 0; i < object.screenshotEvents.length; ++i) {
+                        if (typeof object.screenshotEvents[i] !== "object")
+                            throw TypeError(".karna.screen_capture.CaptureUpdateRequest.screenshotEvents: object expected");
+                        message.screenshotEvents[i] = $root.karna.screen_capture.RpcScreenshotEvent.fromObject(object.screenshotEvents[i]);
+                    }
                 }
                 return message;
             };
@@ -3227,7 +3232,7 @@ export const karna = $root.karna = (() => {
                     options = {};
                 let object = {};
                 if (options.arrays || options.defaults)
-                    object.screenshotEventIds = [];
+                    object.screenshotEvents = [];
                 if (options.defaults) {
                     object.projectUuid = "";
                     object.commandUuid = "";
@@ -3239,10 +3244,10 @@ export const karna = $root.karna = (() => {
                     object.commandUuid = message.commandUuid;
                 if (message.message != null && message.hasOwnProperty("message"))
                     object.message = message.message;
-                if (message.screenshotEventIds && message.screenshotEventIds.length) {
-                    object.screenshotEventIds = [];
-                    for (let j = 0; j < message.screenshotEventIds.length; ++j)
-                        object.screenshotEventIds[j] = message.screenshotEventIds[j];
+                if (message.screenshotEvents && message.screenshotEvents.length) {
+                    object.screenshotEvents = [];
+                    for (let j = 0; j < message.screenshotEvents.length; ++j)
+                        object.screenshotEvents[j] = $root.karna.screen_capture.RpcScreenshotEvent.toObject(message.screenshotEvents[j], options);
                 }
                 return object;
             };

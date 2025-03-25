@@ -73,24 +73,44 @@ export class ScreenCaptureChannel extends BaseWebSocketChannel {
         useScreenCaptureStore.getState().setCapturing(false);
     }
 
-    async updateCapture(projectUuid: string, commandUuid: string, deletedEventIds: string[]): Promise<void> {
+    async updateCapture(projectUuid: string, commandUuid: string, updatedEvents: any[]): Promise<void> {
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
             throw new Error('WebSocket is not connected');
         }
 
-        console.log('Updating screen capture:', { projectUuid, commandUuid, deletedEventIds });
+        console.log('Updating screen capture:', { projectUuid, commandUuid, eventCount: updatedEvents.length });
+        
+        // Create screenshot event objects for the protobuf message
+        const screenshotEvents = updatedEvents.map(event => {
+            return {
+                eventId: event.eventId,
+                projectUuid: event.projectUuid,
+                commandUuid: event.commandUuid,
+                timestamp: typeof event.timestamp === 'string' ? event.timestamp : new Date(event.timestamp).toISOString(),
+                description: event.description,
+                screenshotPath: event.screenshotPath,
+                annotationPath: event.annotationPath,
+                mouseX: event.mouseX,
+                mouseY: event.mouseY,
+                mouseEventToolTip: event.mouse_event_tool_tip || event.mouseEventToolTip,
+                keyChar: event.keyChar,
+                keyCode: event.keyCode,
+                isSpecialKey: event.isSpecialKey
+            };
+        });
+
         const request = karna.screen_capture.ScreenCaptureRPCRequest.create({
             updateCapture: {
                 projectUuid,
                 commandUuid,
                 message: 'Update screenshots',
-                screenshotEventIds: deletedEventIds
+                screenshotEvents: screenshotEvents
             }
         });
 
         const buffer = karna.screen_capture.ScreenCaptureRPCRequest.encode(request).finish();
         this.socket.send(buffer);
-        console.log('Update capture request sent');
+        console.log('Update capture request sent with updated events');
     }
 
     async getCache(projectUuid: string, commandUuid: string): Promise<void> {
@@ -118,10 +138,14 @@ export class ScreenCaptureChannel extends BaseWebSocketChannel {
     }
 
     protected updateConnectionState(connected: boolean): void {
-        useScreenCaptureStore.getState().setConnected(connected);
+        useScreenCaptureStore.getState().setConnectionState(connected ? 'connected' : 'disconnected');
     }
 
     protected updateErrorState(error: Error): void {
-        useScreenCaptureStore.getState().setError(error);
+        if (error) {
+            console.error('Screen capture channel error:', error);
+        }
+        // Set error state in a different way since we don't have setError anymore
+        useScreenCaptureStore.getState().setConnectionState('disconnected');
     }
 }

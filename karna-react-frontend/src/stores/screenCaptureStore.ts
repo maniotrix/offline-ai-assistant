@@ -3,36 +3,41 @@ import { karna } from '../generated/messages';
 
 export interface ScreenCaptureState {
   // Connection state
-  connected: boolean;
-  error: Error | null;
+  connectionState: 'connected' | 'connecting' | 'disconnected';
+  dataState: 'loading' | 'ready' | 'error';
   
   // Data state
   captureResult: karna.screen_capture.ICaptureResult | null;
   isCapturing: boolean;
   
   // Actions
-  setConnected: (connected: boolean) => void;
-  setError: (error: Error | null) => void;
-  setCaptureResult: (result: karna.screen_capture.ICaptureResult) => void;
+  setConnectionState: (state: 'connected' | 'connecting' | 'disconnected') => void;
+  setCaptureResult: (result: karna.screen_capture.ICaptureResult | null) => void;
   setCapturing: (isCapturing: boolean) => void;
+  setScreenshotEvents: (events: karna.screen_capture.IRpcScreenshotEvent[]) => void;
   reset: () => void;
 }
 
 const useScreenCaptureStore = create<ScreenCaptureState>((set) => ({
   // Initial state
-  connected: false,
-  error: null,
+  connectionState: 'disconnected',
+  dataState: 'loading',
   captureResult: null,
   isCapturing: false,
   
   // Actions
-  setConnected: (connected) => set({ connected }),
-  setError: (error) => set({ error }),
-  setCaptureResult: (captureResult) => set({ captureResult }),
+  setConnectionState: (connectionState) => set({ connectionState }),
+  setCaptureResult: (captureResult) => set({ captureResult, dataState: 'ready' }),
   setCapturing: (isCapturing) => set({ isCapturing }),
+  setScreenshotEvents: (events) => set((state) => ({
+    captureResult: state.captureResult ? {
+      ...state.captureResult,
+      screenshotEvents: events
+    } : null
+  })),
   reset: () => set({
-    connected: false,
-    error: null,
+    connectionState: 'disconnected',
+    dataState: 'loading',
     captureResult: null,
     isCapturing: false
   })

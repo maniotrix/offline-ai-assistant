@@ -55,21 +55,21 @@ class CaptureUpdateRequest(google.protobuf.message.Message):
     PROJECT_UUID_FIELD_NUMBER: builtins.int
     COMMAND_UUID_FIELD_NUMBER: builtins.int
     MESSAGE_FIELD_NUMBER: builtins.int
-    SCREENSHOT_EVENT_IDS_FIELD_NUMBER: builtins.int
+    SCREENSHOT_EVENTS_FIELD_NUMBER: builtins.int
     project_uuid: builtins.str
     command_uuid: builtins.str
     message: builtins.str
     @property
-    def screenshot_event_ids(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+    def screenshot_events(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___RpcScreenshotEvent]: ...
     def __init__(
         self,
         *,
         project_uuid: builtins.str = ...,
         command_uuid: builtins.str = ...,
         message: builtins.str = ...,
-        screenshot_event_ids: collections.abc.Iterable[builtins.str] | None = ...,
+        screenshot_events: collections.abc.Iterable[global___RpcScreenshotEvent] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["command_uuid", b"command_uuid", "message", b"message", "project_uuid", b"project_uuid", "screenshot_event_ids", b"screenshot_event_ids"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["command_uuid", b"command_uuid", "message", b"message", "project_uuid", b"project_uuid", "screenshot_events", b"screenshot_events"]) -> None: ...
 
 global___CaptureUpdateRequest = CaptureUpdateRequest
 
@@ -135,6 +135,7 @@ class RpcScreenshotEvent(google.protobuf.message.Message):
     key_code: builtins.str
     is_special_key: builtins.bool
     mouse_event_tool_tip: builtins.str
+    """For mouse button information - defaults to "Left Button" for backward compatibility when mouseX/Y are present"""
     def __init__(
         self,
         *,

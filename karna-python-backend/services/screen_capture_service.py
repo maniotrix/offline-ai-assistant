@@ -763,22 +763,28 @@ class ScreenCaptureService(BaseService[List[ScreenshotEvent]]):
                 logger.error(f"Error during capture stop: {str(e)}")
                 raise
 
-    def update_screenshot_events_json_file(self, project_uuid: str, command_uuid: str, deleted_events_ids: List[str]) -> List[ScreenshotEvent]:
+    def update_screenshot_events_json_file(self, project_uuid: str, command_uuid: str, 
+                                        updated_events: Optional[List[ScreenshotEvent]] = None,
+                                        deleted_events_ids: Optional[List[str]] = None) -> List[ScreenshotEvent]:
         """Update screenshot events after client-side editing.
         
         This method:
         1. Loads the existing screenshot events from the JSON file
-        2. Finds the events that are in the deleted_events_ids list
-        3. Deletes screenshots and their annotations from the file system for the events that are in the deleted_events_ids list
-        4. Updates the JSON export file with the remaining events
+        2. If deleted_events_ids provided:
+           - Deletes screenshots and annotations from filesystem for those events
+           - Updates the JSON with remaining events
+        3. If updated_events provided:
+           - Merges updates with existing events (replacing events with same ID)
+           - Identifies and removes events that exist in original but not in updated list
         
         Args:
             project_uuid: Project identifier
             command_uuid: Command identifier
-            deleted_events_ids: List of event ids to delete
+            updated_events: List of updated screenshot events (with edited tooltips etc.)
+            deleted_events_ids: List of event ids to delete (for backward compatibility)
         
         Returns:
-            List[ScreenshotEvent]: List of screenshot events
+            List[ScreenshotEvent]: Updated list of screenshot events
         
         Raises:
             DirectoryError: If directory operations fail
@@ -792,9 +798,6 @@ class ScreenCaptureService(BaseService[List[ScreenshotEvent]]):
             if not os.path.exists(base_dir):
                 raise DirectoryError(f"Directory not found for project {project_uuid}, command {command_uuid}")
             
-            # screenshots_dir = os.path.join(base_dir, 'screenshots')
-            # raw_dir = os.path.join(screenshots_dir, 'raw')
-            # annotated_dir = os.path.join(screenshots_dir, 'annotated')
             json_path = os.path.join(base_dir, f'screenshot_events_{command_uuid}.json')
             
             # Load existing events from JSON file
@@ -807,35 +810,73 @@ class ScreenCaptureService(BaseService[List[ScreenshotEvent]]):
             except json.JSONDecodeError as e:
                 raise SessionError(f"Invalid JSON in screenshot events file: {str(e)}")
             
-            # Convert JSON data back to ScreenshotEvent objects
-            new_events_data = []
-            # delete files for the deleted events ids
-            for event_dict in original_events_data:
-                if event_dict['event_id'] in deleted_events_ids:
+            # For backward compatibility: Handle deleted_events_ids
+            if deleted_events_ids:
+                # Delete files and filter events
+                new_events_data = []
+                for event_dict in original_events_data:
+                    if event_dict['event_id'] in deleted_events_ids:
+                        if event_dict['screenshot_path'] and os.path.exists(event_dict['screenshot_path']):
+                            os.remove(event_dict['screenshot_path'])
+                        if event_dict['annotation_path'] and os.path.exists(event_dict['annotation_path']):
+                            os.remove(event_dict['annotation_path'])
+                    else:
+                        new_events_data.append(event_dict)
+                
+                logger.info(f"Deleted {len(deleted_events_ids)} events from {project_uuid}/{command_uuid}")
+            
+            # Handle updated events (includes tooltip edits)
+            elif updated_events:
+                # Create a map of original events by ID for quick lookups
+                original_events_by_id = {event['event_id']: event for event in original_events_data}
+                
+                # Convert updated events to dict format
+                updated_events_data = []
+                updated_event_ids = set()
+                
+                for event in updated_events:
+                    event_dict = asdict(event)
+                    # Convert datetime to ISO format string if it's a datetime object
+                    if isinstance(event_dict['timestamp'], datetime):
+                        event_dict['timestamp'] = event_dict['timestamp'].isoformat()
+                    updated_events_data.append(event_dict)
+                    updated_event_ids.add(event_dict['event_id'])
+                
+                # Find events that were deleted (in original but not in updated)
+                deleted_ids = set(original_events_by_id.keys()) - updated_event_ids
+                
+                # Delete files for events that were removed
+                for event_id in deleted_ids:
+                    event_dict = original_events_by_id[event_id]
                     if event_dict['screenshot_path'] and os.path.exists(event_dict['screenshot_path']):
                         os.remove(event_dict['screenshot_path'])
                     if event_dict['annotation_path'] and os.path.exists(event_dict['annotation_path']):
                         os.remove(event_dict['annotation_path'])
-                else:
-                    new_events_data.append(event_dict)
+                
+                new_events_data = updated_events_data
+                logger.info(f"Updated {len(updated_events)} events for {project_uuid}/{command_uuid}")
+                logger.info(f"Deleted {len(deleted_ids)} events that were removed")
+            else:
+                # No updates or deletions specified
+                logger.warning("No updates or deletions specified in update request")
+                new_events_data = original_events_data
             
+            # Write updated event data back to file
             with open(json_path, 'w', encoding='utf-8') as f:
                 json.dump(new_events_data, f, indent=2, ensure_ascii=False)
                 
-            logger.info(f"Deleted {len(deleted_events_ids)} events from {project_uuid}/{command_uuid}")
-
-            # Convert new events data back to ScreenshotEvent objects with proper datetime
-            updated_events = []
+            # Convert JSON data back to ScreenshotEvent objects
+            updated_events_list = []
             for event_dict in new_events_data:
-                # Convert ISO format string back to datetime
-                if 'timestamp' in event_dict:
+                # Convert ISO format string back to datetime if needed
+                if isinstance(event_dict.get('timestamp'), str):
                     event_dict['timestamp'] = datetime.fromisoformat(event_dict['timestamp']) # type: ignore
                 event = ScreenshotEvent(**event_dict)
-                updated_events.append(event)
+                updated_events_list.append(event)
             
-            logger.info(f"Updated screenshot events for {project_uuid}/{command_uuid}")
-            self.current_session.screenshot_events = updated_events
-            return updated_events
+            logger.info(f"Successfully updated screenshot events for {project_uuid}/{command_uuid}")
+            self.current_session.screenshot_events = updated_events_list
+            return updated_events_list
             
         except Exception as e:
             logger.error(f"Failed to update screenshot events: {str(e)}")
