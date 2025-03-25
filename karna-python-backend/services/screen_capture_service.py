@@ -69,6 +69,7 @@ class ScreenshotEvent:
     annotation_path: Optional[str] = None
     mouse_x: Optional[int] = None
     mouse_y: Optional[int] = None
+    mouse_event_tool_tip: Optional[str] = None
     key_char: Optional[str] = None
     key_code: Optional[str] = None
     is_special_key: bool = False
@@ -332,7 +333,7 @@ class ScreenCaptureService(BaseService[List[ScreenshotEvent]]):
 
     def _take_screenshot(self, event_description: str, x: Optional[int] = None, y: Optional[int] = None, 
                        key_char: Optional[str] = None, key_code: Optional[str] = None, 
-                       is_special_key: bool = False) -> str:
+                       is_special_key: bool = False, mouse_event_tool_tip: Optional[str] = None) -> str:
         """Take a screenshot and create a capture event"""
         try:
             self._validate_session()
@@ -359,7 +360,8 @@ class ScreenCaptureService(BaseService[List[ScreenshotEvent]]):
                 mouse_y=y,
                 key_char=key_char,
                 key_code=key_code,
-                is_special_key=is_special_key
+                is_special_key=is_special_key,
+                mouse_event_tool_tip=mouse_event_tool_tip
             )
             if event:
                 # Instead of notifying for each event, notify about the updated list
@@ -414,6 +416,16 @@ class ScreenCaptureService(BaseService[List[ScreenshotEvent]]):
             event_desc = f"Mouse clicked at ({x}, {y}) with {button}"
             logger.debug(f"Mouse event: {event_desc}")
             
+            # Extract the button information for tooltip
+            # Default to "Left Button" if button is None or not parsable
+            try:
+                mouse_tooltip = f"{button}"
+                # Handle case where button might be None or empty
+                if not mouse_tooltip or mouse_tooltip.lower() == "none":
+                    mouse_tooltip = "Left Click"
+            except:
+                mouse_tooltip = "Left Click"
+            
             # Create mouse click session event
             self._create_session_event(
                 event_type=EventType.MOUSE_CLICK,
@@ -426,7 +438,8 @@ class ScreenCaptureService(BaseService[List[ScreenshotEvent]]):
             self._take_screenshot(
                 event_description=event_desc,
                 x=x,
-                y=y
+                y=y,
+                mouse_event_tool_tip=mouse_tooltip
             )
 
     def _annotate_screenshot(self, event: ScreenshotEvent, x: Optional[int] = None, y: Optional[int] = None, 

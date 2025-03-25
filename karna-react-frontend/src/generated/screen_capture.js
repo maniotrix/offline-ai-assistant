@@ -1119,6 +1119,7 @@ export const karna = $root.karna = (() => {
              * @property {string|null} [keyChar] RpcScreenshotEvent keyChar
              * @property {string|null} [keyCode] RpcScreenshotEvent keyCode
              * @property {boolean|null} [isSpecialKey] RpcScreenshotEvent isSpecialKey
+             * @property {string|null} [mouseEventToolTip] RpcScreenshotEvent mouseEventToolTip
              */
 
             /**
@@ -1232,6 +1233,14 @@ export const karna = $root.karna = (() => {
              */
             RpcScreenshotEvent.prototype.isSpecialKey = false;
 
+            /**
+             * RpcScreenshotEvent mouseEventToolTip.
+             * @member {string|null|undefined} mouseEventToolTip
+             * @memberof karna.screen_capture.RpcScreenshotEvent
+             * @instance
+             */
+            RpcScreenshotEvent.prototype.mouseEventToolTip = null;
+
             // OneOf field names bound to virtual getters and setters
             let $oneOfFields;
 
@@ -1262,6 +1271,12 @@ export const karna = $root.karna = (() => {
             // Virtual OneOf for proto3 optional field
             Object.defineProperty(RpcScreenshotEvent.prototype, "_keyCode", {
                 get: $util.oneOfGetter($oneOfFields = ["keyCode"]),
+                set: $util.oneOfSetter($oneOfFields)
+            });
+
+            // Virtual OneOf for proto3 optional field
+            Object.defineProperty(RpcScreenshotEvent.prototype, "_mouseEventToolTip", {
+                get: $util.oneOfGetter($oneOfFields = ["mouseEventToolTip"]),
                 set: $util.oneOfSetter($oneOfFields)
             });
 
@@ -1313,6 +1328,8 @@ export const karna = $root.karna = (() => {
                     writer.uint32(/* id 11, wireType 2 =*/90).string(message.keyCode);
                 if (message.isSpecialKey != null && Object.hasOwnProperty.call(message, "isSpecialKey"))
                     writer.uint32(/* id 12, wireType 0 =*/96).bool(message.isSpecialKey);
+                if (message.mouseEventToolTip != null && Object.hasOwnProperty.call(message, "mouseEventToolTip"))
+                    writer.uint32(/* id 13, wireType 2 =*/106).string(message.mouseEventToolTip);
                 return writer;
             };
 
@@ -1393,6 +1410,10 @@ export const karna = $root.karna = (() => {
                         }
                     case 12: {
                             message.isSpecialKey = reader.bool();
+                            break;
+                        }
+                    case 13: {
+                            message.mouseEventToolTip = reader.string();
                             break;
                         }
                     default:
@@ -1477,6 +1498,11 @@ export const karna = $root.karna = (() => {
                 if (message.isSpecialKey != null && message.hasOwnProperty("isSpecialKey"))
                     if (typeof message.isSpecialKey !== "boolean")
                         return "isSpecialKey: boolean expected";
+                if (message.mouseEventToolTip != null && message.hasOwnProperty("mouseEventToolTip")) {
+                    properties._mouseEventToolTip = 1;
+                    if (!$util.isString(message.mouseEventToolTip))
+                        return "mouseEventToolTip: string expected";
+                }
                 return null;
             };
 
@@ -1516,6 +1542,8 @@ export const karna = $root.karna = (() => {
                     message.keyCode = String(object.keyCode);
                 if (object.isSpecialKey != null)
                     message.isSpecialKey = Boolean(object.isSpecialKey);
+                if (object.mouseEventToolTip != null)
+                    message.mouseEventToolTip = String(object.mouseEventToolTip);
                 return message;
             };
 
@@ -1580,6 +1608,11 @@ export const karna = $root.karna = (() => {
                 }
                 if (message.isSpecialKey != null && message.hasOwnProperty("isSpecialKey"))
                     object.isSpecialKey = message.isSpecialKey;
+                if (message.mouseEventToolTip != null && message.hasOwnProperty("mouseEventToolTip")) {
+                    object.mouseEventToolTip = message.mouseEventToolTip;
+                    if (options.oneofs)
+                        object._mouseEventToolTip = "mouseEventToolTip";
+                }
                 return object;
             };
 

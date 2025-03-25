@@ -42,6 +42,8 @@ message RpcScreenshotEvent {
   optional string key_char = 10;
   optional string key_code = 11;
   bool is_special_key = 12;
+  // For mouse button information - defaults to "Left Button" for backward compatibility when mouseX/Y are present
+  optional string mouse_event_tool_tip = 13;
 }
 
 message CaptureResult {

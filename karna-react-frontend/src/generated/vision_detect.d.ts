@@ -1455,6 +1455,9 @@ export namespace karna {
 
             /** RpcScreenshotEvent isSpecialKey */
             isSpecialKey?: (boolean|null);
+
+            /** RpcScreenshotEvent mouseEventToolTip */
+            mouseEventToolTip?: (string|null);
         }
 
         /** Represents a RpcScreenshotEvent. */
@@ -1501,6 +1504,9 @@ export namespace karna {
 
             /** RpcScreenshotEvent isSpecialKey. */
             public isSpecialKey: boolean;
+
+            /** RpcScreenshotEvent mouseEventToolTip. */
+            public mouseEventToolTip?: (string|null);
 
             /**
              * Creates a new RpcScreenshotEvent instance using the specified properties.

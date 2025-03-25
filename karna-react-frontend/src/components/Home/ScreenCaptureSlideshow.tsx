@@ -5,6 +5,32 @@ import useScreenCaptureStore from '../../stores/screenCaptureStore';
 import { getAnnotationImageUrl } from '../../utils/urlUtils';
 import { websocketService } from '../../api/websocket';
 
+/**
+ * Helper function to get mouse button tooltip with fallback for backward compatibility
+ * @param event Screenshot event
+ * @returns Mouse button tooltip string
+ */
+const getMouseButtonTooltip = (event: any): string => {
+  // Check for the snake_case version (backend format)
+  if (event.mouse_event_tool_tip) {
+    return event.mouse_event_tool_tip;
+  }
+  
+  // Check for the camelCase version (frontend format)
+  if (event.mouseEventToolTip) {
+    return event.mouseEventToolTip;
+  }
+  
+  // If mouse coordinates exist but no tooltip, default to "Left Button"
+  if (event.mouseX !== null && event.mouseX !== undefined && 
+      event.mouseY !== null && event.mouseY !== undefined) {
+    return "Left Click";
+  }
+  
+  // No mouse event
+  return "";
+};
+
 const Slideshow: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -244,6 +270,39 @@ const Slideshow: React.FC = () => {
             onLoad={() => setIsImageLoading(false)}
             onError={() => setIsImageLoading(false)}
           />
+          
+          {/* Mouse tooltip and metadata */}
+          {(currentScreenshot.mouseX !== null || currentScreenshot.keyChar !== null) && (
+            <Box sx={{
+              position: 'absolute',
+              top: 8,
+              right: 8,
+              bgcolor: 'rgba(255, 255, 255, 0.8)',
+              color: 'text.primary',
+              padding: 1,
+              borderRadius: 1,
+              maxWidth: '200px',
+              fontSize: '0.8rem',
+              zIndex: 2
+            }}>
+              {currentScreenshot.mouseX !== null && currentScreenshot.mouseY !== null && (
+                <Typography variant="caption" display="block">
+                  <strong>Mouse Position:</strong> ({currentScreenshot.mouseX}, {currentScreenshot.mouseY})
+                  {getMouseButtonTooltip(currentScreenshot) && (
+                    <Box component="span" sx={{ display: 'block', mt: 0.5 }}>
+                      <strong>Button:</strong> {getMouseButtonTooltip(currentScreenshot)}
+                    </Box>
+                  )}
+                </Typography>
+              )}
+              {currentScreenshot.keyChar && (
+                <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+                  <strong>Key Pressed:</strong> {currentScreenshot.keyChar}
+                </Typography>
+              )}
+            </Box>
+          )}
+          
           <Box sx={{
             position: 'absolute',
             bottom: 0,
