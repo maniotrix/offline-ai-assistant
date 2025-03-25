@@ -2,8 +2,8 @@ from PIL import Image, ImageDraw
 
 import os
 
-# Directory with screenshots in current directory
-directory = os.path.dirname(os.path.abspath(__file__))
+# Directory with screenshots in the ground_data/screenshots/raw folder
+directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'raw')
 
 # Collect all PNG/JPG images in the directory, sorted alphabetically
 image_files = sorted([f for f in os.listdir(directory) if f.lower().endswith(('.png', '.jpg', '.jpeg'))])
