@@ -173,6 +173,14 @@ const Slideshow: React.FC = () => {
     // Get the current value from the text field
     const inputField = document.getElementById('tooltip-edit-field') as HTMLInputElement;
     const newTooltipText = inputField ? inputField.value : tooltipText;
+
+    if (newTooltipText === "") {
+      setNotification({
+        message: "Tooltip text cannot be empty",
+        type: 'error'
+      });
+      return;
+    }
     
     // Mark this screenshot as edited
     const currentScreenshot = validScreenshots[currentIndex];
