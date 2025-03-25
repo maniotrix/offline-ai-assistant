@@ -105,16 +105,18 @@ const Slideshow: React.FC = () => {
   // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Skip processing when editing (let the TextField handle keys normally)
       if (isEditingTooltip) {
-        // Prevent navigation while editing
-        if (e.key === 'Enter') {
-          saveTooltipChanges();
-          e.preventDefault();
-        } else if (e.key === 'Escape') {
-          setIsEditingTooltip(false);
-          setTooltipText(getMouseButtonTooltip(validScreenshots[currentIndex]));
-          e.preventDefault();
+        // Only handle global shortcuts if the event didn't originate from an input
+        const isFromInput = (e.target as HTMLElement)?.tagName === 'INPUT';
+        if (!isFromInput) {
+          // Only handle Escape globally if not from an input
+          if (e.key === 'Escape') {
+            setIsEditingTooltip(false);
+            e.preventDefault();
+          }
         }
+        // Don't handle any other keys when editing
         return;
       }
       
@@ -130,7 +132,7 @@ const Slideshow: React.FC = () => {
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleNext, handlePrevious, isEditingTooltip, currentIndex, validScreenshots, togglePlayPause]);
+  }, [handleNext, handlePrevious, isEditingTooltip, togglePlayPause]);
   
   // Auto-play functionality
   useEffect(() => {
@@ -168,6 +170,10 @@ const Slideshow: React.FC = () => {
   const saveTooltipChanges = () => {
     if (!isEditingTooltip || !validScreenshots.length) return;
     
+    // Get the current value from the text field
+    const inputField = document.getElementById('tooltip-edit-field') as HTMLInputElement;
+    const newTooltipText = inputField ? inputField.value : tooltipText;
+    
     // Mark this screenshot as edited
     const currentScreenshot = validScreenshots[currentIndex];
     setEditedScreenshots(prev => {
@@ -177,7 +183,10 @@ const Slideshow: React.FC = () => {
     });
     
     // Update the tooltip in the current screenshot
-    setMouseButtonTooltip(currentScreenshot, tooltipText);
+    setMouseButtonTooltip(currentScreenshot, newTooltipText);
+    
+    // Update local state to stay in sync
+    setTooltipText(newTooltipText);
     
     // Update the events in the store (creates a new array to trigger reactivity)
     if (captureResult && captureResult.screenshotEvents) {
@@ -373,12 +382,24 @@ const Slideshow: React.FC = () => {
                     <Box component="form" onSubmit={(e) => { e.preventDefault(); saveTooltipChanges(); }} 
                       sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
                       <TextField
+                        id="tooltip-edit-field"
                         variant="outlined"
                         size="small"
-                        value={tooltipText}
-                        onChange={(e) => setTooltipText(e.target.value)}
+                        defaultValue={tooltipText}
                         autoFocus
                         fullWidth
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            saveTooltipChanges();
+                          } else if (e.key === 'Escape') {
+                            e.preventDefault();
+                            setIsEditingTooltip(false);
+                          }
+                        }}
+                        inputProps={{
+                          style: { fontSize: '0.8rem' }
+                        }}
                         sx={{ 
                           '& .MuiOutlinedInput-root': {
                             fontSize: '0.8rem',
