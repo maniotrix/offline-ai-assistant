@@ -1,3 +1,4 @@
+<!-- markdownlint-disable -->
     ChatGPT's user interface is designed to provide a seamless and intuitive conversational experience. Below is a detailed breakdown of its UI components:
 
     ---
@@ -94,3 +95,55 @@
     ---
 
     This structured layout ensures that users can effectively engage in conversations with ChatGPT, manage their interactions, and access various features within a user-friendly interface. 
+
+
+----------------------
+##Layout Guide:
+#### Description
+The Chatgpt has 3 top-level clusters.
+Header- Top
+Left Sidebar- Left
+Main Area - Right of Left Sidebar and below Header.
+
+Header contains three required buttons:
+    1. Show/Hide Left Sidebar button
+    2. DropDown Model Selection Button
+    3. Enable/Disable Temporary Chat Button
+####Required UI Structure:
+App layout-vertical
+    header layout - horizontal type- container[] persistent- yes position-0
+        container name-left_sidebar_controls layout - horizontal type- icon_button[] persistent- yes position- 0
+            component type- icon_button tooltip- show/hide_left_side_bar position-0
+            component type- icon_button tooltip - "new chat" position-1
+
+
+        container type- dropdown name- model_selection persistent-yes layout-vertical position-1
+            component type-dropdown_text_button default_text= "ChatGPT {model_name}" shows/hides_menu- yes position-0// assumes by default menu is hidden
+            container name-model_selection_menu type-menu_container position-2 layout-vertical
+                    list(component type- menu_text_button_item position-list_index
+                        model_names- ["ChatGPT Plus", "ChatGPT", "GPT-4o"]) list_persistent- no
+
+        component type-icon_text_button default_text= "Temporary" position-2
+        component type- icon_button tooltip - "" position-3
+
+    main_area layout-vertical persistent-yes type-container[] position-1
+        container name-chat_list_area layout-vertical position-0 type- custom_objects.user_assistant_container[] list-dynamic
+        container name-chat_controls_area layout-vertical position-1
+            component type-text_input default_text-"Ask anything" position-0
+            component type-double_click-icon button tooltip-"Upload files and more" position-1
+
+
+    custom_objects
+        user_container
+            component type-text
+        assistant_container
+            container layout-vertical
+                component type-text
+                container layout-horizontal
+                    component type- icon_button tooltip - "copy" position-0
+        user_assistant_container
+            container type-user_container position-0
+            container type-assistant_container position-1
+
+
+        
