@@ -49,6 +49,7 @@ class KeyCaptureConfig:
     is_capture_enabled: bool = True
     is_normal_key_capture_enabled: bool = False
     is_special_key_capture_enabled: bool = True
+    should_process_only_by_key_release: bool = True
 
 @dataclass
 class SessionEvent:
@@ -380,7 +381,7 @@ class ScreenCaptureService(BaseService[List[ScreenshotEvent]]):
             logger.error(f"Screenshot capture failed: {str(e)}")
             raise
 
-    def _on_key_press(self, key):
+    def _on_key_event_handler(self, key):
         """Handle keyboard events"""
         try:
             key_char = key.char
@@ -556,7 +557,14 @@ class ScreenCaptureService(BaseService[List[ScreenshotEvent]]):
                 )
                 
                 try:
-                    self.current_session.keyboard_listener = keyboard.Listener(on_press=self._on_key_press)
+                    if self.current_session.key_capture_config.should_process_only_by_key_release:
+                        self.current_session.keyboard_listener = keyboard.Listener(
+                            on_release=self._on_key_event_handler
+                        )
+                    else:
+                        self.current_session.keyboard_listener = keyboard.Listener(
+                            on_press=self._on_key_event_handler
+                        )
                     self.current_session.mouse_listener = mouse.Listener(on_click=self._on_click)
                     
                     self.current_session.keyboard_listener.start()
