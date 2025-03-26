@@ -44,6 +44,13 @@ class EventType(Enum):
     MOUSE_CLICK = auto()
 
 @dataclass
+class KeyCaptureConfig:
+    """Configuration for key capture"""
+    is_capture_enabled: bool = True
+    is_normal_key_capture_enabled: bool = False
+    is_special_key_capture_enabled: bool = True
+
+@dataclass
 class SessionEvent:
     """Represents events that occur during a screen capture session"""
     type: EventType
@@ -102,12 +109,13 @@ class ScreenCaptureSession:
     mouse_listener: Optional[mouse.Listener] = None 
     session_events: List[SessionEvent] = None  # For storing session events
     screenshot_events: List[ScreenshotEvent] = None  # For storing screenshot events
+    key_capture_config: KeyCaptureConfig = None
     
     def __post_init__(self):
         """Initialize event lists after dataclass initialization"""
         self.session_events = []
         self.screenshot_events = []
-
+        self.key_capture_config = KeyCaptureConfig()
     @property
     def duration(self) -> Optional[float]:
         """Calculate session duration in seconds"""
@@ -386,22 +394,35 @@ class ScreenCaptureService(BaseService[List[ScreenshotEvent]]):
         
         logger.debug(f"Key event: {event_desc}")
         
-        # Create key press session event
-        self._create_session_event(
-            event_type=EventType.KEY_PRESS,
-            description=event_desc,
-            key_char=key_char,
-            key_code=str(key),
-            is_special_key=is_special
-        )
+        should_capture = False
+        if self.current_session and self.current_session.key_capture_config and self.current_session.key_capture_config.is_capture_enabled:
+            if self.current_session.key_capture_config.is_normal_key_capture_enabled and not is_special:
+                should_capture = True
+            elif self.current_session.key_capture_config.is_special_key_capture_enabled and is_special:
+                should_capture = True
         
-        # Take screenshot with key context
-        self._take_screenshot(
-            event_description=event_desc,
-            key_char=key_char,
-            key_code=str(key),
-            is_special_key=is_special
-        )
+        if key == keyboard.Key.esc:
+            should_capture = True
+            
+        if should_capture:
+            # Create key press session event
+            self._create_session_event(
+                event_type=EventType.KEY_PRESS,
+                description=event_desc,
+                key_char=key_char,
+                key_code=str(key),
+                is_special_key=is_special
+            )
+            
+            # Take screenshot with key context
+            self._take_screenshot(
+                event_description=event_desc,
+                key_char=key_char,
+                key_code=str(key),
+                is_special_key=is_special
+            )
+        else:
+            logger.debug(f"Key event {event_desc} not captured, disabled by config")
         
         # Stop capturing if escape is pressed
         if key == keyboard.Key.esc:
