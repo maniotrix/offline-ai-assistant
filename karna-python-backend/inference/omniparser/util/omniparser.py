@@ -67,6 +67,7 @@ class OmniparserResult(object):
             'parsed_content_list': self.parsed_content_list,
         }
 
+# TODO: Disable image captioning as soon as possible
 class Omniparser(object):
     def __init__(self):
         self.config = _config
