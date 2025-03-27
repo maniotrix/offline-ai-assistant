@@ -1,0 +1,101 @@
+{
+    "cluster_rules": [
+        {
+            "cluster_id": "1",
+            "cluster_name": "App Root",
+            "root_crop_area": {
+                "x": 0,
+                "y": 0,
+                "width": 1920,
+                "height": 1080
+            },
+            "cluster_layout": "container",
+            "visibility_type": "persistent",
+            "children": [
+                {
+                    "cluster_id": "1.1",
+                    "cluster_name": "Header",
+                    "cluster_layout": "horizontal",
+                    "visibility_type": "persistent",
+                    "children": [
+                        {
+                            "cluster_id": "1.1.1",
+                            "cluster_name": "Left Sidebar Controls Container",
+                            "cluster_layout": "horizontal",
+                            "visibility_type": "persistent",
+                            "children": []
+                        },
+                        {
+                            "cluster_id": "1.1.2",
+                            "cluster_name": "Model Selection Container",
+                            "cluster_layout": "vertical",
+                            "visibility_type": "persistent",
+                            "children": [
+                                {
+                                    "cluster_id": "1.1.2.1",
+                                    "cluster_name": "Model Selection Menu Container",
+                                    "cluster_layout": "vertical",
+                                    "visibility_type": "dynamic",
+                                    "children": []
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "cluster_id": "1.2",
+                    "cluster_name": "Main Area",
+                    "cluster_layout": "vertical",
+                    "visibility_type": "persistent",
+                    "children": [
+                        {
+                            "cluster_id": "1.2.1",
+                            "cluster_name": "Chat List Container",
+                            "cluster_layout": "vertical",
+                            "visibility_type": "persistent",
+                            "children": [
+                                {
+                                    "cluster_id": "1.2.1.1",
+                                    "cluster_name": "User Assistant Container",
+                                    "cluster_layout": "vertical",
+                                    "visibility_type": "dynamic",
+                                    "children": [
+                                        {
+                                            "cluster_id": "1.2.1.1.1",
+                                            "cluster_name": "User Container",
+                                            "cluster_layout": "vertical",
+                                            "visibility_type": "persistent",
+                                            "children": []
+                                        },
+                                        {
+                                            "cluster_id": "1.2.1.1.2",
+                                            "cluster_name": "Assistant Container",
+                                            "cluster_layout": "vertical",
+                                            "visibility_type": "persistent",
+                                            "children": [
+                                                {
+                                                    "cluster_id": "1.2.1.1.2.1",
+                                                    "cluster_name": "Assistant Controls Container",
+                                                    "cluster_layout": "horizontal",
+                                                    "visibility_type": "dynamic",
+                                                    "children": []
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "cluster_id": "1.2.2",
+                            "cluster_name": "Chat Controls Container",
+                            "cluster_layout": "vertical",
+                            "visibility_type": "persistent",
+                            "children": []
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
