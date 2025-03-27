@@ -65,6 +65,10 @@ class OmniparserResult(object):
             'dino_labled_img': self.dino_labled_img,
             'label_coordinates': self.label_coordinates,
             'parsed_content_list': self.parsed_content_list,
+            'original_image_path': self.original_image_path,
+            'original_image_width': self.original_image_width,
+            'original_image_height': self.original_image_height,
+            'phrases': self.phrases
         }
 
 # TODO: Disable image captioning as soon as possible
@@ -97,10 +101,37 @@ class Omniparser(object):
 
         return dino_labled_img, label_coordinates, parsed_content_list, phrases
     
+    def parse_without_local_semantics(self, image_base64: str):
+        image_bytes = base64.b64decode(image_base64)
+        image = Image.open(io.BytesIO(image_bytes))
+        print('image size:', image.size)
+        
+        box_overlay_ratio = max(image.size) / 3200
+        draw_bbox_config = {
+            'text_scale': 0.8 * box_overlay_ratio,
+            'text_thickness': max(int(2 * box_overlay_ratio), 1),
+            'text_padding': max(int(3 * box_overlay_ratio), 1),
+            'thickness': max(int(3 * box_overlay_ratio), 1),
+        }
+
+        (text, ocr_bbox), _ = check_ocr_box(image, display_img=False, output_bb_format='xyxy', easyocr_args={'text_threshold': 0.8}, use_paddleocr=False)
+        dino_labled_img, label_coordinates, parsed_content_list, phrases = get_som_labeled_img(image, self.som_model, BOX_TRESHOLD = self.config['BOX_TRESHOLD'], 
+                                                                                      output_coord_in_ratio=True, ocr_bbox=ocr_bbox,draw_bbox_config=draw_bbox_config, 
+                                                                                      caption_model_processor=self.caption_model_processor, ocr_text=text,use_local_semantics=False, 
+                                                                                      iou_threshold=0.7, scale_img=False, batch_size=128)
+
+        return dino_labled_img, label_coordinates, parsed_content_list, phrases
+    
     def parse_image_path(self, image_path: str) -> OmniparserResult:
         image_base64 = encode_image(image_path)
         image = Image.open(image_path)
         dino_labled_img, label_coordinates, parsed_content_list, phrases = self.parse(image_base64)
+        return OmniparserResult(dino_labled_img, label_coordinates, parsed_content_list, image_path, image.size[0], image.size[1], phrases)
+    
+    def parse_image_path_without_local_semantics(self, image_path: str) -> OmniparserResult:
+        image_base64 = encode_image(image_path)
+        image = Image.open(image_path)
+        dino_labled_img, label_coordinates, parsed_content_list, phrases = self.parse_without_local_semantics(image_base64)
         return OmniparserResult(dino_labled_img, label_coordinates, parsed_content_list, image_path, image.size[0], image.size[1], phrases)
     
     # def parse_batch_image_path(self, image_paths: list[str]) -> list[OmniparserResult]:

@@ -115,12 +115,15 @@ def get_omniparser_result_model(omniparser_result: OmniparserResult
     logger.info(f"Created omniparser result model for event_id: {event_id}")
     return result
     
-def get_omniparser_inference_data(screenshot_events: List[ScreenshotEvent]) -> OmniParserResultModelList:
+def get_omniparser_inference_data(screenshot_events: List[ScreenshotEvent], caption_icons: bool = True) -> OmniParserResultModelList:
     omniparser = Omniparser()
     result : List[OmniParserResultModel] = []
     for screenshot_event in screenshot_events:
         logger.info(f"Parsing image path: {screenshot_event.screenshot_path}")
-        omniparser_result = omniparser.parse_image_path(screenshot_event.screenshot_path)
+        if caption_icons:
+            omniparser_result = omniparser.parse_image_path(screenshot_event.screenshot_path)
+        else:
+            omniparser_result = omniparser.parse_image_path_without_local_semantics(screenshot_event.screenshot_path)
         logger.info(f"Created omniparser result for event_id: {screenshot_event.event_id}")
         result.append(get_omniparser_result_model(omniparser_result, 
                                                 screenshot_event.event_id, 
