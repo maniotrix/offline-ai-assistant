@@ -1,11 +1,6 @@
-import sys
-sys.path.append('C:/Users/Prince/Documents/GitHub/Proejct-Karna/offline-ai-assistant/karna-python-backend')
-
 from PIL import Image, ImageDraw
 
 import os
-
-from inference.omniparser.omni_helper import annotate_omniparser_result_model
 
       
 def merge_images(image_files, output_dir, output_filename):
