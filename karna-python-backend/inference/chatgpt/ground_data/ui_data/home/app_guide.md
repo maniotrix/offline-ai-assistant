@@ -1,104 +1,5 @@
 <!-- markdownlint-disable -->
-    ChatGPT's user interface is designed to provide a seamless and intuitive conversational experience. Below is a detailed breakdown of its UI components:
-
-    ---
-
-    **1. Sidebar Navigation**
-
-    - **Position:** Left
-    - **Persistent:** Yes
-    - **Layout:** Vertical
-    - **Component Types:** Icon, Link
-    - **Collection Type:** List
-    - **Interaction Types:** Link
-    - **Notes:** The sidebar provides access to features such as starting a new chat, viewing chat history, and accessing settings. Each item is represented by an icon and a label.
-    - **Nested Path Examples:**
-    - `sidebar.nav.new_chat`
-    - `sidebar.nav.history`
-    - `sidebar.nav.settings`
-
-    **2. Header / Top Bar**
-
-    - **Position:** Top
-    - **Persistent:** Yes
-    - **Layout:** Horizontal
-    - **Components:** ChatGPT Logo, Model Selector, Account Menu
-    - **Component Types:** Logo, Dropdown, Icon
-    - **Interaction Types:** Click
-    - **Notes:** The top bar includes the ChatGPT logo linking to the homepage, a dropdown to select the AI model version (e.g., GPT-3.5, GPT-4), and an account menu for user profile and subscription details.
-    - **Nested Path Examples:**
-    - `header.logo`
-    - `header.model_selector.dropdown`
-    - `header.account_menu.icon`
-
-    **3. Main Content Area**
-
-    - **Position:** Center
-    - **Persistent:** No
-    - **Layout:** Vertical Chat Interface
-    - **Component Types:** User Message, AI Response
-    - **Collection Type:** List
-    - **Interaction Types:** Text Input, Button
-    - **Notes:** The main content area displays the ongoing conversation between the user and ChatGPT. User messages and AI responses are presented in a threaded format.
-    - **Nested Path Examples:**
-    - `main.chat.user_message`
-    - `main.chat.ai_response`
-
-    **4. Input Area**
-
-    - **Position:** Bottom
-    - **Persistent:** Yes
-    - **Layout:** Horizontal
-    - **Component Types:** Text Input Field, Send Button
-    - **Interaction Types:** Text Input, Click
-    - **Notes:** This area allows users to type their messages or prompts and send them to ChatGPT.
-    - **Nested Path Examples:**
-    - `input_area.text_input`
-    - `input_area.send_button`
-
-    **5. Footer**
-
-    - **Position:** Bottom
-    - **Persistent:** Yes
-    - **Layout:** Horizontal
-    - **Component Types:** Links (e.g., Terms of Service, Privacy Policy), Version Information
-    - **Interaction Types:** Link
-    - **Notes:** The footer contains links to important legal documents and displays the current version of ChatGPT.
-    - **Nested Path Examples:**
-    - `footer.link.terms_of_service`
-    - `footer.link.privacy_policy`
-    - `footer.version_info`
-
-    **6. Modals / Overlays**
-
-    - **Type:** Settings Modal, Subscription Prompt
-    - **Visible:** False (appears upon user interaction)
-    - **Interaction Types:** Form Input, Button
-    - **Notes:** These elements are triggered by specific actions, such as accessing settings or subscribing to premium features.
-    - **Nested Path Examples:**
-    - `modal.settings`
-    - `modal.subscription_prompt`
-
-    ---
-
-    **Persistent vs. Dynamic UI Table**
-
-    | Section         | Persistent? | Description                                             |
-    |-----------------|-------------|---------------------------------------------------------|
-    | Sidebar         | Yes         | Always visible for navigation across features           |
-    | Header          | Yes         | Fixed at the top, providing model selection and account access |
-    | Main Content    | No          | Displays dynamic conversation content                   |
-    | Input Area      | Yes         | Consistently present for user input                     |
-    | Footer          | Yes         | Always shown with legal links and version information   |
-    | Modals/Overlays | No          | Appear contextually based on user actions               |
-
-    ---
-
-    This structured layout ensures that users can effectively engage in conversations with ChatGPT, manage their interactions, and access various features within a user-friendly interface. 
-
-
-----------------------
-##Layout Guide:
+## Layout Guide:
 #### Description
 The Chatgpt has 3 top-level clusters.
 Header- Top
@@ -109,7 +10,17 @@ Header contains three required buttons:
     1. Show/Hide Left Sidebar button
     2. DropDown Model Selection Button
     3. Enable/Disable Temporary Chat Button
-####Required UI Structure:
+
+Main Area:
+    1. A list of alternate user message and assistant messages with different background for each message
+        1. All user messages are right aligned
+        1. All assitant responses are left aligned and have copy buttton just below response. If not found, users can focus by mouse click or mouse hover over a assistant response to show these buttons.
+    2. User Message Controls which contains input area, send button, and a button to attach files
+
+Anti-bot Controls: The App also use cloudfare verification at any point of time during conversation, at this point the display screen with text like verify you are human.
+
+#### Required UI Structure:
+```
 App layout-vertical
     header layout - horizontal type- container[] persistent- yes position-0
         container name-left_sidebar_controls layout - horizontal type- icon_button[] persistent- yes position- 0
@@ -144,6 +55,25 @@ App layout-vertical
         user_assistant_container
             container type-user_container position-0
             container type-assistant_container position-1
+```
+
+#### Task and related steps perormed by user in provided screenshots as single stitched file
+Note: Screenshots may not be provided for some steps which does not involve user interaction with the app or using keyboard shortcut to interact with the app or screenshot is renundant to process.
+Task - Send one or more messages and copy latest response of assistant
+    Steps:
+    1. close left side bar if open, screenshot index - 1, mouse coords- {}
+    2. Choose model, screenshot index - 2, mouse coords- {}
+    3. Activate temporary chat button, screenshot index - 3, mouse coords- {}
+    4. Focus into the user message controls input area, screenshot index - 4, mouse coords- {}
+    5. Paste latest clipboard content - using keyboard shortcut, screenshot index - None, keys - ctrl+v
+    6. Send user message by pressing enter, screenshot index - None, keys - Enter
+    7. Check every five seconds if send button icon restored to initial state before step 3, screenshot index - None
+    8. focus inside user and assistant messages area, screenshot index - 5, mouse coords- {}
+    9. Scroll to end of chat area, screenshot index - None, keys - End
+    10. Locate and click the latest assistant reponse, screenshot index - None
+    11. Locate copy button below assistant response, screenshot index - None
+    12. Click copy button to copy assistant response to clipboard, screenshot index - 6, mouse coords- {}
+
 
 
         

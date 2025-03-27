@@ -10,3 +10,6 @@
             at this point, take screenshot and capture mouse coords
             use ocr to see if icon has copy tooltip
             if yes, trigger left click to copy to clipboard
+
+
+# lets use attentation mechanism which decides which cluster to focus by vision agent and keep its attention on
