@@ -58,21 +58,22 @@ App layout-vertical
 ```
 
 #### Task and related steps perormed by user in provided screenshots as single stitched file
-Note: Screenshots may not be provided for some steps which does not involve user interaction with the app or using keyboard shortcut to interact with the app or screenshot is renundant to process.
+Note: Screenshots may not be provided for some steps which does not involve user interaction with the app or using keyboard shortcut to interact with the app or screenshot is renundant to process or screenshots for semantically similar actions.
 Task - Send one or more messages and copy latest response of assistant
     Steps:
     1. close left side bar if open, screenshot index - 1, mouse coords- {}
-    2. Choose model, screenshot index - 2, mouse coords- {}
-    3. Activate temporary chat button, screenshot index - 3, mouse coords- {}
-    4. Focus into the user message controls input area, screenshot index - 4, mouse coords- {}
+    2. Open model selection menu, screenshot index - 2, mouse coords- {}
+    3. Choose model, screenshot index - 3, mouse coords- {}
+    3. Activate temporary chat button, screenshot index - 4, mouse coords- {}
+    4. Focus into the user message controls input area, screenshot index - 5, mouse coords- {}
     5. Paste latest clipboard content - using keyboard shortcut, screenshot index - None, keys - ctrl+v
     6. Send user message by pressing enter, screenshot index - None, keys - Enter
     7. Check every five seconds if send button icon restored to initial state before step 3, screenshot index - None
-    8. focus inside user and assistant messages area, screenshot index - 5, mouse coords- {}
+    8. focus inside user and assistant messages area, screenshot index - 6, mouse coords- {}
     9. Scroll to end of chat area, screenshot index - None, keys - End
     10. Locate and click the latest assistant reponse, screenshot index - None
     11. Locate copy button below assistant response, screenshot index - None
-    12. Click copy button to copy assistant response to clipboard, screenshot index - 6, mouse coords- {}
+    12. Click copy button to copy assistant response to clipboard, screenshot index - 7, mouse coords- {}
 
 
 
