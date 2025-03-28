@@ -1,0 +1,35 @@
+import subprocess
+import os
+
+def copy_files_with_powershell(file_paths):
+    # Ensure file_paths are absolute
+    abs_paths = [os.path.abspath(path) for path in file_paths]
+    # Build the PowerShell command
+    ps_script = os.path.join(os.path.dirname(__file__), 'copy_files_to_clipboard.ps1')
+    command = [
+        "powershell.exe",
+        "-ExecutionPolicy", "Bypass", 
+        "-File", ps_script,
+        "-Files"
+    ] + abs_paths
+    
+    # Run the PowerShell script and wait for it to complete
+    result = subprocess.run(command, check=True, capture_output=True, text=True)
+    print(result.stdout)
+    if result.stderr:
+        print("Error:", result.stderr)
+
+# Example usage:
+if __name__ == '__main__':
+    dir_path = os.path.dirname(os.path.abspath(__file__))
+    screenshot_raw_dir = os.path.join(dir_path, "ground_data", "screenshots", "raw")
+    try:
+        # Get absolute paths for image files
+        image_files = [os.path.join(screenshot_raw_dir, f)
+                       for f in os.listdir(screenshot_raw_dir)
+                       if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+        image_files.sort(key=lambda x: os.path.getmtime(x))
+        copy_files_with_powershell(image_files)
+        print("Files copied to clipboard successfully.")
+    except Exception as e:
+        print(f"Error copying files to clipboard: {e}")

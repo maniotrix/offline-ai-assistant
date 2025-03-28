@@ -191,8 +191,8 @@ def copy_prompt_to_clipboard(prompt: str):
         print("Prompt copied to clipboard")
     except Exception as e:
         print(f"Error copying prompt to clipboard: {e}")
-        
-if __name__ == "__main__":
+
+def test_copy_prompt_to_clipboard():
     app_name = "ChatGPT"
     app_section = "Home"
     device_class = "desktop"
@@ -202,3 +202,5 @@ if __name__ == "__main__":
     print(cleaned_prompt)
     copy_prompt_to_clipboard(cleaned_prompt)
 
+if __name__ == "__main__":
+    test_copy_prompt_to_clipboard()
