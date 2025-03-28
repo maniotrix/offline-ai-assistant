@@ -6,6 +6,8 @@ from omniparser.clustering_models import ClusterModelHeirarchy, get_crop_area_fr
 from logging import getLogger
 import numpy as np
 from sklearn.cluster import DBSCAN
+import base64
+from io import BytesIO
 
 logger = getLogger(__name__)
 class ClusterPreprocessor:
@@ -66,6 +68,7 @@ class ClusterResult:
     """
     cluster_result_id: str
     parsed_content_results: List[ParsedContentResult]
+    cluster_bbox_xyxy: List[float]
 
 class ClusterWorker:
     """
@@ -281,6 +284,16 @@ class ClusterDBSCANWorker(ClusterWorker):
         
         return horiz_clusters
     
+    def calculate_cluster_bbox_xyxy(self, parsed_content_results: List[ParsedContentResult]) -> List[float]:
+        """
+        Calculate the bounding box of the cluster.
+        """
+        min_x = min([result.bbox[0] for result in parsed_content_results])
+        min_y = min([result.bbox[1] for result in parsed_content_results])
+        max_x = max([result.bbox[2] for result in parsed_content_results])
+        max_y = max([result.bbox[3] for result in parsed_content_results])
+        return [min_x, min_y, max_x, max_y]
+    
     def cluster(self) -> List[ClusterResult]:
         """
         Cluster the parsed content results and return the clustered results.
@@ -314,38 +327,200 @@ class ClusterDBSCANWorker(ClusterWorker):
                 # Create a cluster result
                 cluster_result = ClusterResult(
                     cluster_result_id=cluster_id,
-                    parsed_content_results=horiz_content
+                    parsed_content_results=horiz_content,
+                    cluster_bbox_xyxy=self.calculate_cluster_bbox_xyxy(horiz_content)
                 )
                 
                 self.cluster_results.append(cluster_result)
         
         return self.cluster_results
     
+    def get_visualisation_for_cluster_results(self) -> Tuple[str, np.ndarray]:
+        """
+        Get the visualisation for the cluster results using supervision package.
+        Also adds the worker attention area as a bbox on the original image.
+        
+        Returns:
+            Tuple containing:
+            - Base64 encoded string of the visualization image
+            - Numpy array of the visualization image
+        """
+        # Import supervision package
+        import supervision as sv
+        import cv2
+        import os
+        from PIL import Image
+        import numpy as np
+        from io import BytesIO
+        
+        # Get the original image path from omniparser result
+        original_image_path = self.cluster_preprocessor.omniparser_result.original_image_path
+        if not os.path.exists(original_image_path):
+            logger.error(f"Original image not found at path: {original_image_path}")
+            return "", np.array([])
+            
+        # Read the image
+        image = cv2.imread(original_image_path)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        
+        # Create a detections object from cluster results
+        detections_list = []
+        
+        # Add worker attention area bbox
+        attention_bbox = self.cluster_preprocessor.clustering_worker_attention_bbox
+        attention_xyxy = [
+            attention_bbox.x,
+            attention_bbox.y,
+            attention_bbox.x + attention_bbox.width,
+            attention_bbox.y + attention_bbox.height
+        ]
+        
+        # Create annotators with the appropriate colors
+        # Use specific colors instead of trying to iterate ColorPalette
+        attention_box_annotator = sv.BoxAnnotator(color=sv.Color.RED)
+        cluster_box_annotator = sv.BoxAnnotator(color=sv.Color.GREEN)
+        
+        # Draw the worker attention area
+        attention_detections = sv.Detections(
+            xyxy=np.array([attention_xyxy]), 
+            class_id=np.array([0]),
+            confidence=np.array([1.0])
+        )
+        
+        # Create labels for attention area
+        attention_labels = ["Worker Attention Area"]
+        
+        # Draw attention area
+        image = attention_box_annotator.annotate(
+            scene=image,
+            detections=attention_detections,
+            labels=attention_labels
+        )
+        
+        # Collect all cluster boxes
+        all_boxes = []
+        all_class_ids = []
+        all_confidences = []
+        
+        # Add each cluster as a detection
+        for i, cluster_result in enumerate(self.cluster_results):
+            # Add cluster bounding box
+            all_boxes.append(cluster_result.cluster_bbox_xyxy)
+            all_class_ids.append(i+1)  # Start from 1 to differentiate from attention area
+            all_confidences.append(1.0)
+        
+        if all_boxes:
+            # Create Detections object for clusters
+            cluster_detections = sv.Detections(
+                xyxy=np.array(all_boxes),
+                class_id=np.array(all_class_ids),
+                confidence=np.array(all_confidences)
+            )
+            
+            # Create labels for clusters
+            cluster_labels = [f"Cluster {result.cluster_result_id}" for result in self.cluster_results]
+            
+            # Draw clusters with the cluster annotator
+            image = cluster_box_annotator.annotate(
+                scene=image,
+                detections=cluster_detections,
+                labels=cluster_labels
+            )
+        
+        # Convert the image to base64
+        pil_img = Image.fromarray(image)
+        buffer = BytesIO()
+        pil_img.save(buffer, format="PNG")
+        img_str = base64.b64encode(buffer.getvalue()).decode('utf-8')
+        
+        return img_str, image
+    
+    def save_visualization_to_file(self, base64_img: str, output_path: Optional[str] = None) -> str:
+        """
+        Save a base64 encoded image to a file.
+        
+        Args:
+            base64_img: Base64 encoded image string
+            output_path: Optional output path. If not provided, a default path will be used.
+            
+        Returns:
+            Path to the saved file
+        """
+        import base64
+        import os
+        from PIL import Image
+        from io import BytesIO
+        
+        # Decode the base64 image
+        img_data = base64.b64decode(base64_img)
+        img = Image.open(BytesIO(img_data))
+        
+        # Generate default output path if not provided
+        if not output_path:
+            original_image_path = self.cluster_preprocessor.omniparser_result.original_image_path
+            output_dir = os.path.dirname(original_image_path)
+            base_name = os.path.basename(original_image_path)
+            name, ext = os.path.splitext(base_name)
+            output_path = os.path.join(output_dir, f"{name}_clustered{ext}")
+        
+        # Save the image
+        img.save(output_path)
+        
+        return output_path
 
 
-def test_cluster_dbscan_worker():
+def test_cluster_dbscan_worker(save_visualization=False):
     # get omniparser result from image path
     import os
     from omniparser.omni_helper import get_omniparser_inference_data_from_image_path
     # get current directory
     current_dir = os.path.dirname(os.path.abspath(__file__))
     image_path = os.path.join(current_dir, "cluster_test.png")
-    omniparser_result = get_omniparser_inference_data_from_image_path(image_path)
-    # create cluster preprocessor
-    parsed_content_results = omniparser_result.parsed_content_list
-    cluster_model_heirarchy = ClusterModelHeirarchy(os.path.join(current_dir, "sample_cluster_rules.json"))
-    cluster_preprocessor = ClusterPreprocessor(parsed_content_results, 
-                                               cluster_model_heirarchy, 
-                                               omniparser_result)
-    # create cluster worker
-    cluster_worker = ClusterDBSCANWorker(cluster_preprocessor)
-    # cluster
-    cluster_results = cluster_worker.cluster()
     
-    # print the cluster results
-    for cluster_result in cluster_results:
-        print(cluster_result)
+    try:
+        omniparser_result = get_omniparser_inference_data_from_image_path(image_path)
+        # create cluster preprocessor
+        parsed_content_results = omniparser_result.parsed_content_results
+        cluster_model_heirarchy = ClusterModelHeirarchy(os.path.join(current_dir, "sample_cluster_rules.json"))
+        cluster_preprocessor = ClusterPreprocessor(parsed_content_results, 
+                                                cluster_model_heirarchy, 
+                                                omniparser_result.omniparser_result)
+        # create cluster worker
+        cluster_worker = ClusterDBSCANWorker(cluster_preprocessor)
+        # cluster
+        cluster_results = cluster_worker.cluster()
+        
+        # print the cluster results
+        for cluster_result in cluster_results:
+            print(cluster_result)
+        
+        # Generate and get base64 visualization
+        try:
+            img_str, _ = cluster_worker.get_visualisation_for_cluster_results()
+            if img_str:
+                print(f"Visualization successfully generated! Base64 encoded image length: {len(img_str)} bytes")
+                
+                # Save the visualization to a file if requested
+                if save_visualization:
+                    output_path = cluster_worker.save_visualization_to_file(img_str)
+                    print(f"Visualization saved to file: {output_path}")
+            else:
+                print("Visualization could not be generated")
+        except Exception as e:
+            print(f"Error generating visualization: {e}")
+    except Exception as e:
+        print(f"Error in clustering process: {e}")
 
 if __name__ == "__main__":
-    test_cluster_dbscan_worker()
+    import argparse
+    
+    # Create argument parser
+    parser = argparse.ArgumentParser(description='Run DBSCAN clustering on parsed content results.')
+    parser.add_argument('--save', action='store_true', help='Save the visualization to a file')
+    
+    # Parse arguments
+    args = parser.parse_args()
+    
+    # Run the test with the specified arguments
+    test_cluster_dbscan_worker(save_visualization=args.save)
 
