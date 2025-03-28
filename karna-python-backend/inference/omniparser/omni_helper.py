@@ -139,6 +139,16 @@ def get_omniparser_inference_data(screenshot_events: List[ScreenshotEvent], capt
     )
     return result_list
 
+def get_omniparser_inference_data_from_image_path(image_path: str) -> OmniParserResultModel:
+    omniparser = Omniparser()
+    omniparser_result = omniparser.parse_image_path(image_path)
+    return get_omniparser_result_model(omniparser_result, 
+                                        event_id="-1", 
+                                        project_uuid="-1", 
+                                        command_uuid="-1", 
+                                        timestamp=datetime.now(), 
+                                        description="Omniparser result")
+
 def get_omniparser_inference_data_from_json(json_file_path: str) -> OmniParserResultModelList:
     logger.info(f"Loading screenshot events from JSON file: {json_file_path}")
         
