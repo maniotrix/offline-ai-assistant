@@ -1,11 +1,11 @@
 from typing import List, Dict, Any
-
+from dataclasses import dataclass
 from omniparser.omni_helper import ParsedContentResult, OmniparserResult
 from omniparser.clustering_models import ClusterModelHeirarchy, get_crop_area_from_bbox_type
 from logging import getLogger
 
 logger = getLogger(__name__)
-class ClusterWorker:
+class ClusterPreprocessor:
     """
     This class contains the code for clustering the parsed content results.
     
@@ -56,6 +56,35 @@ class ClusterWorker:
         # convert to absolute bbox
         return absolute_bbox
 
+@dataclass
+class ClusterResult:
+    """
+    This class contains the cluster id and the parsed content results within the cluster.
+    """
+    cluster_result_id: str
+    parsed_content_results: List[ParsedContentResult]
 
-    def cluster(self):
-        pass
+class ClusterWorker:
+    """
+    This cluster worker takes ClusterPreprocessor object and clusters the parsed content results,
+    within the worker attention bbox, with the help of ClusterModelHeirarchy object and 
+    returns the clustered results containing the cluster id and the parsed content results within the cluster.
+    
+    Guidelines:
+    1. Get the clustering heirarchy
+    2. Get the parsed content results
+    3. Get the worker attention bbox
+    4. Remove parsed content results that are not within the worker attention bbox
+    5. Using a clustering algorithm, find all horizontal and vertical clusters within the worker attention bbox
+    6. For cluster in clustering heirarchy, Where the cluster layout is container, 
+    just return all bboxes which are within the cluster
+    """
+    cluster_results: List[ClusterResult]
+    
+    def __init__(self, cluster_preprocessor: ClusterPreprocessor):
+        self.cluster_preprocessor = cluster_preprocessor
+
+    def cluster(self) -> List[ClusterResult]:
+        raise NotImplementedError("This method should be implemented by the subclass")
+        return self.cluster_results
+

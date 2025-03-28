@@ -2,33 +2,33 @@
     "cluster_rules": [
         {
             "cluster_id": "1",
-            "cluster_name": "App Root",
+            "cluster_name": "App Root Cluster",
             "root_crop_area_type": "website_render",
             "cluster_layout": "container",
             "visibility_type": "persistent",
             "children": [
                 {
                     "cluster_id": "1.1",
-                    "cluster_name": "Header",
+                    "cluster_name": "Header Cluster",
                     "cluster_layout": "horizontal",
                     "visibility_type": "persistent",
                     "children": [
                         {
                             "cluster_id": "1.1.1",
-                            "cluster_name": "Left Sidebar Controls Container",
+                            "cluster_name": "Left Sidebar Controls Cluster",
                             "cluster_layout": "horizontal",
                             "visibility_type": "persistent",
                             "children": []
                         },
                         {
                             "cluster_id": "1.1.2",
-                            "cluster_name": "Model Selection Container",
+                            "cluster_name": "Model Selection Cluster",
                             "cluster_layout": "vertical",
                             "visibility_type": "persistent",
                             "children": [
                                 {
                                     "cluster_id": "1.1.2.1",
-                                    "cluster_name": "Model Selection Menu Container",
+                                    "cluster_name": "Model Selection Menu Cluster",
                                     "cluster_layout": "vertical",
                                     "visibility_type": "dynamic",
                                     "children": []
@@ -39,38 +39,38 @@
                 },
                 {
                     "cluster_id": "1.2",
-                    "cluster_name": "Main Area",
+                    "cluster_name": "Main Area Cluster",
                     "cluster_layout": "vertical",
                     "visibility_type": "persistent",
                     "children": [
                         {
                             "cluster_id": "1.2.1",
-                            "cluster_name": "Chat List Container",
+                            "cluster_name": "Chat List Cluster",
                             "cluster_layout": "vertical",
                             "visibility_type": "persistent",
                             "children": [
                                 {
                                     "cluster_id": "1.2.1.1",
-                                    "cluster_name": "User Assistant Container",
+                                    "cluster_name": "User Assistant Cluster",
                                     "cluster_layout": "vertical",
                                     "visibility_type": "dynamic",
                                     "children": [
                                         {
                                             "cluster_id": "1.2.1.1.1",
-                                            "cluster_name": "User Container",
+                                            "cluster_name": "User Cluster",
                                             "cluster_layout": "vertical",
                                             "visibility_type": "persistent",
                                             "children": []
                                         },
                                         {
                                             "cluster_id": "1.2.1.1.2",
-                                            "cluster_name": "Assistant Container",
+                                            "cluster_name": "Assistant Cluster",
                                             "cluster_layout": "vertical",
                                             "visibility_type": "persistent",
                                             "children": [
                                                 {
                                                     "cluster_id": "1.2.1.1.2.1",
-                                                    "cluster_name": "Assistant Controls Container",
+                                                    "cluster_name": "Assistant Controls Cluster",
                                                     "cluster_layout": "horizontal",
                                                     "visibility_type": "dynamic",
                                                     "children": []
