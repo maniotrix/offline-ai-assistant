@@ -24,7 +24,7 @@ class ParsedContentResult:
     type	bbox	interactivity	content	source	ID 
     """
     type: str
-    bbox: List[int]
+    bbox: List[float]
     interactivity: bool
     content: str
     source: str
@@ -175,7 +175,7 @@ def update_parsed_content_result_list(parsed_content_result_list: List[ParsedCon
                                     filter_id: int,
                                     update_content: str | None = None, # this is optional
                                     update_interactivity: bool | None = None, # this is optional
-                                    update_bbox: List[int] | None = None # this is optional
+                                    update_bbox: List[float] | None = None # this is optional
                                     ) -> List[ParsedContentResult]:
     for result in parsed_content_result_list:
         if result.id == filter_id:
