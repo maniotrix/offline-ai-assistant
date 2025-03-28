@@ -13,3 +13,4 @@
 
 
 # lets use attentation mechanism which decides which cluster to focus by vision agent and keep its attention on
+# chatgpt supports only file paste from clipoard at a time

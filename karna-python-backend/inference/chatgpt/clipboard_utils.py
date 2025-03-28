@@ -4,20 +4,23 @@ import os
 def copy_files_with_powershell(file_paths):
     # Ensure file_paths are absolute
     abs_paths = [os.path.abspath(path) for path in file_paths]
-    # Build the PowerShell command
+    # Build the full path to the PowerShell script
     ps_script = os.path.join(os.path.dirname(__file__), 'copy_files_to_clipboard.ps1')
+    # Construct the command exactly as in CMD
     command = [
         "powershell.exe",
-        "-ExecutionPolicy", "Bypass", 
-        "-File", ps_script,
-        "-Files"
+        "-ExecutionPolicy", "Bypass",
+        "-File", ps_script
     ] + abs_paths
-    
+
+    print("Running command:", command)
+
     # Run the PowerShell script and wait for it to complete
     result = subprocess.run(command, check=True, capture_output=True, text=True)
-    print(result.stdout)
+    
+    print("STDOUT:\n", result.stdout)
     if result.stderr:
-        print("Error:", result.stderr)
+        print("STDERR:\n", result.stderr)
 
 # Example usage:
 if __name__ == '__main__':
