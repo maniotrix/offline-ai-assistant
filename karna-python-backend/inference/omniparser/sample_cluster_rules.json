@@ -3,12 +3,7 @@
         {
             "cluster_id": "1",
             "cluster_name": "App Root",
-            "root_crop_area": {
-                "x": 0,
-                "y": 0,
-                "width": 1920,
-                "height": 1080
-            },
+            "root_crop_area_type": "website_render",
             "cluster_layout": "container",
             "visibility_type": "persistent",
             "children": [

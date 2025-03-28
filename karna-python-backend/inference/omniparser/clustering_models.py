@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import List
 import json
+from robot.bbox_factory import AbstractBoundingBox, get_bbox_factory_instance
 @dataclass
 class CropArea:
     """
@@ -11,7 +12,14 @@ class CropArea:
     width: int
     height: int
     
-
+def get_crop_area_from_bbox_type(bbox_type: str) -> CropArea:
+    bbox : AbstractBoundingBox = get_bbox_factory_instance().get_crop_box(bbox_type)
+    return CropArea(
+        x=bbox.x,
+        y=bbox.y,
+        width=bbox.width,
+        height=bbox.height
+    )
 @dataclass
 class BaseCluster:
     """
@@ -30,8 +38,7 @@ class RootCluster(BaseCluster):
     """
     This class represents a root cluster.
     """
-    root_crop_area: CropArea
-    
+    root_crop_area_type: str
 
 class ClusterModelHeirarchy:
     """
@@ -150,8 +157,7 @@ class ClusterModelHeirarchy:
         root_cluster_data = cluster_rules[0]
         
         # Process root crop area
-        crop_area_data = root_cluster_data.pop('root_crop_area')
-        root_crop_area = CropArea(**crop_area_data)
+        root_crop_area_type = root_cluster_data.pop('root_crop_area_type')
         
         # Ensure root cluster has a layout property (default to 'container' if not specified)
         if 'cluster_layout' not in root_cluster_data:
@@ -165,7 +171,7 @@ class ClusterModelHeirarchy:
         self.root_cluster = RootCluster(
             **root_cluster_data,
             children=children,
-            root_crop_area=root_crop_area
+            root_crop_area_type=root_crop_area_type
         )
     
     def _create_children_clusters(self, children_data: List[dict]) -> List[BaseCluster]:
@@ -241,12 +247,7 @@ class ClusterModelHeirarchy:
         
         # Add root_crop_area if this is a RootCluster
         if isinstance(cluster, RootCluster):
-            cluster_dict["root_crop_area"] = {
-                "x": cluster.root_crop_area.x,
-                "y": cluster.root_crop_area.y,
-                "width": cluster.root_crop_area.width,
-                "height": cluster.root_crop_area.height
-            }
+            cluster_dict["root_crop_area_type"] = cluster.root_crop_area_type
             
         return cluster_dict
     

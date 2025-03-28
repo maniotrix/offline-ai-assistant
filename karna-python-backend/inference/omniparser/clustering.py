@@ -1,7 +1,7 @@
 from typing import List, Dict, Any
 
 from omniparser.omni_helper import ParsedContentResult, OmniparserResult
-from omniparser.clustering_models import ClusterModelHeirarchy, CropArea
+from omniparser.clustering_models import ClusterModelHeirarchy, get_crop_area_from_bbox_type
 from logging import getLogger
 
 logger = getLogger(__name__)
@@ -18,12 +18,11 @@ class ClusterWorker:
 
     def __init__(self, parsed_content_results: List[ParsedContentResult],
                  clustering_heirarchy: ClusterModelHeirarchy,
-                 omniparser_result: OmniparserResult,
-                 root_cluster_crop_area: CropArea):
+                 omniparser_result: OmniparserResult):
         self.parsed_content_results = parsed_content_results
         self.clustering_heirarchy = clustering_heirarchy
-        self.root_cluster_crop_area = root_cluster_crop_area
         self.omniparser_result = omniparser_result
+        self.clustering_worker_attention_bbox = get_crop_area_from_bbox_type(self.clustering_heirarchy.root_cluster.root_crop_area_type)
         try:
             self._pre_process_parsed_content_results()
         except Exception as e:

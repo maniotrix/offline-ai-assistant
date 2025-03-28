@@ -7,6 +7,7 @@ import json
 import os
 from enum import Enum
 import pyautogui
+from base import SingletonMeta
 # base path
 BASE_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -27,7 +28,7 @@ class AbstractBoundingBox:
         self.width = width
         self.height = height
 
-class BBoxFactory:
+class BBoxFactory(metaclass=SingletonMeta):
     """
     This class is used to create a factory for the bounding boxes.
     """
@@ -125,14 +126,39 @@ class BBoxFactory:
             system_width,  # Use actual system dimensions from pyautogui
             system_height
         )
+        
+    def get_crop_box(self, crop_area_type: str) -> AbstractBoundingBox:
+        """
+        This method returns the crop box for the given crop area type.
+        """
+        if crop_area_type == "system":
+            return self.get_system_bbox()
+        elif crop_area_type == "chrome":
+            return self.get_chrome_bbox()
+        elif crop_area_type == "task_bar":
+            return self.get_task_bar_bbox()
+        elif crop_area_type == "website_render":
+            return self.get_website_render_bbox()
+        else:
+            raise ValueError(f"Invalid crop area type: {crop_area_type}")
 
+_bbox_factory = None
+
+def get_bbox_factory_instance():
+    global _bbox_factory
+    if _bbox_factory is None:
+        _bbox_factory = BBoxFactory()
+    return _bbox_factory
 
 if __name__ == "__main__":
-    bbox_factory = BBoxFactory()
-    print(bbox_factory.get_system_bbox().height)
-    print(bbox_factory.get_chrome_bbox().height)
-    print(bbox_factory.get_task_bar_bbox().height)
-    print(bbox_factory.get_website_render_bbox().height)
+    # TO run this file,
+    # run command after adding the parent directory to the path: 
+    # $env:PYTHONPATH="C:\Users\Prince\Documents\GitHub\Proejct-Karna\offline-ai-assistant\karna-python-backend"; cd karna-python-backend\robot; python bbox_factory.py
+    bbox_factory = get_bbox_factory_instance()
+    print(bbox_factory.get_crop_box("system").height)
+    print(bbox_factory.get_crop_box("chrome").height)
+    print(bbox_factory.get_crop_box("task_bar").height)
+    print(bbox_factory.get_crop_box("website_render").height)
 
 
 
