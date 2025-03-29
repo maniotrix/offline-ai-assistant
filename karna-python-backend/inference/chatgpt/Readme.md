@@ -18,5 +18,8 @@
 # there is alternate way to perform action without using attention clusters
    we use icon attention and text string attention mechanism to directly take action,
    given someone can teach the system which icons to focus or interact with
-      it can be either a screen captures annotated with human doing the task themselves and recording events at each step
-      can use SOTA vlms to generate data which can be used by simple ocr+yolo+keyboard shortcuts system
+      - it can be either a screen captures annotated with human doing the task themselves and recording events at each step
+      - can use SOTA vlms to generate data which can be used by simple ocr+yolo+keyboard shortcuts system
+      - this system can use mouse right click to capture icons which indicate ongoing process going on webpage,
+        which provides visual feedback before taking next action
+      - we need visual feedback for each step progress as well as completion, whether its a key/mouse event
