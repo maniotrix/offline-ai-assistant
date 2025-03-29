@@ -2,7 +2,7 @@ import base64
 from datetime import datetime
 from dataclasses import dataclass
 import io
-from typing import List, Union
+from typing import List, Union, Tuple
 import numpy as np
 import pandas as pd
 import torch
@@ -296,6 +296,45 @@ def annotate_omniparser_result_model(omniparser_result_model: OmniParserResultMo
     
     return encoded_image
 
+
+def extract_bbox_patch(parsed_content_result_with_raw_coords: ParsedContentResult, omniparser_result_model: OmniParserResultModel) -> Tuple[str, Image.Image]:
+    image_path = omniparser_result_model.omniparser_result.original_image_path
+    image_source = Image.open(image_path)
+    image_source = image_source.convert("RGB") # for CLIP
+    image_source = np.asarray(image_source)
+    h, w, _ = image_source.shape # type: ignore
+    
+    # get the bbox from the parsed content result and convert to integers
+    # format xyxy
+    bbox_xyxy = [int(coord) for coord in parsed_content_result_with_raw_coords.bbox]
+    x1, y1, x2, y2 = bbox_xyxy
+    
+    # Ensure coordinates are within image bounds
+    x1 = max(0, min(x1, w))
+    y1 = max(0, min(y1, h))
+    x2 = max(0, min(x2, w))
+    y2 = max(0, min(y2, h))
+    
+    # Ensure valid patch dimensions
+    if x2 <= x1 or y2 <= y1:
+        raise ValueError("Invalid bounding box dimensions")
+    
+    # Extract the patch using numpy slicing
+    bbox_patch = image_source[y1:y2, x1:x2].copy()
+    
+    # Convert back to PIL Image
+    bbox_patch_pil = Image.fromarray(bbox_patch)
+    
+    # Convert to base64
+    buffered = io.BytesIO()
+    bbox_patch_pil.save(buffered, format="PNG")
+    encoded_image = base64.b64encode(buffered.getvalue()).decode('ascii')
+    
+    return encoded_image, bbox_patch_pil
+    
+    
+    
+    
     
     
     
