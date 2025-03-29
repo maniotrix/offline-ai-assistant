@@ -213,6 +213,32 @@ class Merged_UI_IconBBoxes:
         return icon_bboxes_results
     
     @classmethod
+    def get_merged_ui_icon_bboxes_for_paths(cls, screenshot_paths: List[str], should_crop: bool = True) -> Dict[str, BoundingBoxResult]:
+        """
+        Get merged UI and icon bounding boxes from screenshot paths.
+        """
+        cls.logger.info(f"Processing {len(screenshot_paths)} screenshot paths")
+        # get the ui_bboxes and icon_bboxes from the screenshot paths
+        cls.logger.info(f"Found {len(screenshot_paths)} screenshot paths")
+        
+        # Get UI and icon bounding boxes
+        ui_bboxes_results = cls.get_ui_bboxes(screenshot_paths, should_crop=should_crop)
+        icon_bboxes_results = cls.get_icon_bboxes(screenshot_paths, should_crop=should_crop)
+        
+        # Merge the UI and icon bounding boxes
+        cls.logger.info("Merging UI and Icon bounding boxes")
+        merged_results = {}
+        for ui_result, icon_result in zip(ui_bboxes_results, icon_bboxes_results):
+            merged_results[ui_result.image_path] = cls.merge_icon_ui_bboxes(icon_result, ui_result)
+        
+        cls.logger.info(f"Completed merging, returning {len(merged_results)} merged bounding box results")
+        # show the merged results as dict in compact format as truncating the bounding boxes
+        cls.logger.info(f"Merged results: {merged_results}")
+        
+        return merged_results
+        
+        
+    @classmethod
     def get_merged_ui_icon_bboxes(cls, screenshot_events: List[ScreenshotEvent], should_crop: bool = True) -> Dict[str, BoundingBoxResult]:
         """
         Get merged UI and icon bounding boxes from screenshot events.
@@ -411,6 +437,15 @@ class Merged_UI_IconBBoxes:
         for event_id, merged_result in merged_results.items():
             cls.logger.info(f"Visualising merged bounding boxes from PIL images for event ID: {event_id}")
             cls.visualise_merged_bboxes(merged_result, merged_result.image_path, should_crop=should_crop)
+            
+    @classmethod
+    def visualise_merged_bboxes_for_paths(cls, image_paths: List[str]   , should_crop: bool = True):
+        """
+        Visualise merged bounding boxes for a list of screenshot paths.
+        """
+        merged_results = cls.get_merged_ui_icon_bboxes_for_paths(image_paths, should_crop=should_crop)
+        for image_path, merged_result in merged_results.items():
+            cls.visualise_merged_bboxes(merged_result, image_path, should_crop=should_crop)
 
     @classmethod
     def visualise_merged_bboxes(cls, merged_result: BoundingBoxResult, image_path: str, should_crop: bool = True):
