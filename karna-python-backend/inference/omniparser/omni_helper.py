@@ -16,6 +16,7 @@ import supervision as sv
 from util.utils import annotate, box_convert
 from util.box_annotator import BoxAnnotator
 logger = logging.getLogger(__name__)
+import re
 
 @dataclass
 class ParsedContentResult:
@@ -380,7 +381,10 @@ def save_pil_image_to_file(parsed_content_result: ParsedContentResult, pil_image
     # the file_name is the id+content of the parse content result in provided directory
     try:
         if parsed_content_result.source == "box_yolo_content_yolo":
-            file_path = os.path.join(output_dir, f"{parsed_content_result.id}_{parsed_content_result.content}.png")
+            description = parsed_content_result.content
+            # remove all special characters
+            description = re.sub(r'[^a-zA-Z0-9\s]', '', description)
+            file_path = os.path.join(output_dir, f"{parsed_content_result.id}_{description}.png")
             pil_image.save(file_path)
         else:
             logger.warning(f"Skipping saving PIL image to file for source: {parsed_content_result.id}")
