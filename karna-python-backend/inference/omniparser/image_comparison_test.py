@@ -102,11 +102,24 @@ def test_icon_similarity():
             print(np.round(similarity_matrix, 4))
             
             # Print pairwise similarity for each pair
-            print("\nPairwise similarities:")
+            print("\nPairwise similarities with classification:")
             for i in range(len(images)):
                 for j in range(i+1, len(images)):
-                    similarity = similarity_matrix[i, j]
-                    print(f"  {image_names[i]} ↔ {image_names[j]}: {similarity:.4f}")
+                    similarity_result = embedder.get_similarity_with_classification(images[i], images[j])
+                    score = similarity_result['score']
+                    classification = similarity_result['classification']
+                    print(f"  {image_names[i]} ↔ {image_names[j]}: {score:.4f} ({classification})")
+            
+            # Demonstrate the classification matrix
+            print("\nClassification matrix:")
+            classification_matrix = embedder.batch_classify_similarity_matrix(similarity_matrix)
+            
+            # Pretty print the classification matrix
+            print("    " + " | ".join(f"{name:<12}" for name in image_names))
+            print("    " + "-" * (16 * len(image_names)))
+            for i, row_name in enumerate(image_names):
+                row_values = " | ".join(f"{classification_matrix[i, j]:<12}" for j in range(len(image_names)))
+                print(f"{row_name:<4} {row_values}")
             
             # Visualize the similarity matrix if we have matplotlib
             try:
@@ -123,18 +136,20 @@ def test_icon_similarity():
                 print(f"Could not visualize similarity matrix: {e}")
             
             # Test specific theme pairs
-            print("\nTheme similarity tests:")
+            print("\nTheme similarity tests with classification:")
             for pair in light_dark_pairs:
                 if all(os.path.exists(os.path.join(test_dir, img)) for img in pair):
                     img1 = Image.open(os.path.join(test_dir, pair[0]))
                     img2 = Image.open(os.path.join(test_dir, pair[1]))
                     
                     start_time = time.time()
-                    similarity = embedder.get_similarity(img1, img2)
+                    similarity_result = embedder.get_similarity_with_classification(img1, img2)
                     end_time = time.time()
                     theme_comparison_time = (end_time - start_time) * 1000  # Convert to ms
                     
-                    print(f"  {pair[0]} ↔ {pair[1]}: {similarity:.4f} (took {theme_comparison_time:.2f} ms)")
+                    score = similarity_result['score']
+                    classification = similarity_result['classification']
+                    print(f"  {pair[0]} ↔ {pair[1]}: {score:.4f} ({classification}) (took {theme_comparison_time:.2f} ms)")
                 else:
                     print(f"  Skipping pair {pair} - files not found")
                 

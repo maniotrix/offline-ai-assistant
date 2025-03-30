@@ -4,7 +4,7 @@ import torchvision.models as models
 import torchvision.transforms as transforms
 from PIL import Image
 import numpy as np
-from typing import Optional, Union, List, Tuple, Any, Callable
+from typing import Optional, Union, List, Tuple, Any, Callable, Dict, Literal
 
 class ResNetImageEmbedder:
     """
@@ -44,7 +44,8 @@ class ResNetImageEmbedder:
         self.model = self.model.to(self.device)
         self.model.eval()
         
-        # Save the layer name to extract features from
+        # Save the model name and layer name for threshold selection
+        self.model_name = model_name
         self.layer_name = layer_name
         
         # Create a hook to extract the features from the specified layer
@@ -138,6 +139,56 @@ class ResNetImageEmbedder:
         
         return similarity
     
+    def classify_similarity(self, score: float) -> Literal["identical", "similar", "related", "different"]:
+        """
+        Classify the similarity score based on recommended thresholds for the current model.
+        
+        Args:
+            score: Similarity score from get_similarity() (0-1 range)
+            
+        Returns:
+            str: Classification of the similarity ("identical", "similar", "related", or "different")
+        """
+        if self.model_name == 'resnet50' and self.layer_name == 'avgpool':
+            # Thresholds for ResNet-50 with avgpool
+            if score > 0.85:
+                return "identical"
+            elif score > 0.70:
+                return "similar"
+            elif score > 0.50:
+                return "related"
+            else:
+                return "different"
+        else:
+            # Default thresholds for ResNet-18 with avgpool and other configurations
+            if score > 0.80:
+                return "identical"
+            elif score > 0.65:
+                return "similar"
+            elif score > 0.45:
+                return "related"
+            else:
+                return "different"
+    
+    def get_similarity_with_classification(self, img1: Image.Image, img2: Image.Image) -> Dict[str, Union[float, str]]:
+        """
+        Compute similarity between two images and return both the score and classification.
+        
+        Args:
+            img1: First PIL image
+            img2: Second PIL image
+            
+        Returns:
+            dict: Dictionary with keys 'score' (float) and 'classification' (str)
+        """
+        score = self.get_similarity(img1, img2)
+        classification = self.classify_similarity(score)
+        
+        return {
+            'score': score,
+            'classification': classification
+        }
+    
     def batch_get_embeddings(self, images: List[Image.Image]) -> np.ndarray:
         """
         Generate embeddings for a batch of images.
@@ -172,3 +223,21 @@ class ResNetImageEmbedder:
         similarity_matrix = np.dot(embeddings, embeddings.T)
         
         return similarity_matrix
+    
+    def batch_classify_similarity_matrix(self, similarity_matrix: np.ndarray) -> np.ndarray:
+        """
+        Classify each value in a similarity matrix based on recommended thresholds.
+        
+        Args:
+            similarity_matrix: Similarity matrix from batch_compute_similarity_matrix()
+            
+        Returns:
+            numpy.ndarray: Matrix of classification labels (2D array of strings)
+        """
+        classification_matrix = np.empty_like(similarity_matrix, dtype=object)
+        
+        for i in range(similarity_matrix.shape[0]):
+            for j in range(similarity_matrix.shape[1]):
+                classification_matrix[i, j] = self.classify_similarity(similarity_matrix[i, j])
+        
+        return classification_matrix
