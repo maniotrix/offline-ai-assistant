@@ -241,3 +241,4 @@ class ResNetImageEmbedder:
                 classification_matrix[i, j] = self.classify_similarity(similarity_matrix[i, j])
         
         return classification_matrix
+
