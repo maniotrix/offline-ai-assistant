@@ -1,4 +1,5 @@
 import os
+import time
 from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
@@ -52,18 +53,52 @@ def test_icon_similarity():
         images = [Image.open(path) for path in all_img_paths]
         image_names = [os.path.basename(path) for path in all_img_paths]
         
+        print(f"\nPerformance comparison - {len(images)} images:")
+        print("-" * 60)
+        print(f"{'Model':<10} | {'Avg Embed Time (ms)':<20} | {'Batch Time (ms)':<20} | {'Similarity Time (ms)':<20}")
+        print("-" * 60)
+        
         # Test each model
         for model_name, embedder in embedders.items():
             print(f"\n=== Testing {model_name} ===")
             
-            # Get embeddings
-            embeddings = embedder.batch_get_embeddings(images)
+            # Time individual embedding generation
+            embed_times = []
+            for image in images:
+                start_time = time.time()
+                _ = embedder.get_embedding(image)
+                end_time = time.time()
+                embed_times.append((end_time - start_time) * 1000)  # Convert to ms
             
-            # Compute similarity matrix
+            avg_embed_time = sum(embed_times) / len(embed_times)
+            
+            # Time batch embedding generation
+            start_time = time.time()
+            embeddings = embedder.batch_get_embeddings(images)
+            end_time = time.time()
+            batch_time = (end_time - start_time) * 1000  # Convert to ms
+            
+            # Time similarity matrix computation
+            start_time = time.time()
             similarity_matrix = embedder.batch_compute_similarity_matrix(images)
+            end_time = time.time()
+            similarity_time = (end_time - start_time) * 1000  # Convert to ms
+            
+            # Add to performance table
+            print(f"{model_name:<10} | {avg_embed_time:<20.2f} | {batch_time:<20.2f} | {similarity_time:<20.2f}")
+            
+            # Time pairwise similarity
+            print("\nPairwise timing tests:")
+            for i in range(len(images)):
+                for j in range(i+1, len(images)):
+                    start_time = time.time()
+                    similarity = embedder.get_similarity(images[i], images[j])
+                    end_time = time.time()
+                    comparison_time = (end_time - start_time) * 1000  # Convert to ms
+                    print(f"  {image_names[i]} ↔ {image_names[j]}: {similarity:.4f} (took {comparison_time:.2f} ms)")
             
             # Print results
-            print("Similarity matrix:")
+            print("\nSimilarity matrix:")
             print(np.round(similarity_matrix, 4))
             
             # Print pairwise similarity for each pair
@@ -93,8 +128,13 @@ def test_icon_similarity():
                 if all(os.path.exists(os.path.join(test_dir, img)) for img in pair):
                     img1 = Image.open(os.path.join(test_dir, pair[0]))
                     img2 = Image.open(os.path.join(test_dir, pair[1]))
+                    
+                    start_time = time.time()
                     similarity = embedder.get_similarity(img1, img2)
-                    print(f"  {pair[0]} ↔ {pair[1]}: {similarity:.4f}")
+                    end_time = time.time()
+                    theme_comparison_time = (end_time - start_time) * 1000  # Convert to ms
+                    
+                    print(f"  {pair[0]} ↔ {pair[1]}: {similarity:.4f} (took {theme_comparison_time:.2f} ms)")
                 else:
                     print(f"  Skipping pair {pair} - files not found")
                 
@@ -104,8 +144,14 @@ def test_icon_similarity():
 def main():
     """Main function to run the tests"""
     print("Testing ResNetImageEmbedder for icon similarity...")
+    
+    # Measure total execution time
+    start_time = time.time()
     test_icon_similarity()
-    print("\nTests completed.")
+    end_time = time.time()
+    
+    total_time = end_time - start_time
+    print(f"\nTests completed in {total_time:.2f} seconds.")
 
 if __name__ == "__main__":
     main() 
