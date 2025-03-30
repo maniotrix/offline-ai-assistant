@@ -81,6 +81,38 @@ class OmniParserResultModelList:
     command_uuid: str
     omniparser_result_models: List[OmniParserResultModel]
     
+class PreProcessor:
+    def __init__(self, omniparser_result: OmniparserResult, parsed_content_results: List[ParsedContentResult],):
+        self.omniparser_result = omniparser_result
+        self.parsed_content_results = parsed_content_results
+        
+    def pre_process_parsed_content_results(self):
+        """
+        This method pre-processes the parsed content results.
+        """
+        for parsed_content_result in self.parsed_content_results:
+            parsed_content_result.bbox = self._convert_relative_bbox_to_absolute_bbox(
+                parsed_content_result.bbox, 
+                self.omniparser_result.original_image_width, 
+                self.omniparser_result.original_image_height)
+            
+    def _convert_relative_bbox_to_absolute_bbox(self, relative_bbox: List[float], image_width: int, image_height: int) -> List[float]:
+        """
+        This method converts the relative bbox to absolute bbox.
+        original_realtive_bbox: [0.7447916865348816, 0.6000000238418579, 0.8177083134651184, 0.6222222447395325]
+        convert to absolute bbox
+        """
+        absolute_bbox = [
+            relative_bbox[0] * image_width,
+            relative_bbox[1] * image_height,
+            relative_bbox[2] * image_width,
+            relative_bbox[3] * image_height
+        ]
+        # round the bbox to the nearest integer
+        absolute_bbox = [float(round(coord)) for coord in absolute_bbox]
+        # convert to absolute bbox
+        return absolute_bbox
+    
     
 def get_parsed_content_df(omniparser_result: OmniparserResult) -> pd.DataFrame:
     df = pd.DataFrame(omniparser_result.parsed_content_list)
@@ -97,11 +129,17 @@ def get_omniparser_result_model(omniparser_result: OmniparserResult
                                 , command_uuid: str
                                 , timestamp: datetime
                                 , description: str
+                                , pre_process: bool = True
                                 ) -> OmniParserResultModel:
     logger.info(f"Getting omniparser result model for event_id: {event_id}")
     parsed_content_df = get_parsed_content_df(omniparser_result)
     logger.info(f"Converting parsed content df to bounding boxes for event_id: {event_id}")
     parsed_content_results = convert_parsed_content_df_to_bounding_boxes(parsed_content_df)
+    # pre-process the parsed content results and convert relative bbox to absolute bbox
+    if pre_process:
+        pre_processor = PreProcessor(omniparser_result=omniparser_result, parsed_content_results=parsed_content_results)
+        pre_processor.pre_process_parsed_content_results()
+        logger.info(f"Pre-processed parsed content results for event_id: {event_id}")
     logger.info(f"Creating omniparser result model for event_id: {event_id}")
     result = OmniParserResultModel(
         event_id=event_id,
@@ -298,6 +336,10 @@ def annotate_omniparser_result_model(omniparser_result_model: OmniParserResultMo
 
 
 def extract_bbox_patch(parsed_content_result_with_raw_coords: ParsedContentResult, omniparser_result_model: OmniParserResultModel) -> Tuple[str, Image.Image]:
+    # check if the parsed content result id is in the omniparser result model
+    if parsed_content_result_with_raw_coords.id not in [result.id for result in omniparser_result_model.parsed_content_results]:
+        raise ValueError(f"Parsed content result id {parsed_content_result_with_raw_coords.id} not found in omniparser result model")
+    
     image_path = omniparser_result_model.omniparser_result.original_image_path
     image_source = Image.open(image_path)
     image_source = image_source.convert("RGB") # for CLIP
@@ -331,6 +373,39 @@ def extract_bbox_patch(parsed_content_result_with_raw_coords: ParsedContentResul
     encoded_image = base64.b64encode(buffered.getvalue()).decode('ascii')
     
     return encoded_image, bbox_patch_pil
+
+def save_pil_image_to_file(parsed_content_result: ParsedContentResult, pil_image: Image.Image, output_dir: str):
+    # this takes in a PIL image and parse content result 
+    # where source is "box_yolo_content_yolo" and saves it to a file
+    # the file_name is the id+content of the parse content result in provided directory
+    try:
+        if parsed_content_result.source == "box_yolo_content_yolo":
+            file_path = os.path.join(output_dir, f"{parsed_content_result.id}_{parsed_content_result.content}.png")
+            pil_image.save(file_path)
+        else:
+            logger.warning(f"Skipping saving PIL image to file for source: {parsed_content_result.id}")
+    except Exception as e:
+        logger.error(f"Error saving PIL image to file: {e}")
+        raise e
+    
+def export_and_save_pil_image_to_file(parsed_content_results: List[ParsedContentResult], 
+                                    omniparser_result_model: OmniParserResultModel, output_dir: str):
+    for parsed_content_result in parsed_content_results:
+        # extract the bbox patch
+        encoded_image, bbox_patch_pil = extract_bbox_patch(parsed_content_result, omniparser_result_model)
+        # save the bbox patch to a file
+        save_pil_image_to_file(parsed_content_result, bbox_patch_pil, output_dir)
+    
+    
+    
+    
+    
+    # this takes in a parse content result and omniparser result model
+    # and saves the image to a file
+    # the file_name is the id+content of the parse content result in provided directory
+    # the file_name is the id+content of the parse content result in provided directory
+    # the file_name is the id+content of the parse content result in provided directory
+    
     
     
     
