@@ -1,10 +1,13 @@
 import os
 import numpy as np
 from PIL import Image
-from typing import Optional, Dict, Tuple, List, Union
+from typing import Optional, Dict, Tuple, List, Union, Set
 from image_comparison import ResNetImageEmbedder
 from dataclasses import dataclass
 from omni_helper import OmniParserResultModel, ParsedContentResult
+
+# Define known source types
+KNOWN_SOURCE_TYPES = ['box_ocr_content_ocr', 'box_yolo_content_yolo', 'box_yolo_content_ocr']
 
 @dataclass
 class PatchMatchResult:
@@ -28,6 +31,7 @@ class PatchMatcher(ResNetImageEmbedder):
         model_name: str = 'resnet50', 
         layer_name: str = 'avgpool',
         similarity_threshold: float = 0.85,
+        source_types: Optional[List[str]] = None,
         device: Optional[str] = None
     ):
         """
@@ -37,10 +41,21 @@ class PatchMatcher(ResNetImageEmbedder):
             model_name: Name of the ResNet model to use ('resnet18', 'resnet34', 'resnet50')
             layer_name: Name of the layer to extract features from
             similarity_threshold: Threshold for determining a match (0-1)
+            source_types: List of source types to match against (default: all sources)
+                Valid options are: 'box_ocr_content_ocr', 'box_yolo_content_yolo', 'box_yolo_content_ocr'
             device: Device to run inference on ('cuda', 'cpu'). If None, will use CUDA if available.
         """
         super().__init__(model_name=model_name, layer_name=layer_name, device=device)
         self.similarity_threshold = similarity_threshold
+        
+        # Set source types to filter by
+        self.source_types = set(source_types) if source_types else set(KNOWN_SOURCE_TYPES)
+        
+        # Validate source types
+        unknown_sources = self.source_types - set(KNOWN_SOURCE_TYPES)
+        if unknown_sources:
+            print(f"Warning: Unknown source types specified: {unknown_sources}")
+            print(f"Valid source types are: {KNOWN_SOURCE_TYPES}")
     
     def extract_image_from_bbox(
         self, 
@@ -67,7 +82,8 @@ class PatchMatcher(ResNetImageEmbedder):
     def find_matching_element(
         self,
         patch: Image.Image,
-        omniparser_result: OmniParserResultModel
+        omniparser_result: OmniParserResultModel,
+        source_types: Optional[List[str]] = None
     ) -> PatchMatchResult:
         """
         Find an element in the OmniParserResultModel that matches the given patch.
@@ -75,10 +91,14 @@ class PatchMatcher(ResNetImageEmbedder):
         Args:
             patch: The patch image to match
             omniparser_result: The OmniParserResultModel containing elements to match against
+            source_types: Optional list of source types to filter by (overrides the instance source_types)
             
         Returns:
             PatchMatchResult: The result of the matching process
         """
+        # Use provided source_types or fall back to instance source_types
+        active_source_types = set(source_types) if source_types is not None else self.source_types
+        
         # Get the full image
         original_image_path = omniparser_result.omniparser_result.original_image_path
         if not os.path.exists(original_image_path):
@@ -95,6 +115,10 @@ class PatchMatcher(ResNetImageEmbedder):
         
         # Compare against each parsed element
         for parsed_content in omniparser_result.parsed_content_results:
+            # Skip if source type doesn't match
+            if parsed_content.source not in active_source_types:
+                continue
+                
             # Extract the element image using the bounding box
             bbox = parsed_content.bbox
             try:
@@ -129,7 +153,8 @@ class PatchMatcher(ResNetImageEmbedder):
     def find_identical_element(
         self,
         patch: Image.Image,
-        omniparser_result: OmniParserResultModel
+        omniparser_result: OmniParserResultModel,
+        source_types: Optional[List[str]] = None
     ) -> PatchMatchResult:
         """
         Find an identical element in the OmniParserResultModel.
@@ -138,6 +163,7 @@ class PatchMatcher(ResNetImageEmbedder):
         Args:
             patch: The patch image to match
             omniparser_result: The OmniParserResultModel containing elements to match against
+            source_types: Optional list of source types to filter by (overrides the instance source_types)
             
         Returns:
             PatchMatchResult: The result of the matching process
@@ -153,7 +179,7 @@ class PatchMatcher(ResNetImageEmbedder):
             self.similarity_threshold = 0.80
         
         # Find the matching element
-        result = self.find_matching_element(patch, omniparser_result)
+        result = self.find_matching_element(patch, omniparser_result, source_types)
         
         # Restore the original threshold
         self.similarity_threshold = current_threshold
@@ -163,7 +189,8 @@ class PatchMatcher(ResNetImageEmbedder):
     def match_patch_across_multiple_results(
         self,
         patch: Image.Image,
-        omniparser_results: List[OmniParserResultModel]
+        omniparser_results: List[OmniParserResultModel],
+        source_types: Optional[List[str]] = None
     ) -> List[PatchMatchResult]:
         """
         Find matches for a patch across multiple OmniParserResultModel objects.
@@ -171,6 +198,7 @@ class PatchMatcher(ResNetImageEmbedder):
         Args:
             patch: The patch image to match
             omniparser_results: List of OmniParserResultModel objects to search through
+            source_types: Optional list of source types to filter by (overrides the instance source_types)
             
         Returns:
             List[PatchMatchResult]: List of match results, one for each input result model
@@ -178,8 +206,38 @@ class PatchMatcher(ResNetImageEmbedder):
         match_results = []
         
         for result_model in omniparser_results:
-            match_result = self.find_matching_element(patch, result_model)
+            match_result = self.find_matching_element(patch, result_model, source_types)
             if match_result.match_found:
                 match_results.append(match_result)
         
-        return match_results 
+        return match_results
+        
+    def set_source_types(self, source_types: List[str]) -> None:
+        """
+        Update the source types filter for this matcher.
+        
+        Args:
+            source_types: List of source types to match against
+        """
+        if not source_types:
+            raise ValueError("At least one source type must be specified")
+            
+        self.source_types = set(source_types)
+        
+        # Validate source types
+        unknown_sources = self.source_types - set(KNOWN_SOURCE_TYPES)
+        if unknown_sources:
+            print(f"Warning: Unknown source types specified: {unknown_sources}")
+            print(f"Valid source types are: {KNOWN_SOURCE_TYPES}")
+    
+    def get_available_source_types(self, omniparser_result: OmniParserResultModel) -> Set[str]:
+        """
+        Get the set of source types available in a specific OmniParserResultModel.
+        
+        Args:
+            omniparser_result: The OmniParserResultModel to analyze
+            
+        Returns:
+            Set[str]: Set of available source types
+        """
+        return {element.source for element in omniparser_result.parsed_content_results} 
