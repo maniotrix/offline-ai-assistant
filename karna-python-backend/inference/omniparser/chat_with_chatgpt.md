@@ -48,3 +48,4 @@
     // keyboard actions do not have target type
     // Target object type should be only defined in json file,if the step is taking any action on the screen.
     Here just like clicks and key press, wait is also an event.
+    // if we have info of a visual clue, no need to know about its text version or name
