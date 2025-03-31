@@ -42,12 +42,9 @@
         }
     ]
     }
-
+    // no of steps with mouse action should be equal to mouse events in json imported screenshot events
     // for validation step, we need to check if the image patch required in next step is present on the screen
     // target is not present in steps, calculated at runtime
     // keyboard actions do not have target type
     // Target object type should be only defined in json file,if the step is taking any action on the screen.
-    Here we are just like clicks and key press, wait is also an event.
-    // "wait_until_dependency_type": "box_yolo_content_yolo",
-            "wait_until_dependency_value": "previous"
-        this implies the target of provided step
+    Here just like clicks and key press, wait is also an event.
