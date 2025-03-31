@@ -1,11 +1,29 @@
 from typing import List, Optional
 from pydantic import BaseModel
+from enum import Enum
+from robot.chrome_robot import ChromeRobot
 
+class ScreenObjectType(str, Enum):
+    """
+    Screen object types found on the screen.
+    """
+    BOX_YOLO_CONTENT_OCR = "box_yolo_content_ocr"
+    BOX_OCR_CONTENT_OCR = "box_ocr_content_ocr"
+    BOX_YOLO_CONTENT_YOLO = "box_yolo_content_yolo"
+
+class ActionType(str, Enum):
+    MOUSE_ACTION = "mouse_action"
+    KEYBOARD_ACTION = "keyboard_action"
+    WAIT = "wait"
+
+class WaitUntilDependencyValueType(str, Enum):
+    THIS_STEP = "this_step"
+    PREVIOUS_STEP = "previous_step"
 
 class Step(BaseModel):
-    action_type: str
+    action_type: ActionType
     action: str
-    target_type: Optional[str] = None
+    target_type: Optional[ScreenObjectType] = None
     is_target_repeated: Optional[bool] = False
     target_repeated_layout_type: Optional[str] = None
     is_target_repeated_layout_index_fixed: Optional[bool] = None
@@ -28,6 +46,17 @@ class TaskPlanner():
     task_schema: Task
     def __init__(self, task_schema: Task):
         self.task_schema = task_schema
+
+class TaskExecutor():
+    task_planner: TaskPlanner
+    chrome_robot: ChromeRobot
+    def __init__(self, task_planner: TaskPlanner):
+        self.task_planner = task_planner
+        self.chrome_robot = ChromeRobot()
+
+    def execute_task(self):
+        # execute the task
+        pass
 
 if __name__ == "__main__":
     def test_task_schema(): 

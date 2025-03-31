@@ -140,4 +140,14 @@ class WindowsRobot(Robot):
     def close_window(self) -> None:
         """Close the current window (Alt+F4)."""
         self.hotkey('alt', 'f4')
-        logger.debug("Closed window") 
+        logger.debug("Closed window")
+        
+    def copy_text_to_clipboard(self) -> None:
+        """Copy text to clipboard (Ctrl+C)."""
+        self.hotkey('ctrl', 'c')
+        logger.debug("Copied text to clipboard")
+        
+    def paste_text_from_clipboard(self) -> None:
+        """Paste text from clipboard (Ctrl+V)."""
+        self.hotkey('ctrl', 'v')
+        logger.debug("Pasted text from clipboard")

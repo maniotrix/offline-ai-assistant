@@ -8,7 +8,7 @@
         {
             "action_type": "mouse_action",
             "action": "click",
-            "target_type": "ocr"
+            "target_type": "box_ocr_content_ocr"
         },
         {
             "action_type": "keyboard_action",
@@ -17,11 +17,13 @@
         {
             "action_type": "mouse_action",
             "action": "click",
-            "target_type": "icon"
+            "target_type": "box_yolo_content_yolo",
+            "keyboard_shortcut": "enter"
         },
         {
             "action_type": "wait",
-            "action": "none"
+            "action": "none",
+            "target_type": "box_yolo_content_yolo"
         },
         {
             "action_type": "mouse_action",
@@ -35,7 +37,7 @@
         {
             "action_type": "mouse_action",
             "action": "click",
-            "target_type": "icon",
+            "target_type": "box_yolo_content_yolo",
             "is_target_repeated": true,
             "target_repeated_layout_type": "vertical",
             "is_target_repeated_layout_index_fixed": true,
