@@ -49,3 +49,8 @@
     // Target object type should be only defined in json file,if the step is taking any action on the screen.
     Here just like clicks and key press, wait is also an event.
     // if we have info of a visual clue, no need to know about its text version or name
+    // the state of screen can be also determined by just comparing and finding visual clues like icons or texts on screen , hence identifying visual changes jsut like human vision
+    // need to better conceptualise this wait thing
+    // clicking at any random point at any point and pressing end is not very visual way of doing it, its mostly traditional botting
+        so when copy icon is there on screen for latest response, why are we clciking and pressing unneccesarily?
+        we should directly look for copy icon, and we keep track of copy icons programmatically?
