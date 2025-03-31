@@ -52,5 +52,7 @@
     // the state of screen can be also determined by just comparing and finding visual clues like icons or texts on screen , hence identifying visual changes jsut like human vision
     // need to better conceptualise this wait thing
     // clicking at any random point at any point and pressing end is not very visual way of doing it, its mostly traditional botting
-        so when copy icon is there on screen for latest response, why are we clciking and pressing unneccesarily?
-        we should directly look for copy icon, and we keep track of copy icons programmatically?
+        so when copy icon is there on screen for latest response, why are we clciking and pressing end unneccesarily?
+        we should directly look for copy icon, and we keep track of copy icons programmatically?, no not visual way how humans do?
+        need better approach, which is more visually aligned than hardcoding stuff
+        // do we need to capture even when user is not triggering any events?
