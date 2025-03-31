@@ -1,0 +1,20 @@
+{
+  "taskbarBBox": {
+    "x": 0,
+    "y": 1040,
+    "width": 1920,
+    "height": 40
+  },
+  "chromeBBox": {
+    "x": 952,
+    "y": -8,
+    "width": 976,
+    "height": 1056
+  },
+  "renderBBox": {
+    "x": 952,
+    "y": 121,
+    "width": 960,
+    "height": 927
+  }
+}
