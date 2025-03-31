@@ -20,7 +20,8 @@
             "target_type": "icon"
         },
         {
-            "action_type": "wait"
+            "action_type": "wait",
+            "action": "none"
         },
         {
             "action_type": "mouse_action",
