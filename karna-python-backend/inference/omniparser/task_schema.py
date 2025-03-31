@@ -29,16 +29,15 @@ class TaskPlanner():
     def __init__(self, task_schema: Task):
         self.task_schema = task_schema
 
-    
-            
-            
 if __name__ == "__main__":
-    # load the task schema from the json file
-    import os
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    task_schema = load_task_schema_from_json(os.path.join(current_dir, "chat_with_chatgpt.json"))
-    task_planner = TaskPlanner(task_schema)
-    # pretty print the task schema
-    print(task_planner.task_schema.model_dump_json(indent=4))
+    def test_task_schema(): 
+        # load the task schema from the json file
+        import os
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        task_schema = load_task_schema_from_json(os.path.join(current_dir, "chat_with_chatgpt.json"))
+        task_planner = TaskPlanner(task_schema)
+        # pretty print the task schema
+        print(task_planner.task_schema.model_dump_json(indent=4))
+    test_task_schema()
 
 
