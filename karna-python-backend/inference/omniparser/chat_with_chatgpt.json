@@ -5,43 +5,60 @@
     "app_type": "web",
     "app_url": "https://chatgpt.com/?temporary-chat=true",
     "steps": [
-        {
+        {   "step_id": 1,
+            "description": "Click on the chatgpt input box",
             "action_type": "mouse_action",
             "action": "click",
-            "target_type": "box_ocr_content_ocr"
+            "target_type": "box_ocr_content_ocr",
+            "visual_position_state": "dynamic",
+            "visual_count": "single"
         },
-        {
+        {   "step_id": 2,
+            "description": "Paste the message to the chatgpt input box",
             "action_type": "keyboard_action",
             "action": "paste"
         },
-        {
+        {   "step_id": 3,
+            "description": "Send the message to the chatgpt",
             "action_type": "mouse_action",
             "action": "click",
             "target_type": "box_yolo_content_yolo",
             "keyboard_shortcut": "enter"
         },
-        {
+        {   "step_id": 4,
+            "description": "Wait for the chatgpt to respond",
             "action_type": "wait",
             "action": "none",
             "target_type": "box_yolo_content_yolo"
         },
-        {
+        {   "step_id": 5,
+            "description": "Click on the latest chatgpt response",
             "action_type": "mouse_action",
             "action": "click",
-            "target_type": "none"
+            "target_type": "box_ocr_content_ocr",
+            "is_full_visual_expansion_required": true
         },
-        {
+        {   "step_id": 6,
+            "description": "Srcoll to end of the chatgpt chat history",
             "action_type": "keyboard_action",
             "action": "end"
         },
         {
+            "step_id": 7,
+            "description": "Click the first matching copy icon starting from the bottom",
             "action_type": "mouse_action",
             "action": "click",
             "target_type": "box_yolo_content_yolo",
-            "is_target_repeated": true,
-            "target_repeated_layout_type": "vertical",
-            "is_target_repeated_layout_index_fixed": true,
-            "target_repeated_layout_index": -1
-        }
+            "visual_patch_file": "copy_icon_patch.png",
+            "expected_target_similarity": "identical",
+            "visual_attention": {
+              "focus_area": "bottom",
+              "scan_direction": "bottom-up"
+            },
+            "selection_criteria": "first_match_in_scan",
+            "visual_position_state": "fixed",
+            "visual_count": "multiple",
+            "is_full_visual_expansion_required": true
+          }
     ]
     }
