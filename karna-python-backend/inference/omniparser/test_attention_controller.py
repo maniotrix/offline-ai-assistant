@@ -79,6 +79,7 @@ def load_screenshot_events() -> List[ScreenshotEvent]:
 def visualize_attention_fields(events: List[ScreenshotEvent]) -> None:
     """
     Visualize attention fields for each mouse event by drawing directly on the screenshots.
+    Also shows predicted next attention area based on movement direction.
     
     Args:
         events: List of ScreenshotEvent objects with mouse coordinates and valid screenshot paths
@@ -104,7 +105,10 @@ def visualize_attention_fields(events: List[ScreenshotEvent]) -> None:
         controller.add_click_from_event(event)
         
         # Get current attention field
-        attention_field = controller.get_current_attention_field()
+        current_field = controller.get_current_attention_field()
+        
+        # Get predicted next attention field based on movement direction
+        next_field = controller.predict_next_attention_field()
         
         # Create a figure with the screenshot as background
         plt.figure(figsize=(15, 10))
@@ -119,14 +123,46 @@ def visualize_attention_fields(events: List[ScreenshotEvent]) -> None:
             plt.xlim(0, img_width)
             plt.ylim(img_height, 0)  # Invert y-axis to match image coordinates
             
-            # Draw attention field as a rectangle
-            rect = patches.Rectangle(
-                (attention_field.x, attention_field.y),
-                attention_field.width, attention_field.height,
+            # Draw current attention field as a solid red rectangle
+            current_rect = patches.Rectangle(
+                (current_field.x, current_field.y),
+                current_field.width, current_field.height,
                 linewidth=3, edgecolor='r', facecolor='none', alpha=0.7,
-                label=f"Attention Field (conf={attention_field.confidence:.2f})"
+                label=f"Current Attention (conf={current_field.confidence:.2f})"
             )
-            plt.gca().add_patch(rect)
+            plt.gca().add_patch(current_rect)
+            
+            # Draw predicted next attention field as a dashed blue rectangle if available
+            if next_field:
+                next_rect = patches.Rectangle(
+                    (next_field.x, next_field.y),
+                    next_field.width, next_field.height,
+                    linewidth=2, edgecolor='b', facecolor='none', alpha=0.5,
+                    linestyle='--',
+                    label=f"Predicted Next (dir={next_field.direction}, conf={next_field.confidence:.2f})"
+                )
+                plt.gca().add_patch(next_rect)
+                
+                # Draw an arrow indicating movement direction if available
+                if next_field.direction and i > 0:
+                    center_x, center_y = current_field.center
+                    arrow_length = min(current_field.width, current_field.height) * 0.3
+                    
+                    dx, dy = 0, 0
+                    if next_field.direction == 'right':
+                        dx = arrow_length
+                    elif next_field.direction == 'left':
+                        dx = -arrow_length
+                    elif next_field.direction == 'down':
+                        dy = arrow_length
+                    elif next_field.direction == 'up':
+                        dy = -arrow_length
+                    
+                    if dx != 0 or dy != 0:
+                        plt.arrow(center_x, center_y, dx, dy, 
+                                 head_width=15, head_length=15, 
+                                 fc='g', ec='g', alpha=0.7,
+                                 label="Movement Direction")
             
             # Plot all clicks so far
             for j, prev_event in enumerate(events[:i+1]):
@@ -138,10 +174,29 @@ def visualize_attention_fields(events: List[ScreenshotEvent]) -> None:
             
             # Add informative title
             event_time = event.timestamp.strftime('%Y-%m-%d %H:%M:%S')
-            plt.title(f"Attention Field after Click {i+1} ({event_time})", fontsize=14)
+            click_count = i + 1
+            direction_info = f", Predicted Direction: {next_field.direction}" if next_field and next_field.direction else ""
+            plt.title(f"Attention Field after Click {click_count}/{len(events)} ({event_time}){direction_info}", fontsize=14)
             
             # Add legend
             plt.legend(loc='upper right', fontsize=12)
+            
+            # Add information about attention context in text box
+            attention_info = [
+                f"Current Click: ({event.mouse_x}, {event.mouse_y})",
+                f"Attention Field: ({current_field.x}, {current_field.y}, w={current_field.width}, h={current_field.height})",
+                f"Confidence: {current_field.confidence:.2f}"
+            ]
+            
+            if next_field:
+                attention_info.extend([
+                    f"Direction: {next_field.direction}",
+                    f"Next Field: ({next_field.x}, {next_field.y}, w={next_field.width}, h={next_field.height})",
+                    f"Next Confidence: {next_field.confidence:.2f}"
+                ])
+            
+            plt.gcf().text(0.02, 0.02, '\n'.join(attention_info), fontsize=10, 
+                        bbox=dict(facecolor='white', alpha=0.7))
             
             # Save the figure
             output_path = os.path.join(OUTPUT_DIR, f"attention_field_{i+1:03d}.png")
