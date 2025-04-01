@@ -377,17 +377,13 @@ def extract_bbox_patch(parsed_content_result_with_raw_coords: ParsedContentResul
 
 def save_pil_image_to_file(parsed_content_result: ParsedContentResult, pil_image: Image.Image, output_dir: str):
     # this takes in a PIL image and parse content result 
-    # where source is "box_yolo_content_yolo" and saves it to a file
     # the file_name is the id+content of the parse content result in provided directory
     try:
-        if parsed_content_result.source == "box_yolo_content_yolo":
-            description = parsed_content_result.content
-            # remove all special characters
-            description = re.sub(r'[^a-zA-Z0-9\s]', '', description)
-            file_path = os.path.join(output_dir, f"{parsed_content_result.id}_{description}.png")
-            pil_image.save(file_path)
-        else:
-            logger.warning(f"Skipping saving PIL image to file for source: {parsed_content_result.id}")
+        description = parsed_content_result.content
+        # remove all special characters
+        description = re.sub(r'[^a-zA-Z0-9\s]', '', description)
+        file_path = os.path.join(output_dir, f"{parsed_content_result.id}_{description}.png")
+        pil_image.save(file_path)
     except Exception as e:
         logger.error(f"Error saving PIL image to file: {e}")
         raise e

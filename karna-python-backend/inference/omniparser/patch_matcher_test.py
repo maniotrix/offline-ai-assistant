@@ -23,9 +23,9 @@ def test_patch_matching_across_themes():
     
     # Path to test directory
     test_dir = os.path.dirname(os.path.abspath(__file__))
-    
+    patch_name = "10_AAsk anything.png"
     # Path to patch file
-    patch_path = os.path.join(test_dir, "38_Up or down.png")
+    patch_path = os.path.join(test_dir, patch_name)
     if not os.path.exists(patch_path):
         print(f"Patch file not found: {patch_path}")
         return
@@ -94,7 +94,7 @@ def test_patch_matching_across_themes():
         
         plt.subplot(1, len(theme_results) + 1, 1)
         plt.imshow(patch_image)
-        plt.title("Patch Image\n38_Up or down.png")
+        plt.title(f"Patch Image\n{patch_name}")
         plt.axis('off')
         
         # Match the patch against each theme with current source types
@@ -170,7 +170,7 @@ def test_patch_matching_across_themes():
         # Plot the patch
         plt.subplot(len(KNOWN_SOURCE_TYPES), 2, i*2 + 1)
         plt.imshow(patch_image)
-        plt.title(f"Patch Image\n38_Up or down.png")
+        plt.title(f"Patch Image\n{patch_name}")
         plt.axis('off')
         
         # Plot the match result for this source type

@@ -57,3 +57,4 @@
         need better approach, which is more visually aligned than hardcoding stuff
         // do we need to capture even when user is not triggering any events?
         // we should also capture the omniparser type and related patch for focusing in chat area, and find similar or related patches at runtime
+        introduce this as fallback step rather than main step for copying new response

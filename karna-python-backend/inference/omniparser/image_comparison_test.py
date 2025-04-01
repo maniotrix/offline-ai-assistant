@@ -37,7 +37,7 @@ def test_icon_similarity():
                     print(f"Warning: Image file not found: {img_path}")
         
         # Add other test images if available
-        additional_images = ["38_Up or down.png", "44_Copy.png"]
+        additional_images = ["10_AAsk anything.png","38_Up or down.png", "44_Copy.png"]
         for img_name in additional_images:
             img_path = os.path.join(test_dir, img_name)
             if os.path.exists(img_path):
