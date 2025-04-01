@@ -56,3 +56,4 @@
         we should directly look for copy icon, and we keep track of copy icons programmatically?, no not visual way how humans do?
         need better approach, which is more visually aligned than hardcoding stuff
         // do we need to capture even when user is not triggering any events?
+        // we should also capture the omniparser type and related patch for focusing in chat area, and find similar or related patches at runtime

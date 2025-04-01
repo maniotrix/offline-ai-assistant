@@ -10,6 +10,7 @@ class ScreenObjectType(str, Enum):
     BOX_YOLO_CONTENT_OCR = "box_yolo_content_ocr"
     BOX_OCR_CONTENT_OCR = "box_ocr_content_ocr"
     BOX_YOLO_CONTENT_YOLO = "box_yolo_content_yolo"
+    NONE = "none"
 
 class ActionType(str, Enum):
     MOUSE_ACTION = "mouse_action"
@@ -21,6 +22,8 @@ class WaitUntilDependencyValueType(str, Enum):
     PREVIOUS_STEP = "previous_step"
 
 class Step(BaseModel):
+    step_id: int
+    description: str
     action_type: ActionType
     action: str
     target_type: Optional[ScreenObjectType] = None
@@ -57,16 +60,5 @@ class TaskExecutor():
     def execute_task(self):
         # execute the task
         pass
-
-if __name__ == "__main__":
-    def test_task_schema(): 
-        # load the task schema from the json file
-        import os
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        task_schema = load_task_schema_from_json(os.path.join(current_dir, "chat_with_chatgpt.json"))
-        task_planner = TaskPlanner(task_schema)
-        # pretty print the task schema
-        print(task_planner.task_schema.model_dump_json(indent=4))
-    test_task_schema()
 
 
