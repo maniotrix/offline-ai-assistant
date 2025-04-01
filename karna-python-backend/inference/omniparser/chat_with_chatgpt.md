@@ -58,3 +58,4 @@
         // do we need to capture even when user is not triggering any events?
         // we should also capture the omniparser type and related patch for focusing in chat area, and find similar or related patches at runtime
         introduce this as fallback step rather than main step for copying new response
+    // dynamically predicting attention areas at runtime, with help of how user click coords are shifting decide the attention expansion and pan direction
