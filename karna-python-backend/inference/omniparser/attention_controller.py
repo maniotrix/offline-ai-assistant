@@ -218,11 +218,11 @@ class AttentionFieldController:
             
     def _infer_movement_direction(self) -> Optional[str]:
         """
-        Infer the movement direction using a reference point approach.
+        Infer the movement direction from the entire click history using a weighted trend analysis.
         
-        This method compares the most recent click to a weighted centroid of previous clicks.
-        This better handles cases where the user moves in a non-linear pattern but the
-        overall attention is shifting in a particular direction.
+        This method analyzes all available clicks in the history (up to click_history_limit),
+        giving more weight to recent movements. It calculates a weighted average direction
+        vector and converts it to one of the four cardinal directions.
         
         Returns:
             Direction as 'up', 'down', 'left', 'right', or None if can't determine
@@ -231,44 +231,50 @@ class AttentionFieldController:
         if len(self.click_history) < 2:
             return None
         
-        # Get the most recent click (endpoint)
-        latest_x, latest_y, _ = self.click_history[-1]
+        # Initialize weighted direction accumulators
+        weighted_dx = 0.0
+        weighted_dy = 0.0
+        total_weight = 0.0
         
-        # Special case: if we only have 2 clicks, use simple vector
-        if len(self.click_history) == 2:
-            prev_x, prev_y, _ = self.click_history[0]
-            dx = latest_x - prev_x
-            dy = latest_y - prev_y
-        else:
-            # Calculate weighted centroid of previous clicks (excluding the most recent)
-            total_weight = 0.0
-            weighted_x = 0.0
-            weighted_y = 0.0
+        # Number of movement vectors (pairs of clicks)
+        num_pairs = len(self.click_history) - 1
+        
+        # Process each consecutive pair of clicks
+        for i in range(num_pairs):
+            # Get current and next click coordinates (reversed order in list indexing)
+            # More recent clicks are at the end of the list
+            current_idx = -(i + 2)  # Second-to-last, third-to-last, etc.
+            next_idx = -(i + 1)     # Last, second-to-last, etc.
             
-            # Use all previous clicks as reference points
-            reference_points = self.click_history[:-1]
-            num_points = len(reference_points)
+            # Get the coordinates
+            x1, y1, _ = self.click_history[current_idx]
+            x2, y2, _ = self.click_history[next_idx]
             
-            for i, (x, y, _) in enumerate(reference_points):
-                # More recent points have higher weight
-                # Convert to 1-based index where highest = most recent
-                point_index = i + 1  
-                weight = (point_index / num_points) ** 1.2  # Slightly less aggressive weighting
-                
-                weighted_x += x * weight
-                weighted_y += y * weight
-                total_weight += weight
+            # Calculate movement vector
+            dx = x2 - x1
+            dy = y2 - y1
             
-            # Calculate weighted centroid
-            centroid_x = weighted_x / total_weight
-            centroid_y = weighted_y / total_weight
+            # Calculate weight based on recency
+            # More recent pairs get higher weights using power-based decay
+            # i=0 is the most recent pair
+            pair_index = num_pairs - i  # Convert to 1-based index (most recent = highest)
+            weight = (pair_index / num_pairs) ** 1.5  # Power factor gives more emphasis to recent pairs
             
-            # Calculate vector from centroid to latest click
-            dx = latest_x - centroid_x
-            dy = latest_y - centroid_y
+            # Accumulate weighted vectors
+            weighted_dx += dx * weight
+            weighted_dy += dy * weight
+            total_weight += weight
+        
+        # Avoid division by zero
+        if total_weight == 0:
+            return None
+        
+        # Compute average direction vector
+        avg_dx = weighted_dx / total_weight
+        avg_dy = weighted_dy / total_weight
         
         # Calculate vector magnitude
-        magnitude = math.sqrt(dx**2 + dy**2)
+        magnitude = math.sqrt(avg_dx**2 + avg_dy**2)
         
         # If the movement is too small, consider it no meaningful direction
         MIN_MAGNITUDE = 5.0  # Minimum pixels of movement to consider significant
@@ -277,7 +283,7 @@ class AttentionFieldController:
         
         # Calculate angle in degrees
         # Note: We negate dy because screen Y-axis increases downward
-        angle_rad = math.atan2(-dy, dx)
+        angle_rad = math.atan2(-avg_dy, avg_dx)
         angle_deg = math.degrees(angle_rad)
         
         # Normalize to 0-360° range
