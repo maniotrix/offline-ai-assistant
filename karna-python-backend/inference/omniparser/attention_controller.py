@@ -12,10 +12,10 @@ logger = logging.getLogger(__name__)
 
 # Default render bounding box for the viewport
 renderBBox = {
-    "x": 952,
+    "x": 0,
     "y": 121,
-    "width": 960,
-    "height": 927
+    "width": 1920,
+    "height": 919
 }
 
 @dataclass

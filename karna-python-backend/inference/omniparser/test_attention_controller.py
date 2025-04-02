@@ -343,7 +343,7 @@ def visualize_attention_fields(events: List[ScreenshotEvent]) -> None:
 def main():
     """Main function to visualize attention fields for mouse events by drawing on screenshots."""
     # Print interpretation guide
-    print_interpretation_guide()
+    #print_interpretation_guide()
     
     # Load events from JSON file
     events = load_screenshot_events()
