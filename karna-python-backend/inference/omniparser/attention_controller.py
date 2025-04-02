@@ -71,7 +71,8 @@ class AttentionFieldController:
     
     Loads default configuration from a JSON file, dynamically adjusts it based
     on viewport aspect ratio, tracks clicks, infers movement direction via a
-    hybrid approach, and predicts the next attention area.
+    hybrid approach, and predicts the next attention area. Also tracks the
+    cumulative bounding box of all attention fields generated.
     """
     
     def __init__(self,
@@ -103,6 +104,13 @@ class AttentionFieldController:
         self.click_history: List[Tuple[int, int, datetime]] = []
         self.center_history: List[Tuple[int, int]] = []
         self.current_attention_field: Optional[AttentionField] = None
+        
+        # Cumulative coverage tracking
+        self._min_x_covered: int = self.screen_width
+        self._min_y_covered: int = self.screen_height
+        self._max_x_covered: int = 0
+        self._max_y_covered: int = 0
+        self._coverage_initialized: bool = False
         
         # Fallback full screen field
         self.full_screen_attention = AttentionField(
@@ -171,6 +179,33 @@ class AttentionFieldController:
         logger.info(f"Active Config Profile: '{config_profile}'")
         logger.info(f"Final Config Values: {self.config.model_dump_json(indent=2)}")
     
+    @property
+    def cumulative_coverage_bbox(self) -> Optional[Tuple[int, int, int, int]]:
+        """Get the bounding box covering all attention fields generated so far."""
+        if not self._coverage_initialized:
+            return None
+        width = self._max_x_covered - self._min_x_covered
+        height = self._max_y_covered - self._min_y_covered
+        return (self._min_x_covered, self._min_y_covered, width, height)
+
+    def _update_cumulative_coverage(self, field: AttentionField):
+        """Update the cumulative coverage bounds based on the given field."""
+        x1, y1, x2, y2 = field.xyxy
+        self._min_x_covered = min(self._min_x_covered, x1)
+        self._min_y_covered = min(self._min_y_covered, y1)
+        self._max_x_covered = max(self._max_x_covered, x2)
+        self._max_y_covered = max(self._max_y_covered, y2)
+        self._coverage_initialized = True
+
+    def _reset_cumulative_coverage(self):
+        """Reset the cumulative coverage tracking."""
+        self._min_x_covered = self.screen_width
+        self._min_y_covered = self.screen_height
+        self._max_x_covered = 0
+        self._max_y_covered = 0
+        self._coverage_initialized = False
+        logger.debug("Cumulative coverage reset.")
+
     def add_click(self, x: int, y: int, timestamp: datetime = None) -> None:
         """
         Add a click to the history and update the attention field and center history.
@@ -202,6 +237,10 @@ class AttentionFieldController:
         
         logger.debug(f"Added click at ({x}, {y}), updated attention field to {self.current_attention_field.bbox if self.current_attention_field else 'None'}")
         logger.debug(f"Center history size: {len(self.center_history)}")
+        
+        # Update cumulative coverage AFTER updating attention field
+        if self.current_attention_field:
+            self._update_cumulative_coverage(self.current_attention_field)
     
     def add_click_from_event(self, event: ScreenshotEvent) -> None:
         """
@@ -649,6 +688,7 @@ class AttentionFieldController:
         logger.debug("Getting attention context")
         current = self.get_current_attention_field()
         next_field = self.predict_next_attention_field()
+        cumulative_bbox = self.cumulative_coverage_bbox
         
         context = {
             "current_attention": {
@@ -660,6 +700,9 @@ class AttentionFieldController:
                 "bbox": next_field.bbox if next_field else None,
                 "confidence": next_field.confidence if next_field else 0.0,
                 "direction": next_field.direction if next_field else None
+            },
+            "cumulative_coverage": {
+                "bbox": cumulative_bbox # Will be None if not initialized
             },
             "click_history_size": len(self.click_history),
             "center_history_size": len(self.center_history),
