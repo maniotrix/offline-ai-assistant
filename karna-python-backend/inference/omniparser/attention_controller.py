@@ -224,68 +224,13 @@ class AttentionFieldController:
         giving more weight to recent movements. It calculates a weighted average direction
         vector and converts it to one of the four cardinal directions.
         
-        When a clear change in direction is detected in the most recent movement,
-        this method prioritizes that movement over the historical trend.
-        
         Returns:
             Direction as 'up', 'down', 'left', 'right', or None if can't determine
         """
         # Need at least 2 clicks to determine a direction
         if len(self.click_history) < 2:
             return None
-            
-        # First, check if we have at least 3 clicks to detect direction change
-        if len(self.click_history) >= 3:
-            # Get coordinates of the three most recent clicks
-            x1, y1, _ = self.click_history[-3]  # Third most recent
-            x2, y2, _ = self.click_history[-2]  # Second most recent
-            x3, y3, _ = self.click_history[-1]  # Most recent
-            
-            # Calculate the two most recent movement vectors
-            prev_dx = x2 - x1
-            prev_dy = y2 - y1
-            recent_dx = x3 - x2
-            recent_dy = y3 - y2
-            
-            # Determine dominant axes for both vectors
-            prev_dominant_axis = 'horizontal' if abs(prev_dx) > abs(prev_dy) else 'vertical'
-            recent_dominant_axis = 'horizontal' if abs(recent_dx) > abs(recent_dy) else 'vertical'
-            
-            # Check if there's a significant change in direction
-            direction_change = False
-            
-            # Case 1: Dominant axis has changed (e.g., horizontal to vertical)
-            if prev_dominant_axis != recent_dominant_axis:
-                direction_change = True
-                
-            # Case 2: Direction reversed along same axis
-            elif (prev_dominant_axis == recent_dominant_axis == 'horizontal' and 
-                  (prev_dx > 0 and recent_dx < 0) or (prev_dx < 0 and recent_dx > 0)):
-                direction_change = True
-                
-            elif (prev_dominant_axis == recent_dominant_axis == 'vertical' and 
-                  (prev_dy > 0 and recent_dy < 0) or (prev_dy < 0 and recent_dy > 0)):
-                direction_change = True
-                
-            # Case 3: Recent vector is strong enough
-            recent_magnitude = math.sqrt(recent_dx**2 + recent_dy**2)
-            prev_magnitude = math.sqrt(prev_dx**2 + prev_dy**2)
-            MIN_RATIO = 0.7  # Recent vector should be at least 70% as strong
-            
-            if recent_magnitude > MIN_RATIO * prev_magnitude and recent_magnitude > 20:  # Ensure it's a significant movement
-                potential_direction_change = True
-            else:
-                potential_direction_change = False
-                
-            # If direction has changed significantly, prioritize most recent movement
-            if direction_change and abs(recent_dx) + abs(recent_dy) > 10:  # Ensure movement is significant
-                # Determine direction based on most recent vector only
-                if abs(recent_dx) > abs(recent_dy):
-                    return 'right' if recent_dx > 0 else 'left'
-                else:
-                    return 'down' if recent_dy > 0 else 'up'
         
-        # If no clear direction change or not enough clicks, proceed with weighted average
         # Initialize weighted direction accumulators
         weighted_dx = 0.0
         weighted_dy = 0.0
@@ -313,13 +258,7 @@ class AttentionFieldController:
             # More recent pairs get higher weights using power-based decay
             # i=0 is the most recent pair
             pair_index = num_pairs - i  # Convert to 1-based index (most recent = highest)
-            
-            # Increase the power factor to give even more emphasis to recent movements
-            weight = (pair_index / num_pairs) ** 2.0  # Increased from 1.5 to 2.0
-            
-            # Boost weight of most recent pair
-            if i == 0:  # Most recent pair
-                weight *= 1.5  # Give 50% more weight to most recent movement
+            weight = (pair_index / num_pairs) ** 1.5  # Power factor gives more emphasis to recent pairs
             
             # Accumulate weighted vectors
             weighted_dx += dx * weight
