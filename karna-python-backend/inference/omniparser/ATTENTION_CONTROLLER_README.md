@@ -12,11 +12,13 @@ The core controller class that manages visual attention based on click history.
 
 #### Key Capabilities
 
-- Track recent user clicks
+- Track recent user clicks with timestamps
 - Build dynamic attention fields (bounding boxes)
-- Infer movement directions based on click patterns
+- Infer movement directions using weighted historical analysis
 - Predict next areas of attention
 - Handle cold starts with reasonable defaults
+- Generate attention heatmaps (planned)
+- Support weighted patch scanning (planned)
 
 ### 2. AttentionField
 
@@ -75,10 +77,18 @@ The attention field is updated using these rules:
 def _infer_movement_direction(self)
 ```
 
-Direction is inferred by:
-1. Comparing the two most recent clicks
-2. Calculating the delta in x and y coordinates
-3. Determining primary direction (up/down/left/right) based on the largest delta
+Direction is now inferred using a sophisticated weighted analysis:
+1. Analyzes all available clicks in history (up to click_history_limit)
+2. Calculates movement vectors between consecutive clicks
+3. Applies a power-based decay function to weight recent movements more heavily
+4. Computes a weighted average direction vector
+5. Converts the vector to an angle and maps to cardinal directions (up/down/left/right)
+6. Only returns a direction if movement magnitude exceeds a minimum threshold
+
+The weighting formula uses:
+- Power-based decay: `weight = (i + 1)^2` where i is the index of the movement vector
+- Recent movements have exponentially higher influence
+- All historical movements contribute to the final direction
 
 ### Next Attention Field Prediction
 
@@ -102,6 +112,26 @@ The controller can dynamically adjust the base attention field size based on UI 
 1. It uses the first click location to find containing UI elements
 2. Sets the base box size based on the element's dimensions
 3. This creates more natural attention fields that match UI component scales
+
+## Planned Enhancements
+
+### Phase 2: Heatmap Generation
+- Generate 2D attention heatmaps based on click density
+- Apply Gaussian distribution around click points
+- Weight heat by recency and movement direction
+- Support configurable resolution and decay rates
+
+### Phase 3: Weighted Patch Scanning
+- Calculate priority scores for UI patches
+- Use heatmap values to weight patch importance
+- Optimize OCR and patch matching order
+- Support dynamic threshold adjustment
+
+### Phase 4: Machine Learning Integration
+- Train on user interaction patterns
+- Adjust weights and parameters automatically
+- Improve direction prediction accuracy
+- Adapt to user-specific navigation styles
 
 ## Usage Examples
 
@@ -129,14 +159,18 @@ if next_field:
 
 The Attention Field Controller implements these key principles:
 
-1. **Recency Bias**: More recent clicks have more influence on attention
+1. **Recency Bias**: More recent clicks have exponentially higher influence on attention
 2. **Spatial Coherence**: Attention tends to be focused in spatially coherent regions
-3. **Directional Momentum**: Attention tends to continue in the same direction
+3. **Directional Momentum**: Attention follows weighted historical movement patterns
 4. **Expansion**: Visual attention extends beyond exact click points
 5. **Confidence Decay**: Confidence in predictions decreases with distance and time
+6. **Historical Context**: Movement patterns consider all available click history
+7. **Noise Resistance**: Minimum movement thresholds prevent spurious direction changes
 
 ## Implementation Notes
 
 - The controller uses a deterministic, rule-based approach that doesn't require training data
 - It's designed to be lightweight and efficient for real-time use
-- The base implementation handles cold starts gracefully 
+- The base implementation handles cold starts gracefully
+- Movement direction inference now considers weighted historical patterns
+- Future enhancements will add heatmap generation and weighted patch scanning 
