@@ -2,6 +2,7 @@ import logging
 from typing import List, Tuple, Dict, Optional
 from dataclasses import dataclass
 import numpy as np
+import math
 from datetime import datetime
 from services.screen_capture_service import ScreenshotEvent
 from inference.omniparser.util.omniparser import OmniparserResult
@@ -217,28 +218,81 @@ class AttentionFieldController:
             
     def _infer_movement_direction(self) -> Optional[str]:
         """
-        Infer the movement direction from recent click history.
+        Infer the movement direction using a reference point approach.
+        
+        This method compares the most recent click to a weighted centroid of previous clicks.
+        This better handles cases where the user moves in a non-linear pattern but the
+        overall attention is shifting in a particular direction.
         
         Returns:
             Direction as 'up', 'down', 'left', 'right', or None if can't determine
         """
+        # Need at least 2 clicks to determine a direction
         if len(self.click_history) < 2:
             return None
         
-        # Take the two most recent clicks
-        (x2, y2, _), (x1, y1, _) = self.click_history[-1], self.click_history[-2]
+        # Get the most recent click (endpoint)
+        latest_x, latest_y, _ = self.click_history[-1]
         
-        # Calculate deltas
-        dx = x2 - x1
-        dy = y2 - y1
-        
-        # Determine primary direction based on largest delta
-        if abs(dx) > abs(dy):
-            # Horizontal movement dominates
-            return 'right' if dx > 0 else 'left'
+        # Special case: if we only have 2 clicks, use simple vector
+        if len(self.click_history) == 2:
+            prev_x, prev_y, _ = self.click_history[0]
+            dx = latest_x - prev_x
+            dy = latest_y - prev_y
         else:
-            # Vertical movement dominates
-            return 'down' if dy > 0 else 'up'
+            # Calculate weighted centroid of previous clicks (excluding the most recent)
+            total_weight = 0.0
+            weighted_x = 0.0
+            weighted_y = 0.0
+            
+            # Use all previous clicks as reference points
+            reference_points = self.click_history[:-1]
+            num_points = len(reference_points)
+            
+            for i, (x, y, _) in enumerate(reference_points):
+                # More recent points have higher weight
+                # Convert to 1-based index where highest = most recent
+                point_index = i + 1  
+                weight = (point_index / num_points) ** 1.2  # Slightly less aggressive weighting
+                
+                weighted_x += x * weight
+                weighted_y += y * weight
+                total_weight += weight
+            
+            # Calculate weighted centroid
+            centroid_x = weighted_x / total_weight
+            centroid_y = weighted_y / total_weight
+            
+            # Calculate vector from centroid to latest click
+            dx = latest_x - centroid_x
+            dy = latest_y - centroid_y
+        
+        # Calculate vector magnitude
+        magnitude = math.sqrt(dx**2 + dy**2)
+        
+        # If the movement is too small, consider it no meaningful direction
+        MIN_MAGNITUDE = 5.0  # Minimum pixels of movement to consider significant
+        if magnitude < MIN_MAGNITUDE:
+            return None
+        
+        # Calculate angle in degrees
+        # Note: We negate dy because screen Y-axis increases downward
+        angle_rad = math.atan2(-dy, dx)
+        angle_deg = math.degrees(angle_rad)
+        
+        # Normalize to 0-360° range
+        if angle_deg < 0:
+            angle_deg += 360
+        
+        # Convert angle to cardinal direction
+        if 45 <= angle_deg < 135:
+            return 'up'
+        elif 135 <= angle_deg < 225:
+            return 'left'
+        elif 225 <= angle_deg < 315:
+            return 'down'
+        else:  # 315 <= angle_deg < 360 or 0 <= angle_deg < 45
+            return 'right'
     
     def _update_attention_field(self) -> None:
         """

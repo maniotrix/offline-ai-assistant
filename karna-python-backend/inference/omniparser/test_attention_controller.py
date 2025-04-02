@@ -25,6 +25,75 @@ logger = logging.getLogger(__name__)
 JSON_FILE_PATH = r"C:\Users\Prince\Documents\GitHub\Proejct-Karna\offline-ai-assistant\data\chatgpt\883c46f5-c62d-4799-baa1-5e3b12f12e8c\screenshot_events_883c46f5-c62d-4799-baa1-5e3b12f12e8c.json"
 OUTPUT_DIR = "attention_visualization"
 
+def print_interpretation_guide():
+    """
+    Print a user guide explaining how to interpret the attention field test results.
+    """
+    guide = """
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                     ATTENTION FIELD ANALYSIS: USER GUIDE                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+This test visualizes how the AttentionFieldController tracks and predicts user attention
+based on mouse click sequences. Below is a guide to help you interpret the results:
+
+KEY CONCEPTS:
+------------
+• Top-Left Corner: (x, y) coordinates where the attention field begins
+• Dimensions: Width × Height of the attention field in pixels
+• Center Point: The focal point of the attention field (calculated from corner + dimensions/2)
+• Confidence Score: How certain the controller is about this attention area (0-1 scale)
+• Movement Direction: The inferred direction based on user's click patterns (UP/DOWN/LEFT/RIGHT)
+
+INTERPRETING CONSOLE OUTPUT:
+-------------------------
+For each mouse click event, you'll see:
+
+🔍 ATTENTION EVENT #N
+  Shows which event in the sequence is being analyzed
+
+⏰ Time: [timestamp]
+🖱️ Mouse Click: (x, y)
+  The exact time and position of the current mouse click
+
+📌 CURRENT ATTENTION FIELD:
+  • Top-Left Corner: (x, y)
+  • Dimensions: width × height pixels
+  • Center Point: (center_x, center_y)
+  • Confidence Score: 0.XX / 1.00
+  Details about where the system believes user attention is currently focused
+
+🔮 PREDICTED NEXT ATTENTION:
+  • Movement Direction: [DIRECTION]
+  • Top-Left Corner: (x, y)
+  • Dimensions: width × height pixels
+  • Center Point: (center_x, center_y)
+  • Prediction Confidence: 0.XX / 1.00
+  The system's prediction about where attention will move next
+
+⬇️ MOVEMENT ANALYSIS:
+  • Inferred Direction: [DIRECTION SYMBOL] [DIRECTION]
+  The system's interpretation of click movement patterns
+
+VISUALIZATION IMAGES:
+------------------
+• Red Rectangle: Current attention field
+• Blue Dashed Rectangle: Predicted next attention field
+• Red Dot: Current mouse click
+• Blue Dots: Previous mouse clicks
+• Green Arrow: Inferred movement direction
+
+CONFIDENCE SCORES:
+---------------
+• 0.70-1.00: High confidence (multiple consistent clicks)
+• 0.40-0.70: Medium confidence (limited click history)
+• <0.40: Low confidence (cold start or inconsistent clicks)
+
+The combination of detailed console output and saved visualization images provides
+a complete picture of how the attention tracking system works in real-world scenarios.
+"""
+    print(guide)
+
 def load_screenshot_events() -> List[ScreenshotEvent]:
     """
     Load screenshot events from the specified JSON file.
@@ -76,6 +145,59 @@ def load_screenshot_events() -> List[ScreenshotEvent]:
     logger.info(f"Loaded {len(screenshot_events)} valid mouse events with screenshots")
     return screenshot_events
 
+def print_attention_info(event_num: int, event: ScreenshotEvent, 
+                        current_field, next_field=None) -> None:
+    """
+    Print attention field information to the console.
+    
+    Args:
+        event_num: The event number in sequence
+        event: The screenshot event
+        current_field: The current attention field
+        next_field: The predicted next attention field (optional)
+    """
+    print("\n" + "═"*80)
+    print(f"🔍 ATTENTION EVENT #{event_num}")
+    print("═"*80)
+    
+    # Event information
+    event_time = event.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+    print(f"⏰ Time: {event_time}")
+    print(f"🖱️  Mouse Click: ({event.mouse_x}, {event.mouse_y})")
+    
+    # Current attention field
+    print("\n📌 CURRENT ATTENTION FIELD:")
+    print(f"  • Top-Left Corner: ({current_field.x}, {current_field.y})")
+    print(f"  • Dimensions: {current_field.width} × {current_field.height} pixels")
+    print(f"  • Center Point: ({current_field.center[0]}, {current_field.center[1]})")
+    print(f"  • Confidence Score: {current_field.confidence:.2f} / 1.00")
+    
+    # Next predicted field if available
+    if next_field:
+        print("\n🔮 PREDICTED NEXT ATTENTION:")
+        print(f"  • Movement Direction: {next_field.direction.upper()}")
+        print(f"  • Top-Left Corner: ({next_field.x}, {next_field.y})")
+        print(f"  • Dimensions: {next_field.width} × {next_field.height} pixels")
+        print(f"  • Center Point: ({next_field.center[0]}, {next_field.center[1]})")
+        print(f"  • Prediction Confidence: {next_field.confidence:.2f} / 1.00")
+    else:
+        print("\n🔮 PREDICTED NEXT ATTENTION: Not available yet (need more clicks)")
+    
+    # Displacement from previous field center to current
+    print("\n⬇️  MOVEMENT ANALYSIS:")
+    if hasattr(current_field, 'direction') and current_field.direction:
+        direction_symbol = {
+            'up': '⬆️',
+            'down': '⬇️',
+            'left': '⬅️',
+            'right': '➡️'
+        }.get(current_field.direction, '◯')
+        print(f"  • Inferred Direction: {direction_symbol} {current_field.direction.upper()}")
+    else:
+        print("  • Inferred Direction: None (not enough clicks yet)")
+    
+    print("─"*80)
+
 def visualize_attention_fields(events: List[ScreenshotEvent]) -> None:
     """
     Visualize attention fields for each mouse event by drawing directly on the screenshots.
@@ -94,6 +216,12 @@ def visualize_attention_fields(events: List[ScreenshotEvent]) -> None:
     # Create controller
     controller = AttentionFieldController()
     
+    # Print header for console output
+    print("\n" + "═"*80)
+    print("🔍 ATTENTION FIELD ANALYSIS")
+    print("═"*80)
+    print(f"Processing {len(events)} events in sequence...")
+    
     # Process each event
     for i, event in enumerate(events):
         # Skip if screenshot doesn't exist
@@ -109,6 +237,9 @@ def visualize_attention_fields(events: List[ScreenshotEvent]) -> None:
         
         # Get predicted next attention field based on movement direction
         next_field = controller.predict_next_attention_field()
+        
+        # Print attention information to console
+        print_attention_info(i+1, event, current_field, next_field)
         
         # Create a figure with the screenshot as background
         plt.figure(figsize=(15, 10))
@@ -211,6 +342,9 @@ def visualize_attention_fields(events: List[ScreenshotEvent]) -> None:
 
 def main():
     """Main function to visualize attention fields for mouse events by drawing on screenshots."""
+    # Print interpretation guide
+    print_interpretation_guide()
+    
     # Load events from JSON file
     events = load_screenshot_events()
     
@@ -220,6 +354,14 @@ def main():
     
     # Visualize attention fields
     visualize_attention_fields(events)
+    
+    # Print summary
+    print("\n" + "═"*80)
+    print(f"📊 SUMMARY: Processed {len(events)} attention events")
+    print(f"📁 Output saved to: {os.path.abspath(OUTPUT_DIR)}")
+    print("═"*80)
+    print("\nTip: Open the saved images to see visual representations of attention fields.")
+    print("     Each image shows both current attention and predicted next attention areas.")
     
     logger.info(f"Completed visualization of attention fields for {len(events)} events")
     logger.info(f"Output saved to directory: {os.path.abspath(OUTPUT_DIR)}")
