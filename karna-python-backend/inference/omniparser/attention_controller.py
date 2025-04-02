@@ -104,6 +104,11 @@ class AttentionFieldController:
         # Base box size is set dynamically with the first click
         self.base_box_size = default_box_size
         self.base_box_initialized = False
+        
+        logger.info(f"AttentionFieldController initialized with: expansion_factor={expansion_factor}, "
+                   f"click_history_limit={click_history_limit}, screen_width={screen_width}, "
+                   f"screen_height={screen_height}, default_box_size={default_box_size}")
+        logger.debug(f"Default viewport set to: {self.viewport.bbox}")
     
     def add_click(self, x: int, y: int, timestamp: datetime = None) -> None:
         """
@@ -117,12 +122,16 @@ class AttentionFieldController:
         if timestamp is None:
             timestamp = datetime.now()
         
+        logger.debug(f"Adding click at ({x}, {y}) with timestamp {timestamp}")
+        
         # Add click to history
         self.click_history.append((x, y, timestamp))
         
         # Limit history size
         if len(self.click_history) > self.click_history_limit:
+            removed = self.click_history[0]
             self.click_history = self.click_history[-self.click_history_limit:]
+            logger.debug(f"Click history limit reached. Removed oldest click at ({removed[0]}, {removed[1]})")
         
         # Update attention field
         self._update_attention_field()
@@ -137,7 +146,10 @@ class AttentionFieldController:
             event: ScreenshotEvent containing click coordinates
         """
         if event.mouse_x is not None and event.mouse_y is not None:
+            logger.debug(f"Adding click from event: mouse_x={event.mouse_x}, mouse_y={event.mouse_y}, timestamp={event.timestamp}")
             self.add_click(event.mouse_x, event.mouse_y, event.timestamp)
+        else:
+            logger.warning(f"Skipping event with missing mouse coordinates: {event}")
     
     def set_base_box_size_from_omniparser(self, omniparser_result: OmniParserResultModel) -> None:
         """
@@ -147,16 +159,24 @@ class AttentionFieldController:
         Args:
             omniparser_result: OmniParserResultModel containing UI element information
         """
-        if not self.click_history or self.base_box_initialized:
+        if not self.click_history:
+            logger.warning("Cannot set base box size: No clicks in history")
+            return
+        
+        if self.base_box_initialized:
+            logger.debug("Base box size already initialized, skipping")
             return
         
         # Get the first click location
         x, y, _ = self.click_history[0]
+        logger.debug(f"Setting base box size from omniparser result for first click at ({x}, {y})")
         
         # Find the UI element that contains this click
         closest_element = None
         min_distance = float('inf')
         closest_element_size = None
+        
+        logger.debug(f"Searching through {len(omniparser_result.parsed_content_results)} UI elements")
         
         for element in omniparser_result.parsed_content_results:
             # Check if click is inside element's bounding box
@@ -169,6 +189,7 @@ class AttentionFieldController:
                     img_height = omniparser_result.omniparser_result.original_image_height
                     x1, y1, x2, y2 = int(bbox[0] * img_width), int(bbox[1] * img_height), \
                                      int(bbox[2] * img_width), int(bbox[3] * img_height)
+                    logger.debug(f"Converting normalized coordinates to absolute: {bbox} -> ({x1}, {y1}, {x2}, {y2})")
                 else:
                     # Already absolute coordinates
                     x1, y1, x2, y2 = int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3])
@@ -183,18 +204,24 @@ class AttentionFieldController:
                     element_center_y = y1 + height // 2
                     distance = ((x - element_center_x) ** 2 + (y - element_center_y) ** 2) ** 0.5
                     
+                    logger.debug(f"Click is inside element: ({x1}, {y1}, {x2}, {y2}), distance to center: {distance}")
+                    
                     if distance < min_distance:
                         min_distance = distance
                         closest_element = element
                         closest_element_size = (width, height)
+                        logger.debug(f"New closest element found: size={closest_element_size}, distance={min_distance}")
         
         # If we found a containing element, use its size to set the base box size
         if closest_element_size:
             avg_dimension = (closest_element_size[0] + closest_element_size[1]) // 2
             # Set base box size to at least the element size but not smaller than default
+            old_size = self.base_box_size
             self.base_box_size = max(avg_dimension, self.default_box_size)
             self.base_box_initialized = True
-            logger.info(f"Set base box size to {self.base_box_size} based on UI element at click location")
+            logger.info(f"Updated base box size from {old_size} to {self.base_box_size} based on UI element at click location (element size: {closest_element_size})")
+        else:
+            logger.warning(f"No containing UI element found for click at ({x}, {y}), keeping default box size: {self.base_box_size}")
         
     def process_click_history(self, events: List[ScreenshotEvent], 
                               omniparser_result: Optional[OmniParserResultModel] = None) -> None:
@@ -205,15 +232,21 @@ class AttentionFieldController:
             events: List of ScreenshotEvents containing click coordinates
             omniparser_result: Optional OmniParserResultModel to set base box size
         """
+        logger.info(f"Processing {len(events)} screenshot events with omniparser_result available: {omniparser_result is not None}")
+        
         # Clear existing history
+        old_history_size = len(self.click_history)
         self.click_history = []
+        logger.debug(f"Cleared existing click history (size was {old_history_size})")
         
         # Add clicks from events
-        for event in events:
+        for i, event in enumerate(events):
+            logger.debug(f"Processing event {i+1}/{len(events)}: {event}")
             self.add_click_from_event(event)
         
         # Set base box size from omniparser result if available
         if omniparser_result and not self.base_box_initialized:
+            logger.debug("Setting base box size from omniparser result")
             self.set_base_box_size_from_omniparser(omniparser_result)
             
     def _infer_movement_direction(self) -> Optional[str]:
@@ -229,7 +262,10 @@ class AttentionFieldController:
         """
         # Need at least 2 clicks to determine a direction
         if len(self.click_history) < 2:
+            logger.debug("Cannot infer movement direction: Need at least 2 clicks")
             return None
+        
+        logger.debug(f"Inferring movement direction from {len(self.click_history)} clicks")
         
         # Initialize weighted direction accumulators
         weighted_dx = 0.0
@@ -247,8 +283,8 @@ class AttentionFieldController:
             next_idx = -(i + 1)     # Last, second-to-last, etc.
             
             # Get the coordinates
-            x1, y1, _ = self.click_history[current_idx]
-            x2, y2, _ = self.click_history[next_idx]
+            x1, y1, t1 = self.click_history[current_idx]
+            x2, y2, t2 = self.click_history[next_idx]
             
             # Calculate movement vector
             dx = x2 - x1
@@ -264,9 +300,13 @@ class AttentionFieldController:
             weighted_dx += dx * weight
             weighted_dy += dy * weight
             total_weight += weight
+            
+            logger.debug(f"Movement vector {i+1}/{num_pairs}: ({x1},{y1}) -> ({x2},{y2}), "
+                       f"delta=({dx},{dy}), weight={weight:.3f}")
         
         # Avoid division by zero
         if total_weight == 0:
+            logger.warning("Total weight is zero, cannot determine direction")
             return None
         
         # Compute average direction vector
@@ -276,9 +316,12 @@ class AttentionFieldController:
         # Calculate vector magnitude
         magnitude = math.sqrt(avg_dx**2 + avg_dy**2)
         
+        logger.debug(f"Weighted average vector: ({avg_dx:.2f}, {avg_dy:.2f}), magnitude: {magnitude:.2f}")
+        
         # If the movement is too small, consider it no meaningful direction
         MIN_MAGNITUDE = 5.0  # Minimum pixels of movement to consider significant
         if magnitude < MIN_MAGNITUDE:
+            logger.debug(f"Movement magnitude {magnitude:.2f} < {MIN_MAGNITUDE}, considered insignificant")
             return None
         
         # Calculate angle in degrees
@@ -289,23 +332,31 @@ class AttentionFieldController:
         # Normalize to 0-360° range
         if angle_deg < 0:
             angle_deg += 360
+            
+        logger.debug(f"Movement angle: {angle_deg:.2f}°")
         
         # Convert angle to cardinal direction
         if 45 <= angle_deg < 135:
-            return 'up'
+            direction = 'up'
         elif 135 <= angle_deg < 225:
-            return 'left'
+            direction = 'left'
         elif 225 <= angle_deg < 315:
-            return 'down'
+            direction = 'down'
         else:  # 315 <= angle_deg < 360 or 0 <= angle_deg < 45
-            return 'right'
+            direction = 'right'
+            
+        logger.info(f"Inferred movement direction: {direction} (angle: {angle_deg:.2f}°)")
+        return direction
     
     def _update_attention_field(self) -> None:
         """
         Update the attention field based on current click history.
         """
+        logger.debug(f"Updating attention field based on {len(self.click_history)} clicks")
+        
         if len(self.click_history) < 1:
             # Cold start: use viewport as attention field
+            logger.debug("Cold start: using viewport as attention field")
             self.current_attention_field = self.viewport
             return
         elif len(self.click_history) == 1:
@@ -313,13 +364,19 @@ class AttentionFieldController:
             x, y, _ = self.click_history[0]
             half_size = self.base_box_size // 2
             
+            field_x = max(0, x - half_size)
+            field_y = max(0, y - half_size)
+            
+            logger.debug(f"Single click at ({x}, {y}): centering attention field with size {self.base_box_size}")
+            
             self.current_attention_field = AttentionField(
-                x=max(0, x - half_size),
-                y=max(0, y - half_size),
+                x=field_x,
+                y=field_y,
                 width=self.base_box_size,
                 height=self.base_box_size,
                 confidence=0.8
             )
+            logger.debug(f"Created attention field at ({field_x}, {field_y}) with size {self.base_box_size}x{self.base_box_size}")
             return
         
         # Multiple clicks: create bounding box containing all recent clicks
@@ -328,6 +385,8 @@ class AttentionFieldController:
         min_y = max(0, min(y for _, y in click_coords))
         max_x = min(self.screen_width, max(x for x, _ in click_coords))
         max_y = min(self.screen_height, max(y for _, y in click_coords))
+        
+        logger.debug(f"Multiple clicks bounding box: ({min_x}, {min_y}, {max_x}, {max_y})")
         
         # Ensure minimum size
         width = max(max_x - min_x, self.base_box_size)
@@ -340,15 +399,23 @@ class AttentionFieldController:
         expanded_width = int(width * self.expansion_factor)
         expanded_height = int(height * self.expansion_factor)
         
+        logger.debug(f"Base dimensions: {width}x{height}, center: ({center_x}, {center_y})")
+        logger.debug(f"Expanded dimensions: {expanded_width}x{expanded_height} (factor: {self.expansion_factor})")
+        
         # Create expanded attention field centered on the click bounding box
         x = max(0, center_x - expanded_width // 2)
         y = max(0, center_y - expanded_height // 2)
         
         # Ensure the field doesn't extend beyond screen bounds
         if x + expanded_width > self.screen_width:
+            original_x = x
             x = max(0, self.screen_width - expanded_width)
+            logger.debug(f"Adjusted x from {original_x} to {x} to keep within screen bounds")
+            
         if y + expanded_height > self.screen_height:
+            original_y = y
             y = max(0, self.screen_height - expanded_height)
+            logger.debug(f"Adjusted y from {original_y} to {y} to keep within screen bounds")
         
         # Infer movement direction
         direction = self._infer_movement_direction()
@@ -361,6 +428,10 @@ class AttentionFieldController:
             confidence=0.9,
             direction=direction
         )
+        
+        logger.info(f"Updated attention field: {self.current_attention_field.bbox}, "
+                  f"center: {self.current_attention_field.center}, "
+                  f"direction: {direction}, confidence: 0.9")
     
     def get_current_attention_field(self) -> AttentionField:
         """
@@ -370,9 +441,11 @@ class AttentionFieldController:
             Current attention field, or fallback if none exists
         """
         if self.current_attention_field:
+            logger.debug(f"Returning current attention field: {self.current_attention_field.bbox}")
             return self.current_attention_field
         
         # Fallback to viewport if no attention field exists
+        logger.debug(f"No current attention field, returning viewport: {self.viewport.bbox}")
         return self.viewport
     
     def predict_next_attention_field(self) -> Optional[AttentionField]:
@@ -382,21 +455,34 @@ class AttentionFieldController:
         Returns:
             Predicted next attention field, or None if direction can't be determined
         """
-        if not self.current_attention_field or not self.current_attention_field.direction:
+        if not self.current_attention_field:
+            logger.debug("Cannot predict next field: No current attention field")
+            return None
+            
+        if not self.current_attention_field.direction:
+            logger.debug("Cannot predict next field: No direction inferred for current field")
             return None
         
         # Get current field
         current = self.current_attention_field
         direction = current.direction
         
+        logger.debug(f"Predicting next attention field based on direction: {direction}")
+        
         # Determine shift amount (30% of current dimension)
         x_shift = int(current.width * 0.3)
         y_shift = int(current.height * 0.3)
         
+        logger.debug(f"Shift amounts: x_shift={x_shift}, y_shift={y_shift}")
+        
         # Create new attention field shifted in the inferred direction
         if direction == 'right':
             # Shift right
-            x = min(self.screen_width - current.width, current.x + x_shift)
+            original_x = current.x + x_shift
+            x = min(self.screen_width - current.width, original_x)
+            if x != original_x:
+                logger.debug(f"Adjusted x position from {original_x} to {x} to stay within screen bounds")
+                
             next_field = AttentionField(
                 x=x,
                 y=current.y,
@@ -405,9 +491,15 @@ class AttentionFieldController:
                 confidence=0.7,  # Lower confidence for prediction
                 direction=direction
             )
+            logger.debug(f"Predicted next field: shifted right to ({x}, {current.y})")
+            
         elif direction == 'left':
             # Shift left
-            x = max(0, current.x - x_shift)
+            original_x = current.x - x_shift
+            x = max(0, original_x)
+            if x != original_x:
+                logger.debug(f"Adjusted x position from {original_x} to {x} to stay within screen bounds")
+                
             next_field = AttentionField(
                 x=x,
                 y=current.y,
@@ -416,9 +508,15 @@ class AttentionFieldController:
                 confidence=0.7,
                 direction=direction
             )
+            logger.debug(f"Predicted next field: shifted left to ({x}, {current.y})")
+            
         elif direction == 'down':
             # Shift down
-            y = min(self.screen_height - current.height, current.y + y_shift)
+            original_y = current.y + y_shift
+            y = min(self.screen_height - current.height, original_y)
+            if y != original_y:
+                logger.debug(f"Adjusted y position from {original_y} to {y} to stay within screen bounds")
+                
             next_field = AttentionField(
                 x=current.x,
                 y=y,
@@ -427,9 +525,15 @@ class AttentionFieldController:
                 confidence=0.7,
                 direction=direction
             )
+            logger.debug(f"Predicted next field: shifted down to ({current.x}, {y})")
+            
         elif direction == 'up':
             # Shift up
-            y = max(0, current.y - y_shift)
+            original_y = current.y - y_shift
+            y = max(0, original_y)
+            if y != original_y:
+                logger.debug(f"Adjusted y position from {original_y} to {y} to stay within screen bounds")
+                
             next_field = AttentionField(
                 x=current.x,
                 y=y,
@@ -438,10 +542,14 @@ class AttentionFieldController:
                 confidence=0.7,
                 direction=direction
             )
+            logger.debug(f"Predicted next field: shifted up to ({current.x}, {y})")
+            
         else:
             # Unknown direction
+            logger.warning(f"Cannot predict next field: Unknown direction '{direction}'")
             return None
         
+        logger.info(f"Predicted next attention field: {next_field.bbox}, direction: {direction}, confidence: 0.7")
         return next_field
     
     def get_attention_context(self) -> Dict:
@@ -451,10 +559,11 @@ class AttentionFieldController:
         Returns:
             Dictionary with current attention field, click history, and predicted next area
         """
+        logger.debug("Getting attention context")
         current = self.get_current_attention_field()
         next_field = self.predict_next_attention_field()
         
-        return {
+        context = {
             "current_attention": {
                 "bbox": current.bbox,
                 "confidence": current.confidence,
@@ -468,6 +577,9 @@ class AttentionFieldController:
             "click_history_size": len(self.click_history),
             "base_box_size": self.base_box_size,
         }
+        
+        logger.debug(f"Attention context: {context}")
+        return context
 
 
 
