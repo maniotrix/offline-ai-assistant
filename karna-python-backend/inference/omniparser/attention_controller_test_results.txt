@@ -1,8 +1,86 @@
-07:38:47 INFO:NumExpr defaulting to 12 threads.
-07:38:47 INFO:Loading screenshot events from JSON file: C:\Users\Prince\Documents\GitHub\Proejct-Karna\offline-ai-assistant\data\chatgpt\883c46f5-c62d-4799-baa1-5e3b12f12e8c\screenshot_events_883c46f5-c62d-4799-baa1-5e3b12f12e8c.json
-07:38:47 INFO:Loaded 4 valid mouse events with screenshots
-07:38:47 INFO:AttentionFieldController initialized with: expansion_factor=1.5, click_history_limit=5, screen_width=1920, screen_height=1080, default_box_size=200
-07:38:47 INFO:Updated attention field: (523, 416, 200, 200), center: (623, 516), direction: None, confidence: 0.8
+09:16:40 INFO:NumExpr defaulting to 12 threads.
+09:16:40 INFO:Loading screenshot events from JSON file: C:\Users\Prince\Documents\GitHub\Proejct-Karna\offline-ai-assistant\data\chatgpt\883c46f5-c62d-4799-baa1-5e3b12f12e8c\screenshot_events_883c46f5-c62d-4799-baa1-5e3b12f12e8c.json
+09:16:40 INFO:Loaded 4 valid mouse events with screenshots
+09:16:40 INFO:Loaded attention config from: C:\Users/Prince/Documents/GitHub/Proejct-Karna/offline-ai-assistant/karna-python-backend\inference\omniparser\default_attention_config.json
+09:16:40 INFO:AttentionFieldController initialized.
+09:16:40 INFO:Viewport: (0, 121, 1920, 919), Aspect Ratio: 0.48
+09:16:40 INFO:Active Config Profile: 'Dynamic: Horizontal Bias'
+09:16:40 INFO:Final Config Values: {
+  "dominance_ratio_horizontal": 2.0,
+  "dominance_ratio_vertical": 4.0,
+  "recency_power_factor": 1.6,
+  "expansion_factor_horizontal": 1.8,
+  "expansion_factor_vertical": 1.2
+}
+09:16:40 INFO:Updated attention field: (443, 396, 360, 240), center: (623, 516), direction: None, confidence: 0.8
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                     ATTENTION FIELD ANALYSIS: USER GUIDE                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+This test visualizes how the AttentionFieldController tracks and predicts user attention
+based on mouse click sequences. Below is a guide to help you interpret the results:
+
+KEY CONCEPTS:
+------------
+• Top-Left Corner: (x, y) coordinates where the attention field begins
+• Dimensions: Width × Height of the attention field in pixels
+• Center Point: The focal point of the attention field (calculated from corner + dimensions/2)
+• Confidence Score: How certain the controller is about this attention area (0-1 scale)
+• Movement Direction: The inferred direction based on user's click patterns (UP/DOWN/LEFT/RIGHT)
+
+INTERPRETING CONSOLE OUTPUT:
+-------------------------
+For each mouse click event, you'll see:
+
+🔍 ATTENTION EVENT #N
+  Shows which event in the sequence is being analyzed
+
+⏰ Time: [timestamp]
+🖱️ Mouse Click: (x, y)
+  The exact time and position of the current mouse click
+
+📌 CURRENT ATTENTION FIELD:
+  • Top-Left Corner: (x, y)
+  • Dimensions: width × height pixels
+  • Center Point: (center_x, center_y)
+  • Confidence Score: 0.XX / 1.00
+  Details about where the system believes user attention is currently focused
+
+🔮 PREDICTED NEXT ATTENTION:
+  • Movement Direction: [DIRECTION]
+  • Top-Left Corner: (x, y)
+  • Dimensions: width × height pixels
+  • Center Point: (center_x, center_y)
+  • Prediction Confidence: 0.XX / 1.00
+  The system's prediction about where attention will move next
+
+🗺️ CUMULATIVE COVERAGE:
+  • Bounding Box: (x, y, w, h)
+  The total area covered by all attention fields so far.
+
+⬇️ MOVEMENT ANALYSIS:
+  • Inferred Direction: [DIRECTION SYMBOL] [DIRECTION]
+  The system's interpretation of click movement patterns
+
+VISUALIZATION IMAGES:
+------------------
+• Red Rectangle: Current attention field
+• Blue Dashed Rectangle: Predicted next attention field
+• Grey Translucent Rectangle: Cumulative area covered by attention
+• Red Dot: Current mouse click
+• Blue Dots: Previous mouse clicks
+• Green Arrow: Inferred movement direction
+
+CONFIDENCE SCORES:
+---------------
+• 0.70-1.00: High confidence (multiple consistent clicks)
+• 0.40-0.70: Medium confidence (limited click history)
+• <0.40: Low confidence (cold start or inconsistent clicks)
+
+The combination of detailed console output and saved visualization images provides
+a complete picture of how the attention tracking system works in real-world scenarios.
+
 
 ════════════════════════════════════════════════════════════════════════════════
 🔍 ATTENTION FIELD ANALYSIS
@@ -16,20 +94,25 @@ Processing 4 events in sequence...
 🖱️  Mouse Click: (623, 516)
 
 📌 CURRENT ATTENTION FIELD:
-  • Top-Left Corner: (523, 416)
-  • Dimensions: 200 × 200 pixels
+  • Top-Left Corner: (443, 396)
+  • Dimensions: 360 × 240 pixels
   • Center Point: (623, 516)
   • Confidence Score: 0.80 / 1.00
 
-🔮 PREDICTED NEXT ATTENTION: Not available yet (need more clicks)
+🔮 PREDICTED NEXT ATTENTION:
+  • Not available yet
 
-⬇️  MOVEMENT ANALYSIS:
-  • Inferred Direction: None (not enough clicks yet)
+🗺️ CUMULATIVE COVERAGE:
+  • Bounding Box: (443, 396, w=360, h=240)
+
+⬇️ MOVEMENT ANALYSIS:
+  • Inferred Direction: None
 ────────────────────────────────────────────────────────────────────────────────
-07:38:48 INFO:Saved visualization 1/4 to attention_visualization\attention_field_001.png
-07:38:48 INFO:Inferred direction from dominant last horizontal movement: right
-07:38:48 INFO:Updated attention field: (449, 387, 1045, 300), center: (971, 537), direction: right, confidence: 0.9
-07:38:48 INFO:Predicted next attention field: (762, 387, 1045, 300), direction: right, confidence: 0.7
+09:16:41 INFO:Saved visualization 1/4 to C:\Users\Prince\Documents\GitHub\Proejct-Karna\offline-ai-assistant\karna-python-backend\inference\omniparser\attention_visualization\attention_field_001.png
+09:16:41 INFO:Inferred direction from dominant last horizontal movement: right
+09:16:41 INFO:Updated attention field: (344, 417, 1254, 240), center: (971, 537), direction: right, confidence: 0.9
+09:16:41 INFO:Predicted next attention field: (666, 417, 1254, 240), direction: right, confidence: 0.7
+09:16:41 INFO:Predicted next attention field: (666, 417, 1254, 240), direction: right, confidence: 0.7
 
 ════════════════════════════════════════════════════════════════════════════════
 🔍 ATTENTION EVENT #2
@@ -38,25 +121,29 @@ Processing 4 events in sequence...
 🖱️  Mouse Click: (1320, 558)
 
 📌 CURRENT ATTENTION FIELD:
-  • Top-Left Corner: (449, 387)
-  • Dimensions: 1045 × 300 pixels
+  • Top-Left Corner: (344, 417)
+  • Dimensions: 1254 × 240 pixels
   • Center Point: (971, 537)
   • Confidence Score: 0.90 / 1.00
 
 🔮 PREDICTED NEXT ATTENTION:
   • Movement Direction: RIGHT
-  • Top-Left Corner: (762, 387)
-  • Dimensions: 1045 × 300 pixels
-  • Center Point: (1284, 537)
+  • Top-Left Corner: (666, 417)
+  • Dimensions: 1254 × 240 pixels
+  • Center Point: (1293, 537)
   • Prediction Confidence: 0.70 / 1.00
 
-⬇️  MOVEMENT ANALYSIS:
+🗺️ CUMULATIVE COVERAGE:
+  • Bounding Box: (344, 396, w=1254, h=261)
+
+⬇️ MOVEMENT ANALYSIS:
   • Inferred Direction: ➡️ RIGHT
 ────────────────────────────────────────────────────────────────────────────────
-07:38:49 INFO:Saved visualization 2/4 to attention_visualization\attention_field_002.png
-07:38:49 INFO:Inferred direction from dominant last vertical movement: up
-07:38:49 INFO:Updated attention field: (449, 379, 1045, 300), center: (971, 529), direction: up, confidence: 0.9
-07:38:49 INFO:Predicted next attention field: (449, 289, 1045, 300), direction: up, confidence: 0.7
+09:16:42 INFO:Saved visualization 2/4 to C:\Users\Prince\Documents\GitHub\Proejct-Karna\offline-ai-assistant\karna-python-backend\inference\omniparser\attention_visualization\attention_field_002.png
+09:16:42 INFO:Inferred direction from dominant last vertical movement: up
+09:16:42 INFO:Updated attention field: (344, 409, 1254, 240), center: (971, 529), direction: up, confidence: 0.9
+09:16:42 INFO:Predicted next attention field: (344, 337, 1254, 240), direction: up, confidence: 0.7
+09:16:42 INFO:Predicted next attention field: (344, 337, 1254, 240), direction: up, confidence: 0.7
 
 ════════════════════════════════════════════════════════════════════════════════
 🔍 ATTENTION EVENT #3
@@ -65,25 +152,29 @@ Processing 4 events in sequence...
 🖱️  Mouse Click: (956, 500)
 
 📌 CURRENT ATTENTION FIELD:
-  • Top-Left Corner: (449, 379)
-  • Dimensions: 1045 × 300 pixels
+  • Top-Left Corner: (344, 409)
+  • Dimensions: 1254 × 240 pixels
   • Center Point: (971, 529)
   • Confidence Score: 0.90 / 1.00
 
 🔮 PREDICTED NEXT ATTENTION:
   • Movement Direction: UP
-  • Top-Left Corner: (449, 289)
-  • Dimensions: 1045 × 300 pixels
-  • Center Point: (971, 439)
+  • Top-Left Corner: (344, 337)
+  • Dimensions: 1254 × 240 pixels
+  • Center Point: (971, 457)
   • Prediction Confidence: 0.70 / 1.00
 
-⬇️  MOVEMENT ANALYSIS:
+🗺️ CUMULATIVE COVERAGE:
+  • Bounding Box: (344, 396, w=1254, h=261)
+
+⬇️ MOVEMENT ANALYSIS:
   • Inferred Direction: ⬆️ UP
 ────────────────────────────────────────────────────────────────────────────────
-07:38:49 INFO:Saved visualization 3/4 to attention_visualization\attention_field_003.png
-07:38:49 INFO:Inferred direction from dominant last vertical movement: up
-07:38:49 INFO:Updated attention field: (408, 191, 1095, 441), center: (955, 411), direction: up, confidence: 0.9
-07:38:49 INFO:Predicted next attention field: (408, 59, 1095, 441), direction: up, confidence: 0.7
+09:16:42 INFO:Saved visualization 3/4 to C:\Users\Prince\Documents\GitHub\Proejct-Karna\offline-ai-assistant\karna-python-backend\inference\omniparser\attention_visualization\attention_field_003.png
+09:16:42 INFO:Inferred direction from dominant last vertical movement: up
+09:16:42 INFO:Updated attention field: (298, 235, 1314, 352), center: (955, 411), direction: up, confidence: 0.9
+09:16:42 INFO:Predicted next attention field: (298, 130, 1314, 352), direction: up, confidence: 0.7
+09:16:42 INFO:Predicted next attention field: (298, 130, 1314, 352), direction: up, confidence: 0.7
 
 ════════════════════════════════════════════════════════════════════════════════
 🔍 ATTENTION EVENT #4
@@ -92,29 +183,30 @@ Processing 4 events in sequence...
 🖱️  Mouse Click: (590, 264)
 
 📌 CURRENT ATTENTION FIELD:
-  • Top-Left Corner: (408, 191)
-  • Dimensions: 1095 × 441 pixels
+  • Top-Left Corner: (298, 235)
+  • Dimensions: 1314 × 352 pixels
   • Center Point: (955, 411)
   • Confidence Score: 0.90 / 1.00
 
 🔮 PREDICTED NEXT ATTENTION:
   • Movement Direction: UP
-  • Top-Left Corner: (408, 59)
-  • Dimensions: 1095 × 441 pixels
-  • Center Point: (955, 279)
+  • Top-Left Corner: (298, 130)
+  • Dimensions: 1314 × 352 pixels
+  • Center Point: (955, 306)
   • Prediction Confidence: 0.70 / 1.00
 
-⬇️  MOVEMENT ANALYSIS:
+🗺️ CUMULATIVE COVERAGE:
+  • Bounding Box: (298, 235, w=1314, h=422)
+
+⬇️ MOVEMENT ANALYSIS:
   • Inferred Direction: ⬆️ UP
 ────────────────────────────────────────────────────────────────────────────────
-07:38:50 INFO:Saved visualization 4/4 to attention_visualization\attention_field_004.png
-07:38:50 INFO:Completed visualization of attention fields for 4 events
-07:38:50 INFO:Output saved to directory: c:\Users\Prince\Documents\GitHub\Proejct-Karna\offline-ai-assistant\karna-python-backend\inference\omniparser\attention_visualization
+09:16:43 INFO:Saved visualization 4/4 to C:\Users\Prince\Documents\GitHub\Proejct-Karna\offline-ai-assistant\karna-python-backend\inference\omniparser\attention_visualization\attention_field_004.png
+09:16:43 INFO:Completed visualization. Output: C:\Users\Prince\Documents\GitHub\Proejct-Karna\offline-ai-assistant\karna-python-backend\inference\omniparser\attention_visualization
 
 ════════════════════════════════════════════════════════════════════════════════
 📊 SUMMARY: Processed 4 attention events
-📁 Output saved to: c:\Users\Prince\Documents\GitHub\Proejct-Karna\offline-ai-assistant\karna-python-backend\inference\omniparser\attention_visualization
+📁 Output saved to: C:\Users\Prince\Documents\GitHub\Proejct-Karna\offline-ai-assistant\karna-python-backend\inference\omniparser\attention_visualization
 ════════════════════════════════════════════════════════════════════════════════
 
-Tip: Open the saved images to see visual representations of attention fields.
-     Each image shows both current attention and predicted next attention areas.
+Tip: Open the saved images to see visual representations.
