@@ -355,9 +355,9 @@ class AttentionFieldController:
             logger.debug("Setting base box size from omniparser result")
             self.set_base_box_size_from_omniparser(omniparser_result)
             
-    def _infer_movement_direction(self) -> Optional[str]:
+    def _past_to_current_attention_movement_direction(self) -> Optional[str]:
         """
-        Infer the movement direction using a hybrid approach:
+        Determine the movement direction from past to current attention field using a hybrid approach:
         1. Check the direction of the most recent center movement.
            If it's significant and strongly axial (horizontal/vertical), use that direction.
         2. Otherwise, fall back to a weighted trend analysis of the entire center history.
@@ -581,7 +581,7 @@ class AttentionFieldController:
                 logger.debug(f"Adjusted y from {original_y} to {y} to keep within screen bounds")
 
             # Infer movement direction using the center history
-            direction = self._infer_movement_direction()
+            direction = self._past_to_current_attention_movement_direction()
             confidence = 0.9 if len(self.click_history) > 1 else 0.8 # Slightly lower confidence for first click
 
             self.current_attention_field = AttentionField(
@@ -623,7 +623,7 @@ class AttentionFieldController:
             logger.debug("Cannot predict next field: No current attention field")
             return None
             
-        # Use the direction stored in the current field (which came from _infer_movement_direction)
+        # Use the direction stored in the current field (which came from _past_to_current_attention_movement_direction)
         direction = self.current_attention_field.direction
         if not direction:
             logger.debug("Cannot predict next field: No direction inferred for current field")

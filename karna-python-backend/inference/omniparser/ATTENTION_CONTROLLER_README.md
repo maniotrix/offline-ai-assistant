@@ -85,10 +85,10 @@ When a click is added:
 4. **Create `AttentionField` Object**:
    - Creates the `current_attention_field` instance, centered on the `core_center`, with the calculated `expanded_width` and `expanded_height`.
    - Ensures the field stays within screen bounds.
-   - Calls `_infer_movement_direction()` to get the direction.
+   - Calls `_past_to_current_attention_movement_direction()` to get the direction.
    - Sets confidence (0.8 for first click, 0.9 otherwise).
 
-### Movement Direction Inference (`_infer_movement_direction`)
+### Movement Direction Inference (`_past_to_current_attention_movement_direction`)
 
 Uses a **hybrid approach**:
 1. **Check Last Axial Movement**:
