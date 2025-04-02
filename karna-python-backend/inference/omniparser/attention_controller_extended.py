@@ -191,7 +191,8 @@ class AttentionFieldController:
             return
         
         # Get the first click location
-        x, y, _ = self.click_history[0]
+        click_point = self.click_history[0]
+        x, y = click_point.x, click_point.y
         
         # Find the UI element that contains this click
         closest_element = None
@@ -267,7 +268,10 @@ class AttentionFieldController:
             return None
         
         # Take the two most recent clicks
-        (x2, y2, _), (x1, y1, _) = self.click_history[-1], self.click_history[-2]
+        click2 = self.click_history[-1]
+        click1 = self.click_history[-2]
+        x2, y2 = click2.x, click2.y
+        x1, y1 = click1.x, click1.y
         
         # Calculate deltas
         dx = x2 - x1
@@ -291,7 +295,8 @@ class AttentionFieldController:
             return
         elif len(self.click_history) == 1:
             # Single click: center attention field on it
-            x, y, _ = self.click_history[0]
+            click_point = self.click_history[0]
+            x, y = click_point.x, click_point.y
             half_size = self.base_box_size // 2
             
             self.current_attention_field = AttentionField(
@@ -304,7 +309,7 @@ class AttentionFieldController:
             return
         
         # Multiple clicks: create bounding box containing all recent clicks
-        click_coords = [(x, y) for x, y, _ in self.click_history]
+        click_coords = [(click.x, click.y) for click in self.click_history]
         min_x = max(0, min(x for x, _ in click_coords))
         min_y = max(0, min(y for _, y in click_coords))
         max_x = min(self.screen_width, max(x for x, _ in click_coords))
