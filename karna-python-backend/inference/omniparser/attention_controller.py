@@ -3,7 +3,10 @@ from typing import List, Tuple, Dict, Optional
 from dataclasses import dataclass
 import numpy as np
 import math
+import json
+import os
 from datetime import datetime
+from pydantic import BaseModel
 from services.screen_capture_service import ScreenshotEvent
 from inference.omniparser.util.omniparser import OmniparserResult
 from inference.omniparser.omni_helper import OmniParserResultModel
@@ -48,14 +51,27 @@ class AttentionField:
         return (self.x <= x <= self.x + self.width and
                 self.y <= y <= self.y + self.height)
 
+# Pydantic model for configuration
+class AttentionConfig(BaseModel):
+    """Configuration parameters for the AttentionFieldController."""
+    dominance_ratio_horizontal: float = 2.5
+    """Ratio to determine if horizontal movement dominates the last step (higher = stricter)."""
+    dominance_ratio_vertical: float = 2.5
+    """Ratio to determine if vertical movement dominates the last step (higher = stricter)."""
+    recency_power_factor: float = 1.4
+    """Exponent controlling the weight of recent movements in the weighted average (higher = more weight to recent)."""
+    expansion_factor_horizontal: float = 1.4
+    """Factor by which to expand the core attention box horizontally."""
+    expansion_factor_vertical: float = 1.4
+    """Factor by which to expand the core attention box vertically."""
+
 class AttentionFieldController:
     """
     Controller for simulating human visual attention using click history.
     
-    This class tracks recent clicks, builds a dynamic attention field, infers
-    movement direction using a hybrid approach, and suggests the next area of
-    attention. Configuration parameters (expansion, dominance, weighting) are
-    dynamically set based on the viewport aspect ratio.
+    Loads default configuration from a JSON file, dynamically adjusts it based
+    on viewport aspect ratio, tracks clicks, infers movement direction via a
+    hybrid approach, and predicts the next attention area.
     """
     
     def __init__(self,
@@ -63,17 +79,19 @@ class AttentionFieldController:
                  screen_width: int = 1920,
                  screen_height: int = 1080,
                  default_box_size: int = 200,
-                 viewport_bbox: Dict = renderBBox):
+                 viewport_bbox: Dict = renderBBox,
+                 config_path: str = "default_attention_config.json"):
         """
         Initialize the attention field controller.
         
         Args:
-            click_history_limit: Max number of clicks/centers to consider in history
-            screen_width: Width of the screen in pixels
-            screen_height: Height of the screen in pixels
-            default_box_size: Default size for the attention field if needed
-            viewport_bbox: Dictionary defining the viewport area {"x", "y", "width", "height"}
-                           Defaults to the global renderBBox.
+            click_history_limit: Max clicks/centers in history.
+            screen_width: Screen width in pixels.
+            screen_height: Screen height in pixels.
+            default_box_size: Default attention box size if needed.
+            viewport_bbox: Dictionary defining the viewport area {"x", "y", "width", "height"}.
+            config_path: Path to the JSON configuration file.
+                       Defaults to 'default_attention_config.json' in the script's directory.
         """
         # Basic parameters
         self.click_history_limit = click_history_limit
@@ -92,7 +110,7 @@ class AttentionFieldController:
             confidence=0.5
         )
         
-        # Define viewport from input or default
+        # Define viewport
         self.viewport = AttentionField(
             x=viewport_bbox.get("x", 0),
             y=viewport_bbox.get("y", 0),
@@ -105,39 +123,53 @@ class AttentionFieldController:
         self.base_box_size = default_box_size
         self.base_box_initialized = False
         
-        # --- Dynamic Configuration based on Viewport Aspect Ratio ---
+        # --- Load Configuration --- 
+        # Default to path relative to this script file
+        if not os.path.isabs(config_path):
+            script_dir = os.path.dirname(__file__)
+            config_path = os.path.join(script_dir, config_path)
+            
+        try:
+            with open(config_path, 'r') as f:
+                config_data = json.load(f)
+            self.config = AttentionConfig(**config_data)
+            logger.info(f"Loaded attention config from: {config_path}")
+        except FileNotFoundError:
+            logger.warning(f"Config file not found at {config_path}. Using default Pydantic values.")
+            self.config = AttentionConfig() # Use Pydantic defaults
+        except (json.JSONDecodeError, TypeError) as e:
+            logger.error(f"Error loading or parsing config file {config_path}: {e}. Using default Pydantic values.")
+            self.config = AttentionConfig() # Use Pydantic defaults
+        
+        # --- Dynamically Adjust Configuration based on Viewport Aspect Ratio ---
         vp_width = self.viewport.width
         vp_height = self.viewport.height
         aspect_ratio = vp_height / vp_width if vp_width > 0 else 1.0
-        
-        # Default values (balanced case)
-        self.dominance_ratio_x: float = 2.5
-        self.dominance_ratio_y: float = 2.5
-        self.power_factor: float = 1.4        # Recency bias in weighted average
-        self.horizontal_expansion_factor: float = 1.4
-        self.vertical_expansion_factor: float = 1.4
-        config_profile = "Balanced"
+        config_profile = "Default (Loaded)"
         
         if aspect_ratio > 1.2: # Tall viewport (e.g., chat)
-            config_profile = "Vertical Bias"
-            self.dominance_ratio_x = 4.0
-            self.dominance_ratio_y = 2.0 # More sensitive to vertical dominance
-            self.power_factor = 1.6
-            self.horizontal_expansion_factor = 1.2
-            self.vertical_expansion_factor = 1.8 # Expand more vertically
+            config_profile = "Dynamic: Vertical Bias"
+            # Adjust defaults for vertical bias
+            self.config.dominance_ratio_horizontal = 4.0
+            self.config.dominance_ratio_vertical = 2.0 # More sensitive to vertical dominance
+            self.config.recency_power_factor = 1.6
+            self.config.expansion_factor_horizontal = 1.2
+            self.config.expansion_factor_vertical = 1.8 # Expand more vertically
         elif aspect_ratio < 0.8: # Wide viewport (e.g., spreadsheet row)
-            config_profile = "Horizontal Bias"
-            self.dominance_ratio_x = 2.0 # More sensitive to horizontal dominance
-            self.dominance_ratio_y = 4.0
-            self.power_factor = 1.6
-            self.horizontal_expansion_factor = 1.8 # Expand more horizontally
-            self.vertical_expansion_factor = 1.2
+            config_profile = "Dynamic: Horizontal Bias"
+             # Adjust defaults for horizontal bias
+            self.config.dominance_ratio_horizontal = 2.0 # More sensitive to horizontal dominance
+            self.config.dominance_ratio_vertical = 4.0
+            self.config.recency_power_factor = 1.6
+            self.config.expansion_factor_horizontal = 1.8 # Expand more horizontally
+            self.config.expansion_factor_vertical = 1.2
+        else:
+            config_profile = "Dynamic: Balanced (Using Loaded/Defaults)"
         
         logger.info(f"AttentionFieldController initialized.")
         logger.info(f"Viewport: {self.viewport.bbox}, Aspect Ratio: {aspect_ratio:.2f}")
-        logger.info(f"Dynamic Config Profile: '{config_profile}'")
-        logger.debug(f"Config Values: DomRatio(X/Y)=({self.dominance_ratio_x:.1f}/{self.dominance_ratio_y:.1f}), "
-                    f"PowerFactor={self.power_factor:.1f}, ExpFactor(H/V)=({self.horizontal_expansion_factor:.1f}/{self.vertical_expansion_factor:.1f})")
+        logger.info(f"Active Config Profile: '{config_profile}'")
+        logger.info(f"Final Config Values: {self.config.model_dump_json(indent=2)}")
     
     def add_click(self, x: int, y: int, timestamp: datetime = None) -> None:
         """
@@ -314,15 +346,14 @@ class AttentionFieldController:
         MIN_MAGNITUDE = 5.0  # Minimum pixels of movement to consider significant
 
         if mag_last >= MIN_MAGNITUDE:
-            # Check for dominant axial movement using dynamic ratios
-            # Add small epsilon to denominator to avoid division by zero if dx_last or dy_last is exactly 0
-            epsilon = 1e-6
-            if abs(dy_last) > self.dominance_ratio_y * abs(dx_last) + epsilon:
+            # Check for dominant axial movement using dynamic ratios from self.config
+            epsilon = 1e-6 # Avoid division by zero
+            if abs(dy_last) > self.config.dominance_ratio_vertical * abs(dx_last) + epsilon:
                 # Vertical movement dominates
-                direction = 'up' if dy_last < 0 else 'down' # Remember screen Y increases downwards
+                direction = 'up' if dy_last < 0 else 'down' # Screen Y increases downwards
                 logger.info(f"Inferred direction from dominant last vertical movement: {direction}")
                 return direction
-            elif abs(dx_last) > self.dominance_ratio_x * abs(dy_last) + epsilon:
+            elif abs(dx_last) > self.config.dominance_ratio_horizontal * abs(dy_last) + epsilon:
                 # Horizontal movement dominates
                 direction = 'left' if dx_last < 0 else 'right'
                 logger.info(f"Inferred direction from dominant last horizontal movement: {direction}")
@@ -355,8 +386,8 @@ class AttentionFieldController:
 
             # Calculate weight based on recency (1-based index, more recent = higher index)
             pair_index = i + 1
-            # Use dynamic power factor
-            weight = (pair_index / num_pairs) ** self.power_factor
+            # Use dynamic power factor from self.config
+            weight = (pair_index / num_pairs) ** self.config.recency_power_factor
 
             # Accumulate weighted vectors
             weighted_dx += dx * weight
@@ -437,18 +468,15 @@ class AttentionFieldController:
 
         if len(self.click_history) == 1:
             # Single click: core center is the click itself.
-            # Store the first center. Need to manage the history list directly here.
+            # Store the first center.
             if len(self.center_history) == 0:
                  self.center_history.append((core_center_x, core_center_y))
                  logger.debug(f"Added first center to history: ({core_center_x}, {core_center_y})")
             elif len(self.center_history) == 1:
-                 # If add_click logic already added one, update it (e.g. during process_click_history loop)
                  self.center_history[-1] = (core_center_x, core_center_y)
                  logger.debug(f"Updated last center in history: ({core_center_x}, {core_center_y})")
             else:
-                 # This case might occur if history limit logic runs before update
                  logger.warning(f"Center history size ({len(self.center_history)}) unexpected for single click.")
-                 # Append anyway, history limit in add_click should handle it
                  self.center_history.append((core_center_x, core_center_y))
 
             # Core width/height remain base_box_size for single click
@@ -479,12 +507,10 @@ class AttentionFieldController:
                 logger.debug(f"Updated last core center in history: ({core_center_x}, {core_center_y})")
             else:
                  logger.warning(f"Center history size ({len(self.center_history)}) > click history ({len(self.click_history)}). Trimming center history.")
-                 # Trim center history to match click history size
                  self.center_history = self.center_history[-len(self.click_history):]
-                 # Update the last one after trimming
-                 if self.center_history: # Check if not empty after trimming
+                 if self.center_history:
                       self.center_history[-1] = (core_center_x, core_center_y)
-                 else: # If trimming resulted in empty, just append
+                 else:
                       self.center_history.append((core_center_x, core_center_y))
 
             # Determine core dimensions, ensuring minimum size
@@ -494,13 +520,12 @@ class AttentionFieldController:
             logger.debug(f"Core dimensions (min {self.base_box_size}): {core_width}x{core_height}, core center: ({core_center_x}, {core_center_y})")
 
         # --- Calculate Expanded Field using Dynamic Factors --- 
-        # (Applies whether 1 or multiple clicks, using core_width/height from above)
-        expanded_width = int(core_width * self.horizontal_expansion_factor)
-        expanded_height = int(core_height * self.vertical_expansion_factor)
-        logger.debug(f"Expanded dimensions: {expanded_width}x{expanded_height} (factors H/V: {self.horizontal_expansion_factor:.1f}/{self.vertical_expansion_factor:.1f})")
+        # Use dynamic expansion factors from self.config
+        expanded_width = int(core_width * self.config.expansion_factor_horizontal)
+        expanded_height = int(core_height * self.config.expansion_factor_vertical)
+        logger.debug(f"Expanded dimensions: {expanded_width}x{expanded_height} (factors H/V: {self.config.expansion_factor_horizontal:.1f}/{self.config.expansion_factor_vertical:.1f})")
 
         # Create the final expanded attention field, centered on the *core* center
-        # (Only if we have clicks, otherwise handled by cold start)
         if len(self.click_history) >= 1:
             x = max(0, core_center_x - expanded_width // 2)
             y = max(0, core_center_y - expanded_height // 2)

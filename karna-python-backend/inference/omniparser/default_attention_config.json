@@ -1,0 +1,7 @@
+{
+  "dominance_ratio_horizontal": 2.5,
+  "dominance_ratio_vertical": 2.5,
+  "recency_power_factor": 1.4,
+  "expansion_factor_horizontal": 1.4,
+  "expansion_factor_vertical": 1.4
+} 
