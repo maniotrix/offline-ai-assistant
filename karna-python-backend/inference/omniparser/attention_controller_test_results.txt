@@ -1,8 +1,8 @@
-06:42:19 INFO:NumExpr defaulting to 12 threads.
-06:42:19 INFO:Loading screenshot events from JSON file: C:\Users\Prince\Documents\GitHub\Proejct-Karna\offline-ai-assistant\data\chatgpt\883c46f5-c62d-4799-baa1-5e3b12f12e8c\screenshot_events_883c46f5-c62d-4799-baa1-5e3b12f12e8c.json
-06:42:19 INFO:Loaded 4 valid mouse events with screenshots
-06:42:19 INFO:AttentionFieldController initialized with: expansion_factor=1.5, click_history_limit=5, screen_width=1920, screen_height=1080, default_box_size=200
-06:42:19 INFO:Updated attention field: (523, 416, 200, 200), center: (623, 516), direction: None, confidence: 0.8
+07:38:47 INFO:NumExpr defaulting to 12 threads.
+07:38:47 INFO:Loading screenshot events from JSON file: C:\Users\Prince\Documents\GitHub\Proejct-Karna\offline-ai-assistant\data\chatgpt\883c46f5-c62d-4799-baa1-5e3b12f12e8c\screenshot_events_883c46f5-c62d-4799-baa1-5e3b12f12e8c.json
+07:38:47 INFO:Loaded 4 valid mouse events with screenshots
+07:38:47 INFO:AttentionFieldController initialized with: expansion_factor=1.5, click_history_limit=5, screen_width=1920, screen_height=1080, default_box_size=200
+07:38:47 INFO:Updated attention field: (523, 416, 200, 200), center: (623, 516), direction: None, confidence: 0.8
 
 ════════════════════════════════════════════════════════════════════════════════
 🔍 ATTENTION FIELD ANALYSIS
@@ -26,10 +26,10 @@ Processing 4 events in sequence...
 ⬇️  MOVEMENT ANALYSIS:
   • Inferred Direction: None (not enough clicks yet)
 ────────────────────────────────────────────────────────────────────────────────
-06:42:20 INFO:Saved visualization 1/4 to attention_visualization\attention_field_001.png
-06:42:20 INFO:Inferred movement direction from centers: right (angle: 356.55°)
-06:42:20 INFO:Updated attention field: (449, 387, 1045, 300), center: (971, 537), direction: right, confidence: 0.9
-06:42:20 INFO:Predicted next attention field: (762, 387, 1045, 300), direction: right, confidence: 0.7
+07:38:48 INFO:Saved visualization 1/4 to attention_visualization\attention_field_001.png
+07:38:48 INFO:Inferred direction from dominant last horizontal movement: right
+07:38:48 INFO:Updated attention field: (449, 387, 1045, 300), center: (971, 537), direction: right, confidence: 0.9
+07:38:48 INFO:Predicted next attention field: (762, 387, 1045, 300), direction: right, confidence: 0.7
 
 ════════════════════════════════════════════════════════════════════════════════
 🔍 ATTENTION EVENT #2
@@ -53,10 +53,10 @@ Processing 4 events in sequence...
 ⬇️  MOVEMENT ANALYSIS:
   • Inferred Direction: ➡️ RIGHT
 ────────────────────────────────────────────────────────────────────────────────
-06:42:21 INFO:Saved visualization 2/4 to attention_visualization\attention_field_002.png
-06:42:21 INFO:Inferred movement direction from centers: right (angle: 0.27°)
-06:42:21 INFO:Updated attention field: (449, 379, 1045, 300), center: (971, 529), direction: right, confidence: 0.9
-06:42:21 INFO:Predicted next attention field: (762, 379, 1045, 300), direction: right, confidence: 0.7
+07:38:49 INFO:Saved visualization 2/4 to attention_visualization\attention_field_002.png
+07:38:49 INFO:Inferred direction from dominant last vertical movement: up
+07:38:49 INFO:Updated attention field: (449, 379, 1045, 300), center: (971, 529), direction: up, confidence: 0.9
+07:38:49 INFO:Predicted next attention field: (449, 289, 1045, 300), direction: up, confidence: 0.7
 
 ════════════════════════════════════════════════════════════════════════════════
 🔍 ATTENTION EVENT #3
@@ -71,19 +71,19 @@ Processing 4 events in sequence...
   • Confidence Score: 0.90 / 1.00
 
 🔮 PREDICTED NEXT ATTENTION:
-  • Movement Direction: RIGHT
-  • Top-Left Corner: (762, 379)
+  • Movement Direction: UP
+  • Top-Left Corner: (449, 289)
   • Dimensions: 1045 × 300 pixels
-  • Center Point: (1284, 529)
+  • Center Point: (971, 439)
   • Prediction Confidence: 0.70 / 1.00
 
 ⬇️  MOVEMENT ANALYSIS:
-  • Inferred Direction: ➡️ RIGHT
+  • Inferred Direction: ⬆️ UP
 ────────────────────────────────────────────────────────────────────────────────
-06:42:22 INFO:Saved visualization 3/4 to attention_visualization\attention_field_003.png
-06:42:22 INFO:Inferred movement direction from centers: up (angle: 66.69°)
-06:42:22 INFO:Updated attention field: (408, 191, 1095, 441), center: (955, 411), direction: up, confidence: 0.9
-06:42:22 INFO:Predicted next attention field: (408, 59, 1095, 441), direction: up, confidence: 0.7
+07:38:49 INFO:Saved visualization 3/4 to attention_visualization\attention_field_003.png
+07:38:49 INFO:Inferred direction from dominant last vertical movement: up
+07:38:49 INFO:Updated attention field: (408, 191, 1095, 441), center: (955, 411), direction: up, confidence: 0.9
+07:38:49 INFO:Predicted next attention field: (408, 59, 1095, 441), direction: up, confidence: 0.7
 
 ════════════════════════════════════════════════════════════════════════════════
 🔍 ATTENTION EVENT #4
@@ -107,9 +107,9 @@ Processing 4 events in sequence...
 ⬇️  MOVEMENT ANALYSIS:
   • Inferred Direction: ⬆️ UP
 ────────────────────────────────────────────────────────────────────────────────
-06:42:22 INFO:Saved visualization 4/4 to attention_visualization\attention_field_004.png
-06:42:22 INFO:Completed visualization of attention fields for 4 events
-06:42:22 INFO:Output saved to directory: c:\Users\Prince\Documents\GitHub\Proejct-Karna\offline-ai-assistant\karna-python-backend\inference\omniparser\attention_visualization
+07:38:50 INFO:Saved visualization 4/4 to attention_visualization\attention_field_004.png
+07:38:50 INFO:Completed visualization of attention fields for 4 events
+07:38:50 INFO:Output saved to directory: c:\Users\Prince\Documents\GitHub\Proejct-Karna\offline-ai-assistant\karna-python-backend\inference\omniparser\attention_visualization
 
 ════════════════════════════════════════════════════════════════════════════════
 📊 SUMMARY: Processed 4 attention events

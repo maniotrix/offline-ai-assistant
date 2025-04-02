@@ -258,85 +258,113 @@ class AttentionFieldController:
             
     def _infer_movement_direction(self) -> Optional[str]:
         """
-        Infer the movement direction from the history of core attention centers
-        using a weighted trend analysis.
-        
-        This method analyzes the available centers in `center_history` (up to
-        `click_history_limit`), giving more weight to recent movements. It
-        calculates a weighted average direction vector and converts it to one
-        of the four cardinal directions.
-        
+        Infer the movement direction using a hybrid approach:
+        1. Check the direction of the most recent center movement.
+           If it's significant and strongly axial (horizontal/vertical), use that direction.
+        2. Otherwise, fall back to a weighted trend analysis of the entire center history.
+
+        This prioritizes responsiveness to clear recent shifts while smoothing ambiguous ones.
+
         Returns:
             Direction as 'up', 'down', 'left', 'right', or None if can't determine
         """
-        # Need at least 2 centers to determine a direction
+        # Need at least 2 centers to determine any direction
         if len(self.center_history) < 2:
             logger.debug("Cannot infer movement direction: Need at least 2 centers in history")
             return None
-        
-        logger.debug(f"Inferring movement direction from {len(self.center_history)} centers")
-        
+
+        # --- Hybrid Approach: Check last movement first ---
+        cx_n_minus_1, cy_n_minus_1 = self.center_history[-2]
+        cx_n, cy_n = self.center_history[-1]
+
+        dx_last = cx_n - cx_n_minus_1
+        dy_last = cy_n - cy_n_minus_1
+        mag_last = math.sqrt(dx_last**2 + dy_last**2)
+
+        logger.debug(f"Last center movement: ({cx_n_minus_1},{cy_n_minus_1}) -> ({cx_n},{cy_n}), delta=({dx_last},{dy_last}), mag={mag_last:.2f}")
+
+        MIN_MAGNITUDE = 5.0  # Minimum pixels of movement to consider significant
+        DOMINANCE_RATIO = 3.0 # How much larger one axis delta must be than the other
+
+        if mag_last >= MIN_MAGNITUDE:
+            # Check for dominant axial movement
+            if abs(dy_last) > DOMINANCE_RATIO * abs(dx_last):
+                direction = 'up' if dy_last < 0 else 'down'
+                logger.info(f"Inferred direction from dominant last vertical movement: {direction}")
+                return direction
+            elif abs(dx_last) > DOMINANCE_RATIO * abs(dy_last):
+                direction = 'left' if dx_last < 0 else 'right'
+                logger.info(f"Inferred direction from dominant last horizontal movement: {direction}")
+                return direction
+            else:
+                logger.debug("Last movement is significant but not strongly axial, proceeding to weighted average.")
+        else:
+            logger.debug(f"Last movement magnitude {mag_last:.2f} < {MIN_MAGNITUDE}, proceeding to weighted average.")
+
+        # --- Fallback: Weighted Average Trend Analysis ---
+        logger.debug(f"Inferring movement direction using weighted average of {len(self.center_history)} centers")
+
         # Initialize weighted direction accumulators
         weighted_dx = 0.0
         weighted_dy = 0.0
         total_weight = 0.0
-        
+
         # Number of movement vectors (pairs of centers)
         num_pairs = len(self.center_history) - 1
-        
+
         # Process each consecutive pair of centers
         for i in range(num_pairs):
             # Get current and next center coordinates
             cx1, cy1 = self.center_history[i]
             cx2, cy2 = self.center_history[i+1]
-            
+
             # Calculate movement vector
             dx = cx2 - cx1
             dy = cy2 - cy1
-            
+
             # Calculate weight based on recency (1-based index, more recent = higher index)
             pair_index = i + 1
-            weight = (pair_index / num_pairs) ** 1.5 # Power factor gives more emphasis to recent pairs
-            
+            # Using power factor 1.5 as before for the weighted average part
+            weight = (pair_index / num_pairs) ** 1.5
+
             # Accumulate weighted vectors
             weighted_dx += dx * weight
             weighted_dy += dy * weight
             total_weight += weight
-            
-            logger.debug(f"Center movement vector {i+1}/{num_pairs}: ({cx1},{cy1}) -> ({cx2},{cy2}), "
-                       f"delta=({dx},{dy}), weight={weight:.3f}")
-        
-        # Avoid division by zero
+
+            # logger.debug(f"Center movement vector {i+1}/{num_pairs}: ({cx1},{cy1}) -> ({cx2},{cy2}), "
+            #            f"delta=({dx},{dy}), weight={weight:.3f}") # Can be verbose
+
+        # Avoid division by zero (shouldn't happen if num_pairs >= 1)
         if total_weight == 0:
-            logger.warning("Total weight is zero, cannot determine direction")
+            logger.warning("Total weight is zero in weighted average, cannot determine direction")
             return None
-        
+
         # Compute average direction vector
         avg_dx = weighted_dx / total_weight
         avg_dy = weighted_dy / total_weight
-        
+
         # Calculate vector magnitude
         magnitude = math.sqrt(avg_dx**2 + avg_dy**2)
-        
+
         logger.debug(f"Weighted average center movement vector: ({avg_dx:.2f}, {avg_dy:.2f}), magnitude: {magnitude:.2f}")
-        
-        # If the movement is too small, consider it no meaningful direction
-        MIN_MAGNITUDE = 5.0  # Minimum pixels of movement to consider significant
+
+        # If the average movement is too small, consider it no meaningful direction
         if magnitude < MIN_MAGNITUDE:
-            logger.debug(f"Center movement magnitude {magnitude:.2f} < {MIN_MAGNITUDE}, considered insignificant")
+            logger.debug(f"Weighted average magnitude {magnitude:.2f} < {MIN_MAGNITUDE}, considered insignificant")
             return None
-        
+
         # Calculate angle in degrees
         # Note: We negate dy because screen Y-axis increases downward
         angle_rad = math.atan2(-avg_dy, avg_dx)
         angle_deg = math.degrees(angle_rad)
-        
+
         # Normalize to 0-360° range
         if angle_deg < 0:
             angle_deg += 360
-            
-        logger.debug(f"Center movement angle: {angle_deg:.2f}°")
-        
+
+        logger.debug(f"Weighted average center movement angle: {angle_deg:.2f}°")
+
         # Convert angle to cardinal direction
         if 45 <= angle_deg < 135:
             direction = 'up'
@@ -346,8 +374,8 @@ class AttentionFieldController:
             direction = 'down'
         else:  # 315 <= angle_deg < 360 or 0 <= angle_deg < 45
             direction = 'right'
-            
-        logger.info(f"Inferred movement direction from centers: {direction} (angle: {angle_deg:.2f}°)")
+
+        logger.info(f"Inferred movement direction from weighted average: {direction} (angle: {angle_deg:.2f}°)")
         return direction
     
     def _update_attention_field(self) -> None:
