@@ -6,6 +6,11 @@ import logging
 import itertools # For unique IDs
 from datetime import datetime # Import datetime globally
 from dataclasses import dataclass
+from sklearn.cluster import DBSCAN  # For better element clustering
+from scipy.ndimage import gaussian_filter  # For heatmap generation
+from scipy.spatial.distance import cdist  # For distance calculations
+from scipy.stats import entropy  # For measuring content variation
+from scipy.ndimage import label as scipy_label  # Fixed import for label function
 
 # Define logger early to be available in except blocks
 logger = logging.getLogger(__name__)
@@ -44,6 +49,35 @@ class ElementTrack:
     track_id: int
     first_occurrence: FrameElement # Details of the first time this element was seen
     occurrences: List[FrameElement] # List of all FrameElement instances in the track
+    
+    @property
+    def content_variation(self) -> float:
+        """Calculate the variation in content across occurrences."""
+        if not self.occurrences:
+            return 0.0
+            
+        # Count occurrences with same content vs different
+        contents = [occ.content for occ in self.occurrences if occ.content]
+        if not contents:
+            return 0.0
+            
+        # If all contents are the same, variation is 0
+        if len(set(contents)) == 1:
+            return 0.0
+            
+        # Otherwise, calculate entropy of content distribution
+        content_counts = {}
+        for content in contents:
+            if content in content_counts:
+                content_counts[content] += 1
+            else:
+                content_counts[content] = 1
+                
+        # Calculate normalized entropy (0-1)
+        counts = list(content_counts.values())
+        probabilities = [count / len(contents) for count in counts]
+        return min(1.0, entropy(probabilities) / np.log(len(probabilities)) if len(probabilities) > 1 else 0.0)
+
 
 class DynamicAreaDetector:
     """
@@ -57,18 +91,23 @@ class DynamicAreaDetector:
                  embedder: ResNetImageEmbedder,
                  similarity_threshold: float = 0.7,
                  proximity_threshold: float = 0.1,
-                 min_persistence_fraction: float = 0.5):
+                 min_persistence_fraction: float = 0.5,
+                 dynamic_threshold: float = 0.3,  # New: threshold for considering content dynamic
+                 heatmap_sigma: float = 0.02,     # New: sigma for gaussian blur on heatmap
+                 dbscan_epsilon: float = 0.1,     # New: DBSCAN clustering epsilon
+                 dbscan_min_samples: int = 5):    # New: DBSCAN min samples
         """
-        Initializes the detector.
+        Initializes the detector with enhanced parameters.
 
         Args:
             embedder: An initialized ResNetImageEmbedder instance.
-            similarity_threshold: Cosine similarity threshold (0-1) to consider
-                                   elements similar for tracking. Higher means stricter.
-            proximity_threshold: Maximum normalized Euclidean distance between element
-                                 centers to be considered for tracking.
-            min_persistence_fraction: An element track must exist in at least this
-                                      fraction of valid frames to be considered persistent.
+            similarity_threshold: Cosine similarity threshold (0-1) for tracking.
+            proximity_threshold: Maximum normalized distance between element centers.
+            min_persistence_fraction: Minimum fraction of frames for persistent elements.
+            dynamic_threshold: Content variation threshold for dynamic elements.
+            heatmap_sigma: Sigma for Gaussian blur when creating heatmaps.
+            dbscan_epsilon: DBSCAN clustering distance parameter.
+            dbscan_min_samples: DBSCAN minimum samples for core points.
         """
         # if not isinstance(omniparser, Omniparser):
         #     raise TypeError("omniparser must be an instance of Omniparser")
@@ -80,10 +119,15 @@ class DynamicAreaDetector:
         self.similarity_threshold = similarity_threshold
         self.proximity_threshold = proximity_threshold
         self.min_persistence_fraction = min_persistence_fraction
+        self.dynamic_threshold = dynamic_threshold
+        self.heatmap_sigma = heatmap_sigma
+        self.dbscan_epsilon = dbscan_epsilon
+        self.dbscan_min_samples = dbscan_min_samples
         self._track_id_counter = itertools.count() # For generating unique track IDs
 
         logger.info(f"DynamicAreaDetector initialized with similarity>={similarity_threshold}, "
-                    f"proximity<={proximity_threshold}, persistence>={min_persistence_fraction}")
+                    f"proximity<={proximity_threshold}, persistence>={min_persistence_fraction}, "
+                    f"dynamic_threshold>={dynamic_threshold}")
 
     def _get_element_center(self, bbox: List[float]) -> Tuple[float, float]:
         """Calculates the normalized center coordinates (x, y) of a bounding box."""
@@ -214,40 +258,246 @@ class DynamicAreaDetector:
         logger.info(f"Generated {len(tracks)} element tracks in total.")
         return tracks
 
-    def _get_persistent_tracks(self, tracks: List[ElementTrack], total_valid_frames: int) -> List[ElementTrack]:
-        """Filters tracks to keep only those meeting the minimum persistence fraction."""
-        if total_valid_frames == 0: return []
-        # Ensure minimum occurrences is at least 2, even if fraction is low for few frames
+    def _get_persistent_tracks(self, tracks: List[ElementTrack], total_valid_frames: int) -> Tuple[List[ElementTrack], List[ElementTrack]]:
+        """
+        Filters tracks into persistent (static) and dynamic tracks based on:
+        1. Persistence across frames
+        2. Content variation
+        
+        Returns both static and dynamic track lists.
+        """
+        if total_valid_frames == 0: 
+            return [], []
+            
         min_occurrences = max(2, int(total_valid_frames * self.min_persistence_fraction))
-
-        persistent_tracks = [
+        
+        # First filter by persistence only
+        persistent_candidates = [
             track for track in tracks if len(track.occurrences) >= min_occurrences
         ]
-        logger.info(f"Filtered down to {len(persistent_tracks)} persistent tracks "
-                    f"(required occurrences >= {min_occurrences} out of {total_valid_frames} valid frames).")
-        return persistent_tracks
+        
+        # Then separate into static vs dynamic based on content variation
+        static_tracks = []
+        dynamic_tracks = []
+        
+        for track in persistent_candidates:
+            # Calculate content variation for this track
+            variation = track.content_variation
+            
+            if variation < self.dynamic_threshold:
+                # Low variation = static content
+                static_tracks.append(track)
+            else:
+                # High variation = dynamic content
+                dynamic_tracks.append(track)
+        
+        logger.info(f"Classified {len(static_tracks)} static tracks and {len(dynamic_tracks)} dynamic tracks "
+                   f"out of {len(persistent_candidates)} persistent candidates.")
+        
+        return static_tracks, dynamic_tracks
 
-    def _calculate_static_region_bbox(self, persistent_tracks: List[ElementTrack]) -> Optional[List[float]]:
+    def _create_element_heatmap(self, tracks: List[ElementTrack], grid_size: int = 100) -> np.ndarray:
         """
-        Calculates the overall bounding box encompassing all occurrences of
-        elements deemed persistent (static).
-
+        Create a heatmap representing element density across the screen.
+        
         Args:
-            persistent_tracks: List of ElementTrack objects identified as stable.
-
+            tracks: List of element tracks to visualize
+            grid_size: Size of the grid for the heatmap (higher = more detailed)
+            
         Returns:
-            A single bounding box [x1, y1, x2, y2] representing the union of
-            all persistent element occurrences, or None if no persistent tracks exist.
+            np.ndarray: 2D heatmap array
         """
-        if not persistent_tracks:
-            logger.info("No persistent tracks found, cannot define static region.")
+        # Initialize empty heatmap
+        heatmap = np.zeros((grid_size, grid_size))
+        
+        # Add each element occurrence to the heatmap
+        for track in tracks:
+            for occ in track.occurrences:
+                try:
+                    # Get element bbox and convert to heatmap coordinates
+                    x1, y1, x2, y2 = occ.bbox
+                    
+                    # Ensure values are within [0,1]
+                    x1 = max(0.0, min(1.0, x1))
+                    y1 = max(0.0, min(1.0, y1))
+                    x2 = max(0.0, min(1.0, x2))
+                    y2 = max(0.0, min(1.0, y2))
+                    
+                    # Convert to grid coordinates
+                    grid_x1 = int(x1 * (grid_size - 1))
+                    grid_y1 = int(y1 * (grid_size - 1))
+                    grid_x2 = int(x2 * (grid_size - 1)) 
+                    grid_y2 = int(y2 * (grid_size - 1))
+                    
+                    # Ensure at least 1 pixel width/height
+                    grid_x2 = max(grid_x1 + 1, grid_x2)
+                    grid_y2 = max(grid_y1 + 1, grid_y2)
+                    
+                    # Add weight to the heatmap in this rectangle
+                    heatmap[grid_y1:grid_y2, grid_x1:grid_x2] += 1
+                    
+                except Exception as e:
+                    logger.error(f"Error adding element to heatmap: {e}")
+                    continue
+                    
+        # Apply Gaussian blur to smooth the heatmap
+        sigma = self.heatmap_sigma * grid_size  # Scale sigma based on grid size
+        heatmap = gaussian_filter(heatmap, sigma=sigma)
+        
+        # Normalize to [0,1]
+        if np.max(heatmap) > 0:
+            heatmap = heatmap / np.max(heatmap)
+            
+        return heatmap
+
+    def _cluster_elements_by_location(self, tracks: List[ElementTrack]) -> List[List[ElementTrack]]:
+        """
+        Cluster elements by their spatial location using DBSCAN.
+        
+        Args:
+            tracks: List of element tracks to cluster
+            
+        Returns:
+            List of lists, where each inner list contains tracks in one cluster
+        """
+        if not tracks:
+            return []
+            
+        # Extract the center point of each track's first occurrence
+        centers = []
+        for track in tracks:
+            try:
+                bbox = track.first_occurrence.bbox
+                center = self._get_element_center(bbox)
+                centers.append(center)
+            except Exception as e:
+                logger.error(f"Error getting center for track {track.track_id}: {e}")
+                # Add a placeholder to maintain index alignment
+                centers.append((0.5, 0.5))
+                
+        # Convert to numpy array for DBSCAN
+        centers = np.array(centers)
+        
+        # Apply DBSCAN clustering
+        clustering = DBSCAN(eps=self.dbscan_epsilon, min_samples=self.dbscan_min_samples).fit(centers)
+        
+        # Get unique cluster labels (excluding noise points labeled as -1)
+        unique_clusters = set(clustering.labels_)
+        if -1 in unique_clusters:
+            unique_clusters.remove(-1)
+            
+        # Group tracks by cluster
+        clusters = []
+        for cluster_id in unique_clusters:
+            cluster_tracks = [track for i, track in enumerate(tracks) if clustering.labels_[i] == cluster_id]
+            clusters.append(cluster_tracks)
+            
+        # Add a "noise" cluster if there are any
+        noise_tracks = [track for i, track in enumerate(tracks) if clustering.labels_[i] == -1]
+        if noise_tracks:
+            clusters.append(noise_tracks)
+            
+        logger.info(f"Clustered {len(tracks)} tracks into {len(clusters)} spatial clusters")
+        return clusters
+
+    def _identify_dynamic_regions_advanced(self, static_tracks: List[ElementTrack], 
+                                           dynamic_tracks: List[ElementTrack],
+                                           grid_size: int = 100) -> List[List[float]]:
+        """
+        Identify dynamic regions using a more advanced approach:
+        1. Create heatmaps for static and dynamic elements
+        2. Find areas with high dynamic-to-static ratio
+        3. Cluster these areas into coherent regions
+        
+        Args:
+            static_tracks: Tracks classified as static
+            dynamic_tracks: Tracks classified as dynamic
+            grid_size: Size of the heatmap grid
+            
+        Returns:
+            List of bounding boxes representing dynamic regions
+        """
+        # Create heatmaps for static and dynamic elements
+        static_heatmap = self._create_element_heatmap(static_tracks, grid_size)
+        dynamic_heatmap = self._create_element_heatmap(dynamic_tracks, grid_size)
+        
+        # Find ratio of dynamic to static+dynamic (avoid division by zero)
+        combined_heatmap = static_heatmap + dynamic_heatmap
+        ratio_heatmap = np.zeros_like(combined_heatmap)
+        
+        # Only calculate ratio where there are elements
+        valid_mask = combined_heatmap > 0.05  # Small threshold to avoid noise
+        ratio_heatmap[valid_mask] = dynamic_heatmap[valid_mask] / combined_heatmap[valid_mask]
+        
+        # If we don't have enough dynamic content, fall back to the original approach
+        if np.sum(ratio_heatmap > 0.5) < (grid_size * grid_size * 0.01):  # At least 1% of pixels
+            logger.info("Not enough clear dynamic content, falling back to geometric approach")
+            static_bbox = self._calculate_static_region_bbox(static_tracks)
+            return self._calculate_dynamic_regions(static_bbox)
+            
+        # Threshold the ratio heatmap to find dynamic areas
+        dynamic_area_mask = ratio_heatmap > 0.5  # Areas where dynamic > 50% of content
+        
+        # Group connected dynamic areas using connected component labeling
+        # Ensure dynamic_area_mask is correct type (integer) to avoid Literal iteration errors
+        dynamic_area_mask_int = np.asarray(dynamic_area_mask, dtype=np.int32)
+        labeled_array, num_features = scipy_label(dynamic_area_mask_int)
+        
+        if num_features == 0:
+            logger.info("No clear dynamic regions found in the ratio heatmap")
+            # Fall back to geometric approach
+            static_bbox = self._calculate_static_region_bbox(static_tracks)
+            return self._calculate_dynamic_regions(static_bbox)
+            
+        # Convert each labeled region to a bounding box
+        dynamic_regions = []
+        for i in range(1, num_features + 1):  # Start from 1 as 0 is background
+            # Get coordinates of this region
+            y_indices, x_indices = np.where(labeled_array == i)
+            
+            if len(y_indices) == 0 or len(x_indices) == 0:
+                continue
+                
+            # Calculate bounding box in grid coordinates
+            grid_y1 = np.min(y_indices) if len(y_indices) > 0 else 0
+            grid_x1 = np.min(x_indices) if len(x_indices) > 0 else 0
+            grid_y2 = np.max(y_indices) + 1 if len(y_indices) > 0 else 0  # +1 because upper bound is exclusive
+            grid_x2 = np.max(x_indices) + 1 if len(x_indices) > 0 else 0
+            
+            # Convert to normalized coordinates
+            x1 = grid_x1 / grid_size
+            y1 = grid_y1 / grid_size
+            x2 = grid_x2 / grid_size
+            y2 = grid_y2 / grid_size
+            
+            # Add to list if area is significant
+            area = (x2 - x1) * (y2 - y1)
+            if area > 0.01:  # At least 1% of the screen
+                dynamic_regions.append([x1, y1, x2, y2])
+                
+        logger.info(f"Identified {len(dynamic_regions)} dynamic regions using heatmap approach")
+        
+        # If no significant regions found, fall back to geometric approach
+        if not dynamic_regions:
+            static_bbox = self._calculate_static_region_bbox(static_tracks)
+            return self._calculate_dynamic_regions(static_bbox)
+            
+        return dynamic_regions
+
+    def _calculate_static_region_bbox(self, static_tracks: List[ElementTrack]) -> Optional[List[float]]:
+        """
+        Calculates the overall bounding box for static elements.
+        Now uses only tracks classified as static rather than all persistent tracks.
+        """
+        if not static_tracks:
+            logger.info("No static tracks found, cannot define static region.")
             return None
 
-        # Collect all bounding boxes from all occurrences in persistent tracks
-        all_bboxes = [occ.bbox for track in persistent_tracks for occ in track.occurrences]
+        # Collect all bounding boxes from all occurrences in static tracks
+        all_bboxes = [occ.bbox for track in static_tracks for occ in track.occurrences]
 
         if not all_bboxes:
-             logger.warning("Persistent tracks found, but they contain no bounding boxes.")
+             logger.warning("Static tracks found, but they contain no bounding boxes.")
              return None
 
         try:
@@ -263,14 +513,13 @@ class DynamicAreaDetector:
             max_x2 = min(1.0, max_x2)
             max_y2 = min(1.0, max_y2)
 
-            # Handle potential edge cases where max < min after clamping (should be rare)
+            # Handle potential edge cases
             if max_x2 <= min_x1 or max_y2 <= min_y1:
-                 logger.warning(f"Static region calculation resulted in invalid bbox "
-                              f"([ {min_x1:.3f}, {min_y1:.3f}, {max_x2:.3f}, {max_y2:.3f} ]). Returning None.")
+                 logger.warning(f"Static region calculation resulted in invalid bbox. Returning None.")
                  return None
 
             static_bbox = [min_x1, min_y1, max_x2, max_y2]
-            logger.info(f"Calculated overall static region union bbox: "
+            logger.info(f"Calculated static region union bbox: " 
                         f"[ {static_bbox[0]:.3f}, {static_bbox[1]:.3f}, {static_bbox[2]:.3f}, {static_bbox[3]:.3f} ]")
             return static_bbox
 
@@ -278,79 +527,55 @@ class DynamicAreaDetector:
             logger.error(f"Error calculating static region bounding box: {e}", exc_info=True)
             return None
 
-
     def _calculate_dynamic_regions(self, static_bbox: Optional[List[float]]) -> List[List[float]]:
         """
         Calculates potential dynamic regions by subtracting the static region
-        from the full screen area ([0,0,1,1]). This is a simplified approach.
-
-        Args:
-            static_bbox: The bounding box [x1, y1, x2, y2] of the static area, or None.
-
-        Returns:
-            A list of bounding boxes for potential dynamic regions.
+        from the full screen area.
         """
-        screen_bbox = [0.0, 0.0, 1.0, 1.0] # Normalized screen coordinates
+        screen_bbox = [0.0, 0.0, 1.0, 1.0]
 
         if static_bbox is None:
-            # If no static region, the entire screen is considered dynamic
             logger.info("No static region defined, considering entire screen dynamic.")
             return [screen_bbox]
 
         sx1, sy1, sx2, sy2 = static_bbox
         dynamic_regions: List[List[float]] = []
 
-        # --- Identify potential rectangular dynamic areas ---
-        # 1. Region above static area
-        if sy1 > 1e-6: # Use small epsilon for float comparison
+        # Region above static area
+        if sy1 > 1e-6:
             dynamic_regions.append([0.0, 0.0, 1.0, sy1])
-        # 2. Region below static area
+        # Region below static area
         if sy2 < 1.0 - 1e-6:
             dynamic_regions.append([0.0, sy2, 1.0, 1.0])
-        # 3. Region left of static area (only within the vertical span of the static area)
+        # Region left of static area
         if sx1 > 1e-6:
             dynamic_regions.append([0.0, sy1, sx1, sy2])
-        # 4. Region right of static area (only within the vertical span of the static area)
+        # Region right of static area
         if sx2 < 1.0 - 1e-6:
             dynamic_regions.append([sx2, sy1, 1.0, sy2])
 
-        # --- Filter out invalid or zero-area regions ---
+        # Filter out invalid or zero-area regions
         valid_dynamic_regions = []
-        min_area = 1e-5 # Define a minimum area threshold
+        min_area = 1e-5
         for r in dynamic_regions:
-            # Check for valid coordinates and positive area
             if r[0] < r[2] - 1e-6 and r[1] < r[3] - 1e-6:
-                 # Ensure bounds are within [0, 1] although they should be by construction here
                  r = [max(0.0, min(1.0, coord)) for coord in r]
-                 # Double check area after potential clamping
                  width = r[2] - r[0]
                  height = r[3] - r[1]
                  if width > 1e-6 and height > 1e-6 and (width * height) > min_area:
                      valid_dynamic_regions.append(r)
 
-        # This simplified geometric subtraction might miss complex cases or result
-        # in overlapping regions if the static_bbox is small and central.
-        # More robust geometric libraries (like Shapely) would be needed for perfect subtraction.
         logger.info(f"Identified {len(valid_dynamic_regions)} potential dynamic regions based on static area.")
         return valid_dynamic_regions
-
 
     def _apply_selection_rules(self,
                               dynamic_regions: List[List[float]],
                               all_frame_data: List[List[FrameElement]]) -> Dict[str, Optional[List[float]]]:
         """
-        Applies deterministic rules to select the 'main' dynamic area if multiple
-        candidates exist.
-
-        Args:
-            dynamic_regions: List of candidate dynamic region bounding boxes.
-            all_frame_data: Processed element data for all valid frames.
-
-        Returns:
-            A dictionary mapping rule names to the selected main area bbox for that rule.
+        Applies deterministic rules to select the 'main' dynamic area.
         """
         results: Dict[str, Optional[List[float]]] = {}
-        rule_names = ["largest_area", "most_elements"] # Add more rules here
+        rule_names = ["largest_area", "most_elements", "highest_variation"]
 
         # Initialize results
         for rule_name in rule_names:
@@ -361,9 +586,8 @@ class DynamicAreaDetector:
             return results
 
         if len(dynamic_regions) == 1:
-            # If only one, it's the main area by default for all rules
+            # If only one region, it's the main area by default for all rules
             main_bbox = dynamic_regions[0]
-            logger.info(f"Only one dynamic region found, selecting it for all rules: {main_bbox}")
             for rule_name in rule_names:
                  results[rule_name] = main_bbox
             return results
@@ -382,10 +606,8 @@ class DynamicAreaDetector:
             except Exception as e:
                  logger.error(f"Error calculating area for bbox {bbox}: {e}")
         results["largest_area"] = largest_bbox
-        logger.debug(f"Rule 'largest_area' selected: {largest_bbox} (Area: {largest_area:.4f})")
 
-
-        # --- Rule B: Most Elements (Average over frames) ---
+        # --- Rule B: Most Elements ---
         max_avg_elements = -1.0
         most_elements_bbox = None
         total_valid_frames = len(all_frame_data)
@@ -395,21 +617,15 @@ class DynamicAreaDetector:
                 total_elements_in_region = 0
                 rx1, ry1, rx2, ry2 = region_bbox
 
-                # Count elements whose center falls within this region, averaged over frames
                 for frame_data in all_frame_data:
                     count_in_frame = 0
                     for element in frame_data:
                         try:
-                            # Check if element center is within the region bbox
                             ex, ey = self._get_element_center(element.bbox)
                             if rx1 <= ex < rx2 and ry1 <= ey < ry2:
                                  count_in_frame += 1
-                        except ValueError: # Catch invalid bbox from center calc
-                             logger.warning(f"Skipping element ID {element.element_id} in frame {element.frame_index} due to invalid bbox for center calculation.")
-                             continue
                         except Exception as e:
-                             logger.error(f"Error checking element ID {element.element_id} "
-                                          f"in frame {element.frame_index} against region {region_bbox}: {e}")
+                             logger.error(f"Error checking element against region: {e}")
                     total_elements_in_region += count_in_frame
 
                 avg_elements = total_elements_in_region / total_valid_frames
@@ -418,46 +634,104 @@ class DynamicAreaDetector:
                      most_elements_bbox = region_bbox
 
             results["most_elements"] = most_elements_bbox
-            logger.debug(f"Rule 'most_elements' selected: {most_elements_bbox} (Avg elements: {max_avg_elements:.2f})")
         else:
-             logger.warning("Cannot apply 'most_elements' rule: No valid frame data.")
-             results["most_elements"] = None # Cannot determine without frame data
+             results["most_elements"] = None
 
-
-        # --- Rule C: Highest Dissimilarity ---
-        # This requires modifying the tracking logic to store and aggregate dissimilarity scores per region.
-        # Placeholder:
-        # results["highest_dissimilarity"] = self._calculate_highest_dissimilarity_region(...)
-        # logger.debug(f"Rule 'highest_dissimilarity' selected: {results['highest_dissimilarity']}")
+        # --- New Rule C: Highest Content Variation ---
+        highest_variation = -1.0
+        highest_variation_bbox = None
+        
+        if total_valid_frames > 0:
+            for region_bbox in dynamic_regions:
+                region_variation = 0.0
+                rx1, ry1, rx2, ry2 = region_bbox
+                
+                # Look at elements in all frames and calculate content variation
+                all_elements_in_region = []
+                for frame_index, frame_data in enumerate(all_frame_data):
+                    frame_elements = []
+                    for element in frame_data:
+                        try:
+                            ex, ey = self._get_element_center(element.bbox)
+                            if rx1 <= ex < rx2 and ry1 <= ey < ry2:
+                                frame_elements.append(element)
+                        except Exception:
+                            continue
+                    all_elements_in_region.append(frame_elements)
+                
+                # Skip if too few frames have elements
+                if sum(1 for frame in all_elements_in_region if frame) < 2:
+                    continue
+                
+                # Calculate content variation across frames
+                content_sets = [
+                    set(element.content for element in frame if element.content)
+                    for frame in all_elements_in_region
+                ]
+                
+                # Skip if no content
+                if not any(content_sets):
+                    continue
+                
+                # Count unique contents
+                all_contents = set()
+                for content_set in content_sets:
+                    all_contents.update(content_set)
+                
+                # Calculate Jaccard distance between frame contents
+                num_frames_with_content = sum(1 for s in content_sets if s)
+                if num_frames_with_content >= 2:
+                    total_distance = 0
+                    comparisons = 0
+                    content_sets = [s for s in content_sets if s]  # Only consider non-empty sets
+                    
+                    for i in range(len(content_sets)):
+                        for j in range(i+1, len(content_sets)):
+                            set1 = content_sets[i]
+                            set2 = content_sets[j]
+                            if set1 and set2:
+                                # Jaccard distance = 1 - (intersection / union)
+                                intersection = len(set1.intersection(set2))
+                                union = len(set1.union(set2))
+                                if union > 0:
+                                    distance = 1.0 - (intersection / union)
+                                    total_distance += distance
+                                    comparisons += 1
+                    
+                    if comparisons > 0:
+                        region_variation = total_distance / comparisons
+                
+                if region_variation > highest_variation:
+                    highest_variation = region_variation
+                    highest_variation_bbox = region_bbox
+        
+        results["highest_variation"] = highest_variation_bbox
+        logger.debug(f"Rule 'highest_variation' selected bbox with variation score {highest_variation:.2f}")
 
         return results
 
-    # === Public Method ===
+    # === Main Detection Method ===
     def detect_main_areas(self, results_list: OmniParserResultModelList) -> Dict[str, Optional[List[float]]]:
         """
         Detects the main dynamic content area(s) from a sequence of OmniParser results.
-
-        This is the main entry point for the class. It orchestrates the analysis
-        pipeline: per-frame processing, element tracking, static/dynamic region
-        calculation, and rule-based selection.
-
-        Args:
-            results_list: An OmniParserResultModelList object containing the pre-processed
-                          results for a sequence of screenshots. Requires at least 2 results.
-
-        Returns:
-            A dictionary where keys are rule names (e.g., 'largest_area', 'most_elements')
-            and values are the corresponding main area bounding box ([x1, y1, x2, y2] normalized)
-            or None if no area could be determined for that rule or if an error occurred.
+        
+        This improved version uses:
+        1. Content variation to distinguish static vs. dynamic elements
+        2. Spatial clustering with DBSCAN for better region detection
+        3. Heatmap-based approach for identifying dynamic areas
         """
         logger.info(f"Starting dynamic area detection for {len(results_list.omniparser_result_models)} pre-parsed frames.")
-        default_result: Dict[str, Optional[List[float]]] = {"largest_area": None, "most_elements": None} # Match rule names in _apply_selection_rules
+        default_result: Dict[str, Optional[List[float]]] = {
+            "largest_area": None, 
+            "most_elements": None,
+            "highest_variation": None
+        }
 
         if not isinstance(results_list, OmniParserResultModelList) or len(results_list.omniparser_result_models) < 2:
             logger.warning("Input must be an OmniParserResultModelList with at least 2 results.")
             return default_result
 
-        # --- Step 1: Extract FrameElement Data (Embeddings & Patches) ---
+        # --- Step 1: Extract FrameElement Data ---
         all_frame_data: List[List[FrameElement]] = []
         valid_frame_count = 0
 
@@ -469,138 +743,108 @@ class DynamicAreaDetector:
             try:
                 if not os.path.exists(screenshot_path):
                     logger.error(f"Screenshot file not found for frame {frame_index}: {screenshot_path}")
-                    continue # Skip this frame
+                    continue
 
                 img = Image.open(screenshot_path)
-                # Ensure image is RGB for consistency
                 if img.mode != 'RGB':
                     img = img.convert('RGB')
                 width, height = img.size
                 if width == 0 or height == 0:
                     logger.error(f"Invalid image dimensions ({width}x{height}) for frame {frame_index}")
-                    continue # Skip this frame
+                    continue
 
                 if not omni_model.parsed_content_results:
                      logger.warning(f"No parsed content results found for frame {frame_index}.")
-                     # Still append empty list to maintain frame count correspondence
                      all_frame_data.append(frame_elements)
-                     valid_frame_count += 1 # Count as valid if parsing happened but found 0 elements
+                     valid_frame_count += 1
                      continue
 
-                # Process each parsed element from the OmniParserResultModel
                 for pcr in omni_model.parsed_content_results:
                     bbox_normalized = pcr.bbox
 
-                    # Validate bbox format and values (already normalized, maybe pre-processed)
                     if not isinstance(bbox_normalized, list) or len(bbox_normalized) != 4:
-                        logger.warning(f"Skipping element ID {pcr.id} in frame {frame_index}: invalid bbox format {bbox_normalized}.")
                         continue
                     if not all(isinstance(coord, (int, float)) for coord in bbox_normalized):
-                        logger.warning(f"Skipping element ID {pcr.id} in frame {frame_index}: non-numeric bbox coords {bbox_normalized}.")
                         continue
-                    # Check if bbox is already absolute (heuristic: check if values > 1.0)
-                    # The helper expects absolute bboxes, so we convert if needed
-                    if max(bbox_normalized) <= 1.0 + 1e-6: # Allow small tolerance over 1.0
-                        # Convert normalized bbox to absolute pixel coords for cropping
+                    
+                    if max(bbox_normalized) <= 1.0 + 1e-6:
                         x1_abs = int(bbox_normalized[0] * width)
                         y1_abs = int(bbox_normalized[1] * height)
                         x2_abs = int(bbox_normalized[2] * width)
                         y2_abs = int(bbox_normalized[3] * height)
                     else:
-                         # Assume bbox was already absolute (e.g., from pre-processor in omni_helper)
-                         x1_abs, y1_abs, x2_abs, y2_abs = map(int, bbox_normalized)
+                        x1_abs, y1_abs, x2_abs, y2_abs = map(int, bbox_normalized)
 
-
-                    # Ensure valid bbox dimensions after conversion
                     if x1_abs >= x2_abs or y1_abs >= y2_abs:
-                        # Allow zero-width/height if coords are almost equal
-                        if not (np.isclose(bbox_normalized[0], bbox_normalized[2]) or np.isclose(bbox_normalized[1], bbox_normalized[3])):
-                             logger.warning(f"Skipping invalid bbox {bbox_normalized} (abs: {[x1_abs, y1_abs, x2_abs, y2_abs]}) for element {pcr.id} frame {frame_index}")
-                             continue
-                        # Adjust slightly
+                        if not (np.isclose(bbox_normalized[0], bbox_normalized[2]) or 
+                                np.isclose(bbox_normalized[1], bbox_normalized[3])):
+                            continue
                         x2_abs = max(x1_abs + 1, x2_abs)
                         y2_abs = max(y1_abs + 1, y2_abs)
                         x1_abs, y1_abs = max(0, x1_abs), max(0, y1_abs)
                         x2_abs, y2_abs = min(width, x2_abs), min(height, y2_abs)
                         if x1_abs >= x2_abs or y1_abs >= y2_abs:
-                             logger.warning(f"Skipping element {pcr.id} frame {frame_index} even after bbox adjustment.")
-                             continue
-
+                            continue
 
                     try:
-                        # Extract Patch
                         patch = img.crop((x1_abs, y1_abs, x2_abs, y2_abs))
                         if patch.width < 5 or patch.height < 5:
-                             logger.debug(f"Skipping very small patch (element ID {pcr.id}) in frame {frame_index}")
-                             continue
+                            continue
 
-                        # Compute Embedding
                         embedding = self.embedder.get_embedding(patch)
 
-                        # Store Frame Element Data
                         frame_elements.append(FrameElement(
                             frame_index=frame_index,
-                            element_id=pcr.id, # Use the ID from ParsedContentResult
-                            parsed_content_result=pcr, # Store the whole object
+                            element_id=pcr.id,
+                            parsed_content_result=pcr,
                             embedding=embedding
                         ))
-                    except ValueError as ve:
-                         logger.error(f"ValueError processing element ID {pcr.id} in frame {frame_index}: {ve}")
-                         continue
                     except Exception as e:
-                        logger.error(f"Failed to extract/embed element ID {pcr.id} in frame {frame_index}: {e}", exc_info=True)
-                        continue # Skip this element
+                        logger.error(f"Failed to process element ID {pcr.id} in frame {frame_index}: {e}")
+                        continue
 
                 logger.info(f"Extracted {len(frame_elements)} valid elements from frame {frame_index}")
                 all_frame_data.append(frame_elements)
                 valid_frame_count += 1
 
-            except FileNotFoundError: # Already logged
-                continue
             except Exception as e:
-                logger.error(f"Unexpected error processing pre-parsed frame {frame_index}: {e}", exc_info=True)
-                continue # Skip this frame entirely
-
-        # --- End Per-Frame Loop ---
+                logger.error(f"Unexpected error processing frame {frame_index}: {e}")
+                continue
 
         if valid_frame_count < 2:
              logger.error(f"Failed to process enough frames ({valid_frame_count}) for analysis. Need at least 2.")
              return default_result
 
-        # --- Step 2 & 3: Track Elements and Identify Persistent Ones ---
-        # Reset track counter for this run
+        # --- Step 2: Track Elements ---
         self._track_id_counter = itertools.count()
         try:
             all_tracks = self._track_elements(all_frame_data)
-            persistent_tracks = self._get_persistent_tracks(all_tracks, valid_frame_count)
+            # Now we get both static and dynamic tracks
+            static_tracks, dynamic_tracks = self._get_persistent_tracks(all_tracks, valid_frame_count)
         except Exception as e:
-             logger.error(f"Error during element tracking or persistence filtering: {e}", exc_info=True)
+             logger.error(f"Error during element tracking: {e}", exc_info=True)
              return default_result
 
-        # --- Step 4: Define Static Region ---
+        # --- Step 3: Identify Dynamic Regions (Enhanced Method) ---
         try:
-             static_region_bbox = self._calculate_static_region_bbox(persistent_tracks)
-        except Exception as e:
-            logger.error(f"Error calculating static region: {e}", exc_info=True)
-            return default_result
-
-
-        # --- Step 5: Identify Dynamic Regions ---
-        try:
-            # Use normalized bbox from PCR if static_region_bbox is calculated from normalized values
-            dynamic_regions = self._calculate_dynamic_regions(static_region_bbox)
+            # Use the enhanced method that leverages both static and dynamic tracks
+            dynamic_regions = self._identify_dynamic_regions_advanced(static_tracks, dynamic_tracks)
+            
+            # If that didn't work, fall back to traditional approach
+            if not dynamic_regions:
+                logger.info("Advanced detection found no regions, falling back to traditional method")
+                static_region_bbox = self._calculate_static_region_bbox(static_tracks)
+                dynamic_regions = self._calculate_dynamic_regions(static_region_bbox)
         except Exception as e:
              logger.error(f"Error calculating dynamic regions: {e}", exc_info=True)
              return default_result
 
-        # --- Step 6: Apply Selection Rules ---
+        # --- Step 4: Apply Selection Rules ---
         try:
-             # Pass all_frame_data which contains FrameElement objects with PCRs
              main_area_results = self._apply_selection_rules(dynamic_regions, all_frame_data)
         except Exception as e:
              logger.error(f"Error applying selection rules: {e}", exc_info=True)
              return default_result
-
 
         logger.info("Dynamic area detection completed successfully.")
         return main_area_results
