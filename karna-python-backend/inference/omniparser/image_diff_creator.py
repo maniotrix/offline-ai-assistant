@@ -556,8 +556,36 @@ class ImageDiffCreator:
             
             # For YOLO elements, only check for visual changes, not text changes
             if element1.source == 'box_yolo_content_yolo':
-                # Skip text change detection for YOLO elements - they're visual only
-                pass
+                # For YOLO elements, always do visual comparison regardless of pixel diff
+                try:
+                    img1_elem = self.extract_element_image(result1, element1)
+                    img2_elem = self.extract_element_image(result2, element2)
+                    
+                    # Compute visual similarity
+                    sim_result = self.embedder.get_similarity_with_classification(img1_elem, img2_elem)
+                    score = sim_result['score']
+                    classification = sim_result['classification']
+                    
+                    # For YOLO elements, add as visual change if not identical
+                    if classification != "identical":
+                        # Compute diff ratio if we have diff mask
+                        diff_ratio = 0.0
+                        if diff_mask is not None:
+                            _, diff_ratio = self.is_visually_different(diff_mask, element2.bbox)
+                        
+                        visual_changed_elements.append(DiffResult(
+                            type="visual-changed",
+                            bbox=element2.bbox,  # Use bbox from the new image
+                            element_type=element2.type,
+                            source=element2.source,
+                            saliency=saliency,
+                            element_id=element2.id,
+                            similarity_score=score,
+                            visual_diff_ratio=diff_ratio,
+                            classification=classification
+                        ))
+                except Exception as e:
+                    logger.warning(f"Error comparing YOLO elements for visual changes: {e}")
             # For non-YOLO elements, check for text changes first
             elif element1.content != element2.content:
                 text_similarity = self.get_text_similarity(element1.content, element2.content)
@@ -577,8 +605,8 @@ class ImageDiffCreator:
                     ))
                     continue  # Skip visual check for text changes
             
-            # Check for visual changes if we have a diff mask
-            if diff_mask is not None:
+            # Check for visual changes if we have a diff mask (for non-YOLO elements or YOLO that weren't caught above)
+            if diff_mask is not None and element1.source != 'box_yolo_content_yolo':
                 is_diff, diff_ratio = self.is_visually_different(diff_mask, element2.bbox)
                 
                 if is_diff:
