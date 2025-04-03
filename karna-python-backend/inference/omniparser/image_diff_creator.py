@@ -154,11 +154,11 @@ class ImageDiffCreator:
             float: Adaptive IoU threshold
         """
         # Lower threshold for text elements (OCR)
-        if "ocr" in source.lower() and "yolo" not in source.lower():
+        if source == 'box_ocr_content_ocr':
             return 0.3
         
         # Higher threshold for icon/image elements (YOLO)
-        if "yolo" in source.lower() and "ocr" not in source.lower():
+        if source == 'box_yolo_content_yolo':
             return 0.5
         
         # Medium threshold for mixed elements (YOLO+OCR)

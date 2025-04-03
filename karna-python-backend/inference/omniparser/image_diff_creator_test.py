@@ -351,6 +351,10 @@ def test_with_json_data(
     # Create output directory
     os.makedirs(output_dir, exist_ok=True)
     
+    # clear the output directory
+    for file in os.listdir(output_dir):
+        os.remove(os.path.join(output_dir, file))
+    
     # Load screenshot events
     logger.info("Loading screenshot events from JSON")
     screenshot_events = load_screenshot_events(json_path)
@@ -458,6 +462,10 @@ def test_image_diff_creator(
     
     # Create output directory
     os.makedirs(output_dir, exist_ok=True)
+    
+    # clear the output directory
+    for file in os.listdir(output_dir):
+        os.remove(os.path.join(output_dir, file))
     
     # Parse images with OmniParser
     logger.info("Parsing original image with OmniParser")
