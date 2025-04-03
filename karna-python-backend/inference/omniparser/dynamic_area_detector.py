@@ -14,479 +14,425 @@ if not logger.handlers:
 # Import necessary components
 from .image_comparison import ResNetImageEmbedder
 from .omni_helper import OmniParserResultModel, OmniParserResultModelList, ParsedContentResult
+from .image_diff_creator import ImageDiffCreator, ImageDiffResults, DiffResult
 
 
 @dataclass
-class TrackedElement:
-    """Represents an element tracked across frames."""
-    element_id: int  # Original ID from ParsedContentResult
-    frame_indexes: List[int]  # List of frame indexes where this element appears
-    bbox_list: List[List[float]]  # Bounding boxes for each occurrence [frame_index -> bbox]
-    content_list: List[Optional[str]]  # Content for each occurrence
-    embedding_list: List[np.ndarray]  # Visual embeddings for each occurrence
-    source_type: str  # Element source type
-    
-    @property
-    def persistence_score(self) -> float:
-        """Fraction of frames where this element appears."""
-        return len(self.frame_indexes) / (max(self.frame_indexes) + 1 if self.frame_indexes else 1)
-    
-    @property
-    def is_static(self) -> bool:
-        """Determine if element is static based on content stability."""
-        # If fewer than 2 occurrences, not enough data
-        if len(self.frame_indexes) < 2:
-            return False
-            
-        # For text elements, check text content stability
-        if self.source_type in ['box_ocr_content_ocr', 'box_yolo_content_ocr'] and any(self.content_list):
-            # Filter out None values
-            contents = [c for c in self.content_list if c]
-            if not contents:
-                # No valid content to compare
-                return self._check_visual_stability()
-                
-            # Check if all contents are the same
-            return len(set(contents)) == 1
-        else:
-            # For visual-only elements, check embedding similarity
-            return self._check_visual_stability()
-    
-    def _check_visual_stability(self) -> bool:
-        """Check if visual appearance is stable across occurrences."""
-        if len(self.embedding_list) < 2:
-            return False
-            
-        # Calculate pairwise similarities between all embeddings
-        similarities = []
-        for i in range(len(self.embedding_list)):
-            for j in range(i+1, len(self.embedding_list)):
-                similarity = np.dot(self.embedding_list[i], self.embedding_list[j])
-                similarities.append(similarity)
-                
-        # If average similarity is high, consider static
-        avg_similarity = sum(similarities) / len(similarities) if similarities else 0
-        return avg_similarity > 0.85  # High threshold for stability
+class ChangeFrequencyRegion:
+    """Represents a region with change frequency data."""
+    bbox: List[float]  # [x1, y1, x2, y2]
+    change_frequency: float  # How often this region changes (0-1)
+    change_types: Dict[str, int]  # Count of each change type ("added", "removed", "text-changed", "visual-changed")
+    saliency: float  # Importance of this region
     
     @property
     def is_dynamic(self) -> bool:
-        """Element is dynamic if it's not static."""
-        return not self.is_static
+        """Determine if region is dynamic based on change frequency."""
+        return self.change_frequency >= 0.3  # If changes in at least 30% of frame pairs
     
     @property
-    def average_bbox(self) -> List[float]:
-        """Calculate average bounding box across occurrences."""
-        if not self.bbox_list:
-            return [0, 0, 0, 0]
-            
-        # Calculate average coordinates
-        x1 = sum(bbox[0] for bbox in self.bbox_list) / len(self.bbox_list)
-        y1 = sum(bbox[1] for bbox in self.bbox_list) / len(self.bbox_list)
-        x2 = sum(bbox[2] for bbox in self.bbox_list) / len(self.bbox_list)
-        y2 = sum(bbox[3] for bbox in self.bbox_list) / len(self.bbox_list)
-        
-        return [x1, y1, x2, y2]
+    def area(self) -> float:
+        """Calculate area of this region."""
+        width = self.bbox[2] - self.bbox[0]
+        height = self.bbox[3] - self.bbox[1]
+        return width * height
+    
+    @property
+    def center(self) -> Tuple[float, float]:
+        """Calculate center point of this region."""
+        return ((self.bbox[0] + self.bbox[2]) / 2, 
+                (self.bbox[1] + self.bbox[3]) / 2)
+    
+    @property
+    def dominant_change_type(self) -> str:
+        """Return the most frequent change type for this region."""
+        if not self.change_types:
+            return "unknown"
+        return max(self.change_types.items(), key=lambda x: x[1])[0]
 
 
 class DynamicAreaDetector:
     """
     Detects dynamic content areas in a sequence of screenshots by tracking
-    elements and analyzing their changes across frames.
+    changes between consecutive frames using ImageDiffCreator.
     """
     def __init__(
         self,
-        embedder: ResNetImageEmbedder,
-        similarity_threshold: float = 0.8,  # Threshold for visual similarity
-        proximity_threshold: float = 0.1,   # Distance threshold for element matching
-        min_persistence: float = 0.5,       # Minimum persistence for reliable elements
+        image_diff_creator: Optional[ImageDiffCreator] = None,
+        min_change_frequency: float = 0.3,  # Minimum change frequency to consider dynamic
         min_area_size: float = 0.01,        # Minimum area size (as fraction of screen)
-        grouping_distance: float = 0.1      # Distance threshold for grouping elements
+        grouping_distance: float = 0.1,     # Distance threshold for grouping regions
+        min_saliency: float = 0.1,          # Minimum saliency threshold for regions
     ):
         """
         Initialize the dynamic area detector.
         
         Args:
-            embedder: ResNet embedder for visual similarity
-            similarity_threshold: Threshold for visual similarity (0-1)
-            proximity_threshold: Max distance for element center matching
-            min_persistence: Minimum fraction of frames an element must appear in
+            image_diff_creator: ImageDiffCreator instance (created if None)
+            min_change_frequency: Minimum frequency of changes to consider area dynamic
             min_area_size: Minimum area size as fraction of screen
-            grouping_distance: Distance threshold for grouping nearby elements
+            grouping_distance: Distance threshold for grouping nearby regions
+            min_saliency: Minimum saliency threshold for regions
         """
-        self.embedder = embedder
-        self.similarity_threshold = similarity_threshold
-        self.proximity_threshold = proximity_threshold
-        self.min_persistence = min_persistence
+        # Create ImageDiffCreator if not provided
+        self.diff_creator = image_diff_creator or ImageDiffCreator()
+        
+        self.min_change_frequency = min_change_frequency
         self.min_area_size = min_area_size
         self.grouping_distance = grouping_distance
+        self.min_saliency = min_saliency
         
-        logger.info(f"DynamicAreaDetector initialized with similarity>={similarity_threshold}, "
-                    f"proximity<={proximity_threshold}, min_persistence>={min_persistence}")
+        logger.info(f"DynamicAreaDetector initialized with min_change_frequency>={min_change_frequency}, "
+                    f"min_area_size>={min_area_size}, grouping_distance<={grouping_distance}")
     
-    def _extract_elements(self, results_list: OmniParserResultModelList) -> List[List[Tuple[int, ParsedContentResult, np.ndarray]]]:
+    def _compare_consecutive_frames(
+        self, 
+        results_list: OmniParserResultModelList
+    ) -> List[ImageDiffResults]:
         """
-        Extract elements from each frame with their embeddings.
+        Compare each consecutive pair of frames using ImageDiffCreator.
         
+        Args:
+            results_list: List of OmniParserResultModel objects
+            
         Returns:
-            List of lists, where each inner list contains tuples of 
-            (element_id, parsed_content, embedding) for a single frame
+            List of ImageDiffResults for each frame pair
         """
-        all_frame_elements = []
+        diff_results = []
         
-        for frame_idx, result_model in enumerate(results_list.omniparser_result_models):
-            frame_elements = []
-            screenshot_path = result_model.omniparser_result.original_image_path
+        # Need at least 2 frames for comparison
+        if len(results_list.omniparser_result_models) < 2:
+            logger.warning("Need at least 2 frames for comparison")
+            return diff_results
+        
+        # Compare each consecutive pair
+        for i in range(len(results_list.omniparser_result_models) - 1):
+            result1 = results_list.omniparser_result_models[i]
+            result2 = results_list.omniparser_result_models[i + 1]
             
-            logger.info(f"Extracting elements from frame {frame_idx}: {os.path.basename(screenshot_path)}")
+            logger.info(f"Comparing frames {i} and {i+1}")
             
-            # Skip if file doesn't exist
-            if not os.path.exists(screenshot_path):
-                logger.error(f"Screenshot not found: {screenshot_path}")
-                all_frame_elements.append([])
+            try:
+                # Compare the two frames
+                diff_result = self.diff_creator.compare_results(result1, result2)
+                diff_results.append(diff_result)
+                
+                logger.info(f"Found {len(diff_result.all_changes)} changes between frames {i} and {i+1}")
+            except Exception as e:
+                logger.error(f"Error comparing frames {i} and {i+1}: {e}")
+                # Add empty result to maintain indices
+                diff_results.append(ImageDiffResults([], [], [], []))
+        
+        return diff_results
+    
+    def _generate_change_heatmap(
+        self, 
+        diff_results: List[ImageDiffResults], 
+        frame_width: int, 
+        frame_height: int
+    ) -> np.ndarray:
+        """
+        Generate a heatmap of changes across all frame pairs.
+        
+        Args:
+            diff_results: List of ImageDiffResults from comparing frames
+            frame_width: Width of the frames
+            frame_height: Height of the frames
+            
+        Returns:
+            2D numpy array where each cell represents change frequency
+        """
+        # Create empty heatmap (resolution: 100x100)
+        heatmap_size = 100
+        heatmap = np.zeros((heatmap_size, heatmap_size), dtype=float)
+        
+        # For each frame diff result
+        for diff_result in diff_results:
+            # Temporary mask for this frame pair
+            frame_mask = np.zeros((heatmap_size, heatmap_size), dtype=bool)
+            
+            # Process all changes
+            for change in diff_result.all_changes:
+                # Skip if saliency is too low
+                if change.saliency < self.min_saliency:
+                    continue
+                
+                # Normalize bbox to heatmap size
+                x1 = int(change.bbox[0] * heatmap_size)
+                y1 = int(change.bbox[1] * heatmap_size)
+                x2 = int(change.bbox[2] * heatmap_size)
+                y2 = int(change.bbox[3] * heatmap_size)
+                
+                # Ensure valid coordinates
+                x1 = max(0, min(x1, heatmap_size - 1))
+                y1 = max(0, min(y1, heatmap_size - 1))
+                x2 = max(0, min(x2, heatmap_size))
+                y2 = max(0, min(y2, heatmap_size))
+                
+                # Mark changed area on frame mask
+                if x2 > x1 and y2 > y1:
+                    frame_mask[y1:y2, x1:x2] = True
+            
+            # Add frame mask to overall heatmap (if any changes)
+            if np.any(frame_mask):
+                heatmap += frame_mask.astype(float)
+        
+        # Normalize heatmap to change frequency (0-1)
+        if diff_results:
+            heatmap /= len(diff_results)
+        
+        return heatmap
+    
+    def _extract_change_regions(
+        self, 
+        heatmap: np.ndarray,
+        diff_results: List[ImageDiffResults]
+    ) -> List[ChangeFrequencyRegion]:
+        """
+        Extract regions with significant change frequency from heatmap.
+        
+        Args:
+            heatmap: Change frequency heatmap
+            diff_results: List of ImageDiffResults from comparing frames
+            
+        Returns:
+            List of ChangeFrequencyRegion objects
+        """
+        # Extract areas with change frequency above threshold
+        change_regions = []
+        
+        # Collect all change bboxes with their types
+        all_changes = []
+        for diff_result in diff_results:
+            for change in diff_result.all_changes:
+                if change.saliency >= self.min_saliency:
+                    all_changes.append(change)
+        
+        # Group changes by intersecting bounding boxes
+        while all_changes:
+            base_change = all_changes.pop(0)
+            group = [base_change]
+            
+            # Find all changes that intersect with base_change
+            i = 0
+            while i < len(all_changes):
+                if self._intersect_bboxes(base_change.bbox, all_changes[i].bbox):
+                    group.append(all_changes.pop(i))
+                else:
+                    i += 1
+            
+            # Calculate merged bbox for this group
+            merged_bbox = self._merge_bboxes([c.bbox for c in group])
+            
+            # Calculate change frequency for this region
+            # (how many frame pairs contain changes in this region)
+            frame_pairs_with_changes = set()
+            change_types = {"added": 0, "removed": 0, "text-changed": 0, "visual-changed": 0}
+            
+            for diff_idx, diff_result in enumerate(diff_results):
+                for change in diff_result.all_changes:
+                    if self._intersect_bboxes(merged_bbox, change.bbox):
+                        frame_pairs_with_changes.add(diff_idx)
+                        change_types[change.type] += 1
+            
+            change_frequency = len(frame_pairs_with_changes) / len(diff_results) if diff_results else 0
+            
+            # Calculate average saliency
+            avg_saliency = sum(c.saliency for c in group) / len(group)
+            
+            # Create region
+            region = ChangeFrequencyRegion(
+                bbox=merged_bbox,
+                change_frequency=change_frequency,
+                change_types=change_types,
+                saliency=avg_saliency
+            )
+            
+            # Only add if area is large enough and frequency is high enough
+            area = (merged_bbox[2] - merged_bbox[0]) * (merged_bbox[3] - merged_bbox[1])
+            if area >= self.min_area_size and change_frequency >= self.min_change_frequency:
+                change_regions.append(region)
+        
+        return change_regions
+    
+    def _group_change_regions(self, regions: List[ChangeFrequencyRegion]) -> List[ChangeFrequencyRegion]:
+        """
+        Group nearby change regions into larger coherent regions.
+        
+        Args:
+            regions: List of ChangeFrequencyRegion objects
+            
+        Returns:
+            List of merged ChangeFrequencyRegion objects
+        """
+        if not regions:
+            return []
+        
+        # Start with each region in its own group
+        groups = [[region] for region in regions]
+        
+        # Merge groups if regions are close enough
+        merged = True
+        while merged:
+            merged = False
+            for i in range(len(groups)):
+                if i >= len(groups):  # Safety check
+                    break
+                    
+                for j in range(i + 1, len(groups)):
+                    if j >= len(groups):  # Safety check
+                        break
+                        
+                    # Check if any regions in the groups are close enough
+                    if self._should_merge_region_groups(groups[i], groups[j]):
+                        # Merge groups
+                        groups[i].extend(groups[j])
+                        groups.pop(j)
+                        merged = True
+                        break
+        
+        # Convert groups back to regions (merge properties)
+        merged_regions = []
+        for group in groups:
+            if not group:
                 continue
                 
-            try:
-                # Load the image
-                img = Image.open(screenshot_path)
-                if img.mode != 'RGB':
-                    img = img.convert('RGB')
-                    
-                img_width, img_height = img.size
-                
-                # Process each element
-                for pcr in result_model.parsed_content_results:
-                    try:
-                        bbox = pcr.bbox
-                        
-                        # Ensure bbox is valid
-                        if len(bbox) != 4 or not all(isinstance(x, (int, float)) for x in bbox):
-                            continue
-                        
-                        # Convert to absolute coordinates if needed
-                        if max(bbox) <= 1.0:
-                            # Normalized coordinates [0-1]
-                            x1_abs = int(bbox[0] * img_width)
-                            y1_abs = int(bbox[1] * img_height)
-                            x2_abs = int(bbox[2] * img_width)
-                            y2_abs = int(bbox[3] * img_height)
-                        else:
-                            # Already absolute
-                            x1_abs, y1_abs, x2_abs, y2_abs = map(int, bbox)
-                        
-                        # Ensure valid dimensions
-                        if x1_abs >= x2_abs or y1_abs >= y2_abs:
-                            # Try to fix tiny areas
-                            x2_abs = max(x1_abs + 1, x2_abs)
-                            y2_abs = max(y1_abs + 1, y2_abs)
-                            
-                            # If still invalid, skip
-                            if x1_abs >= x2_abs or y1_abs >= y2_abs:
-                                continue
-                        
-                        # Extract image patch
-                        patch = img.crop((x1_abs, y1_abs, x2_abs, y2_abs))
-                        
-                        # Skip very small patches
-                        if patch.width < 5 or patch.height < 5:
-                            continue
-                            
-                        # Get embedding
-                        embedding = self.embedder.get_embedding(patch)
-                        
-                        # Store element
-                        frame_elements.append((pcr.id, pcr, embedding))
-                        
-                    except Exception as e:
-                        logger.error(f"Error processing element {pcr.id}: {e}")
+            # Merge bboxes
+            merged_bbox = self._merge_bboxes([r.bbox for r in group])
             
-            except Exception as e:
-                logger.error(f"Error processing frame {frame_idx}: {e}")
-                
-            logger.info(f"Extracted {len(frame_elements)} elements from frame {frame_idx}")
-            all_frame_elements.append(frame_elements)
+            # Average change frequency and saliency
+            avg_change_freq = sum(r.change_frequency for r in group) / len(group)
+            avg_saliency = sum(r.saliency for r in group) / len(group)
             
-        return all_frame_elements
+            # Combine change types
+            combined_types = {}
+            for r in group:
+                for change_type, count in r.change_types.items():
+                    combined_types[change_type] = combined_types.get(change_type, 0) + count
+            
+            # Create merged region
+            merged_regions.append(ChangeFrequencyRegion(
+                bbox=merged_bbox,
+                change_frequency=avg_change_freq,
+                change_types=combined_types,
+                saliency=avg_saliency
+            ))
+        
+        return merged_regions
     
-    def _get_element_center(self, bbox: List[float]) -> Tuple[float, float]:
-        """Calculate the center point of a bounding box."""
-        return ((bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2)
+    def _should_merge_region_groups(
+        self, 
+        group1: List[ChangeFrequencyRegion], 
+        group2: List[ChangeFrequencyRegion]
+    ) -> bool:
+        """
+        Determine if two region groups should be merged based on proximity.
+        
+        Args:
+            group1: First group of regions
+            group2: Second group of regions
+            
+        Returns:
+            True if groups should be merged, False otherwise
+        """
+        for r1 in group1:
+            for r2 in group2:
+                # Check if regions are close or intersecting
+                if self._intersect_bboxes(r1.bbox, r2.bbox):
+                    return True
+                    
+                # Check center distance
+                distance = self._get_distance(r1.center, r2.center)
+                if distance <= self.grouping_distance:
+                    return True
+        
+        return False
     
     def _get_distance(self, point1: Tuple[float, float], point2: Tuple[float, float]) -> float:
         """Calculate Euclidean distance between two points."""
         return np.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2)
     
-    def _track_elements(self, frame_elements: List[List[Tuple[int, ParsedContentResult, np.ndarray]]]) -> List[TrackedElement]:
-        """
-        Track elements across frames based on visual similarity and position.
+    def _intersect_bboxes(self, bbox1: List[float], bbox2: List[float]) -> bool:
+        """Check if two bounding boxes intersect."""
+        # Check if one bbox is to the left of the other
+        if bbox1[2] <= bbox2[0] or bbox2[2] <= bbox1[0]:
+            return False
         
-        Args:
-            frame_elements: List of lists, each containing elements for one frame
-            
-        Returns:
-            List of TrackedElement objects
-        """
-        tracked_elements = []
+        # Check if one bbox is above the other
+        if bbox1[3] <= bbox2[1] or bbox2[3] <= bbox1[1]:
+            return False
         
-        # Skip if we have fewer than 2 frames
-        if len(frame_elements) < 2:
-            logger.warning("Need at least 2 frames for tracking")
-            return tracked_elements
-            
-        # Initialize tracking with first frame
-        for element_id, pcr, embedding in frame_elements[0]:
-            tracked_elements.append(TrackedElement(
-                element_id=element_id,
-                frame_indexes=[0],
-                bbox_list=[pcr.bbox],
-                content_list=[pcr.content],
-                embedding_list=[embedding],
-                source_type=pcr.source
-            ))
-        
-        # Process subsequent frames
-        for frame_idx in range(1, len(frame_elements)):
-            current_frame = frame_elements[frame_idx]
-            matched_elements = set()
-            
-            # For each tracked element, try to find a match in current frame
-            for tracked_elem in tracked_elements:
-                if not tracked_elem.embedding_list:
-                    continue
-                    
-                # Get the most recent occurrence of this element
-                last_embedding = tracked_elem.embedding_list[-1]
-                last_bbox = tracked_elem.bbox_list[-1]
-                last_center = self._get_element_center(last_bbox)
-                
-                best_match = None
-                best_similarity = -1
-                
-                for element_id, pcr, embedding in current_frame:
-                    # Skip if already matched
-                    if element_id in matched_elements:
-                        continue
-                    
-                    # Check visual similarity
-                    similarity = np.dot(last_embedding, embedding)
-                    
-                    if similarity >= self.similarity_threshold:
-                        # Check position proximity
-                        current_center = self._get_element_center(pcr.bbox)
-                        distance = self._get_distance(last_center, current_center)
-                        
-                        if distance <= self.proximity_threshold:
-                            # If better match than previous
-                            if similarity > best_similarity:
-                                best_similarity = similarity
-                                best_match = (element_id, pcr, embedding)
-                
-                # If we found a match, extend the tracked element
-                if best_match:
-                    element_id, pcr, embedding = best_match
-                    tracked_elem.frame_indexes.append(frame_idx)
-                    tracked_elem.bbox_list.append(pcr.bbox)
-                    tracked_elem.content_list.append(pcr.content)
-                    tracked_elem.embedding_list.append(embedding)
-                    matched_elements.add(element_id)
-            
-            # Create new tracked elements for unmatched elements in current frame
-            for element_id, pcr, embedding in current_frame:
-                if element_id not in matched_elements:
-                    tracked_elements.append(TrackedElement(
-                        element_id=element_id,
-                        frame_indexes=[frame_idx],
-                        bbox_list=[pcr.bbox],
-                        content_list=[pcr.content],
-                        embedding_list=[embedding],
-                        source_type=pcr.source
-                    ))
-        
-        logger.info(f"Tracked {len(tracked_elements)} elements across {len(frame_elements)} frames")
-        return tracked_elements
+        return True
     
-    def _filter_reliable_elements(self, elements: List[TrackedElement], total_frames: int) -> Tuple[List[TrackedElement], List[TrackedElement]]:
-        """
-        Filter elements to get those that are reliable (appear in enough frames)
-        and classify them as static or dynamic.
-        
-        Returns:
-            Tuple of (static_elements, dynamic_elements)
-        """
-        if total_frames < 2:
-            return [], []
-            
-        # Filter for reliable elements
-        reliable_elements = [elem for elem in elements 
-                            if len(elem.frame_indexes) >= max(2, int(total_frames * self.min_persistence))]
-                            
-        # Separate static and dynamic elements
-        static_elements = [elem for elem in reliable_elements if elem.is_static]
-        dynamic_elements = [elem for elem in reliable_elements if elem.is_dynamic]
-        
-        logger.info(f"Classified {len(static_elements)} static and {len(dynamic_elements)} dynamic elements "
-                   f"out of {len(reliable_elements)} reliable elements")
-        
-        return static_elements, dynamic_elements
-    
-    def _group_dynamic_elements(self, dynamic_elements: List[TrackedElement]) -> List[List[TrackedElement]]:
-        """
-        Group dynamic elements that are close to each other spatially.
-        
-        Returns:
-            List of element groups (each group is a list of elements)
-        """
-        if not dynamic_elements:
-            return []
-            
-        # Start with each element in its own group
-        groups = [[elem] for elem in dynamic_elements]
-        
-        # Iteratively merge groups until no more merges are possible
-        merged = True
-        while merged and len(groups) > 1:
-            merged = False
-            
-            for i in range(len(groups)):
-                if i >= len(groups):  # Safety check in case groups shrink
-                    break
-                    
-                group1 = groups[i]
-                
-                for j in range(i+1, len(groups)):
-                    if j >= len(groups):  # Safety check
-                        break
-                        
-                    group2 = groups[j]
-                    
-                    # Check if groups should be merged
-                    if self._should_merge_groups(group1, group2):
-                        # Merge group2 into group1
-                        groups[i] = group1 + group2
-                        # Remove group2
-                        groups.pop(j)
-                        merged = True
-                        break
-        
-        logger.info(f"Grouped {len(dynamic_elements)} dynamic elements into {len(groups)} groups")
-        return groups
-    
-    def _should_merge_groups(self, group1: List[TrackedElement], group2: List[TrackedElement]) -> bool:
-        """
-        Determine if two element groups should be merged based on proximity.
-        
-        Returns:
-            True if groups should be merged, False otherwise
-        """
-        # Get all pairwise distances between elements in both groups
-        for elem1 in group1:
-            center1 = self._get_element_center(elem1.average_bbox)
-            
-            for elem2 in group2:
-                center2 = self._get_element_center(elem2.average_bbox)
-                
-                # If any pair is close enough, merge the groups
-                if self._get_distance(center1, center2) <= self.grouping_distance:
-                    return True
-        
-        return False
-    
-    def _calculate_group_bbox(self, group: List[TrackedElement]) -> List[float]:
-        """
-        Calculate the bounding box that encompasses all elements in a group.
-        
-        Returns:
-            [x1, y1, x2, y2] bounding box
-        """
-        if not group:
+    def _merge_bboxes(self, bboxes: List[List[float]]) -> List[float]:
+        """Merge multiple bounding boxes into one encompassing all."""
+        if not bboxes:
             return [0, 0, 0, 0]
             
-        # Collect all bboxes from all elements
-        all_bboxes = []
-        for elem in group:
-            all_bboxes.append(elem.average_bbox)
-            
-        # Find min/max coordinates
-        x1 = min(bbox[0] for bbox in all_bboxes)
-        y1 = min(bbox[1] for bbox in all_bboxes)
-        x2 = max(bbox[2] for bbox in all_bboxes)
-        y2 = max(bbox[3] for bbox in all_bboxes)
-        
-        # Ensure coordinates are within [0,1]
-        x1 = max(0.0, min(1.0, x1))
-        y1 = max(0.0, min(1.0, y1))
-        x2 = max(0.0, min(1.0, x2))
-        y2 = max(0.0, min(1.0, y2))
-        
-        # Ensure x2 > x1 and y2 > y1
-        x2 = max(x1 + 0.01, x2)
-        y2 = max(y1 + 0.01, y2)
+        x1 = min(bbox[0] for bbox in bboxes)
+        y1 = min(bbox[1] for bbox in bboxes)
+        x2 = max(bbox[2] for bbox in bboxes)
+        y2 = max(bbox[3] for bbox in bboxes)
         
         return [x1, y1, x2, y2]
     
-    def _select_main_areas(self, group_bboxes: List[List[float]]) -> Dict[str, Optional[List[float]]]:
+    def _select_main_areas(
+        self, 
+        dynamic_regions: List[ChangeFrequencyRegion]
+    ) -> Dict[str, Optional[List[float]]]:
         """
-        Select main areas based on different criteria.
+        Select main dynamic areas based on different criteria.
         
+        Args:
+            dynamic_regions: List of dynamic regions
+            
         Returns:
             Dictionary mapping criteria names to selected bboxes
         """
-        result = {
+        result: Dict[str, Optional[List[float]]] = {
             "largest_area": None,
-            "center_weighted": None
+            "center_weighted": None,
+            "highest_frequency": None,
         }
         
-        if not group_bboxes:
+        if not dynamic_regions:
             return result
-            
-        # Only one bbox? It's the main area for all criteria
-        if len(group_bboxes) == 1:
-            for key in result:
-                result[key] = group_bboxes[0]
-            return result
-            
-        # Multiple bboxes - apply different selection criteria
+        
+        # Sort regions by different criteria
         
         # 1. Largest area
-        largest_area = 0
-        largest_bbox = None
-        
-        for bbox in group_bboxes:
-            area = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
-            if area > largest_area:
-                largest_area = area
-                largest_bbox = bbox
-                
-        result["largest_area"] = largest_bbox
+        largest_region = max(dynamic_regions, key=lambda r: r.area, default=None)
+        if largest_region:
+            result["largest_area"] = largest_region.bbox
         
         # 2. Center-weighted (favor areas in the middle of the screen)
-        best_score = -1
-        best_bbox = None
-        
         screen_center = (0.5, 0.5)
         
-        for bbox in group_bboxes:
-            # Calculate center of bbox
-            center = self._get_element_center(bbox)
-            
-            # Calculate area
-            area = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
-            
-            # Distance from screen center (normalized to [0,1])
-            distance = self._get_distance(center, screen_center)
-            
-            # Score = area * (1 - normalized_distance)
-            # This favors larger areas that are closer to center
-            score = area * (1 - distance)
-            
-            if score > best_score:
-                best_score = score
-                best_bbox = bbox
-                
-        result["center_weighted"] = best_bbox
+        # Score = area * (1 - distance_to_center) * saliency
+        center_weighted_regions = sorted(
+            dynamic_regions,
+            key=lambda r: (
+                r.area * 
+                (1 - self._get_distance(r.center, screen_center)) * 
+                r.saliency
+            ),
+            reverse=True
+        )
+        
+        if center_weighted_regions:
+            result["center_weighted"] = center_weighted_regions[0].bbox
+        
+        # 3. Highest change frequency
+        most_dynamic_region = max(dynamic_regions, key=lambda r: r.change_frequency, default=None)
+        if most_dynamic_region:
+            result["highest_frequency"] = most_dynamic_region.bbox
         
         return result
     
-    def detect_main_areas(self, results_list: OmniParserResultModelList) -> Dict[str, Optional[List[float]]]:
+    def detect_main_areas(
+        self, 
+        results_list: OmniParserResultModelList
+    ) -> Dict[str, Optional[List[float]]]:
         """
         Main method to detect dynamic content areas from a sequence of screenshots.
         
@@ -498,48 +444,45 @@ class DynamicAreaDetector:
         """
         logger.info(f"Starting dynamic area detection for {len(results_list.omniparser_result_models)} frames")
         
-        default_result = {
+        default_result: Dict[str, Optional[List[float]]] = {
             "largest_area": None,
-            "center_weighted": None
+            "center_weighted": None,
+            "highest_frequency": None,
         }
         
         # Ensure we have at least 2 frames
         if len(results_list.omniparser_result_models) < 2:
             logger.warning("Need at least 2 frames for dynamic area detection")
             return default_result
-            
+        
         try:
-            # Step 1: Extract elements from each frame
-            frame_elements = self._extract_elements(results_list)
+            # Step 1: Compare consecutive frame pairs using ImageDiffCreator
+            diff_results = self._compare_consecutive_frames(results_list)
             
-            # Step 2: Track elements across frames
-            tracked_elements = self._track_elements(frame_elements)
-            
-            # Step 3: Filter and classify elements
-            static_elements, dynamic_elements = self._filter_reliable_elements(
-                tracked_elements, len(results_list.omniparser_result_models))
-                
-            # If no dynamic elements, return default result
-            if not dynamic_elements:
-                logger.warning("No dynamic elements found")
+            if not diff_results:
+                logger.warning("No valid frame comparisons")
                 return default_result
-                
-            # Step 4: Group dynamic elements spatially
-            element_groups = self._group_dynamic_elements(dynamic_elements)
             
-            # Step 5: Calculate bounding box for each group
-            group_bboxes = []
+            # Get frame dimensions from first result
+            frame_width = results_list.omniparser_result_models[0].omniparser_result.original_image_width
+            frame_height = results_list.omniparser_result_models[0].omniparser_result.original_image_height
             
-            for group in element_groups:
-                bbox = self._calculate_group_bbox(group)
-                
-                # Skip too small areas
-                area = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
-                if area >= self.min_area_size:
-                    group_bboxes.append(bbox)
+            # Step 2: Generate change frequency heatmap
+            heatmap = self._generate_change_heatmap(diff_results, frame_width, frame_height)
+            
+            # Step 3: Extract regions with significant change frequency
+            change_regions = self._extract_change_regions(heatmap, diff_results)
+            
+            # Step 4: Group nearby regions
+            grouped_regions = self._group_change_regions(change_regions)
+            
+            # Step 5: Filter for dynamic regions only
+            dynamic_regions = [r for r in grouped_regions if r.is_dynamic]
+            
+            logger.info(f"Identified {len(dynamic_regions)} dynamic regions from {len(diff_results)} frame pairs")
             
             # Step 6: Select main areas based on different criteria
-            result = self._select_main_areas(group_bboxes)
+            result = self._select_main_areas(dynamic_regions)
             
             logger.info("Dynamic area detection completed successfully")
             return result

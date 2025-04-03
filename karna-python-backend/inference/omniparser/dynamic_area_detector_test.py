@@ -6,6 +6,7 @@ from typing import List, Dict, Optional
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from pathlib import Path
+import numpy as np
 
 # Add parent directory to path for imports
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -13,6 +14,7 @@ sys.path.append(os.path.dirname(os.path.dirname(current_dir)))
 
 from inference.omniparser.dynamic_area_detector import DynamicAreaDetector
 from inference.omniparser.image_comparison import ResNetImageEmbedder
+from inference.omniparser.image_diff_creator import ImageDiffCreator
 from inference.omniparser.omni_helper import (
     OmniParserResultModelList,
     get_omniparser_inference_data, 
@@ -44,11 +46,16 @@ def visualize_detection_results(results_list: OmniParserResultModelList, main_ar
         logger.warning("No frames in results list, cannot visualize")
         return
     
-    # Get the last frame
-    last_model = results_list.omniparser_result_models[-1]
-    screenshot_path = last_model.omniparser_result.original_image_path
+    # Create output directory if it doesn't exist
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
+    # Visualize the last frame with detected areas
     try:
+        # Get the last frame
+        last_model = results_list.omniparser_result_models[-1]
+        screenshot_path = last_model.omniparser_result.original_image_path
+        
         plt.figure(figsize=(15, 10))
         img = plt.imread(screenshot_path)
         plt.imshow(img)
@@ -57,7 +64,7 @@ def visualize_detection_results(results_list: OmniParserResultModelList, main_ar
         img_width = last_model.omniparser_result.original_image_width
         img_height = last_model.omniparser_result.original_image_height
         
-        # Draw bounding boxes for elements in the last frame
+        # Draw bounding boxes for elements in the last frame (lighter style)
         for pcr in last_model.parsed_content_results:
             x1, y1, x2, y2 = pcr.bbox
             
@@ -67,15 +74,18 @@ def visualize_detection_results(results_list: OmniParserResultModelList, main_ar
             
             rect = patches.Rectangle(
                 (x1, y1), x2 - x1, y2 - y1,
-                linewidth=1, edgecolor='blue', facecolor='none', alpha=0.5
+                linewidth=1, edgecolor='blue', facecolor='none', alpha=0.3
             )
             plt.gca().add_patch(rect)
         
         # Draw detected main areas with different colors for each rule
         colors = {
             'largest_area': 'red',
-            'center_weighted': 'green'
+            'center_weighted': 'green',
+            'highest_frequency': 'purple'
         }
+        
+        handles = []  # For legend
         
         for rule_name, bbox in main_areas.items():
             if bbox is not None:
@@ -89,25 +99,186 @@ def visualize_detection_results(results_list: OmniParserResultModelList, main_ar
                 
                 rect = patches.Rectangle(
                     (x1, y1), x2 - x1, y2 - y1,
-                    linewidth=3, edgecolor=color, facecolor=color, alpha=0.3,
-                    label=f"Main Area ({rule_name})"
+                    linewidth=3, edgecolor=color, facecolor=color, alpha=0.3
                 )
                 plt.gca().add_patch(rect)
+                
+                # Add to legend handles
+                handles.append(patches.Patch(color=color, alpha=0.5, label=f"Main Area ({rule_name})"))
+                
+                # Add label text
+                plt.text(x1, y1-5, rule_name, color=color, fontsize=12, fontweight='bold')
         
-        plt.title("Dynamic Area Detection Results", fontsize=14)
-        plt.legend(fontsize=12)
+        plt.title("Dynamic Area Detection Results - Final Frame", fontsize=14)
+        if handles:
+            plt.legend(handles=handles, fontsize=12)
         
         # Save the visualization
-        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_file = OUTPUT_DIR / f"dynamic_area_detection.png"
+        output_file = OUTPUT_DIR / f"dynamic_area_detection_final.png"
         plt.savefig(str(output_file), dpi=150, bbox_inches='tight')
         plt.close()
         
-        logger.info(f"Saved visualization to {output_file}")
+        logger.info(f"Saved final frame visualization to {output_file}")
     
     except Exception as e:
-        logger.error(f"Error visualizing detection results: {e}")
+        logger.error(f"Error visualizing final frame results: {e}")
+    
+    # Create a visualization of all frames with frame difference heatmap
+    try:
+        # Calculate the number of frames to visualize (up to 9)
+        num_frames = len(results_list.omniparser_result_models)
+        num_frames_to_show = min(num_frames, 9)
+        
+        # Calculate grid dimensions
+        grid_size = int(np.ceil(np.sqrt(num_frames_to_show)))
+        
+        plt.figure(figsize=(grid_size * 6, grid_size * 5))
+        
+        # Define colors for different area types
+        colors = {
+            'largest_area': 'red',
+            'center_weighted': 'green',
+            'highest_frequency': 'purple'
+        }
+        
+        # Plot each frame with its dynamic areas
+        for i in range(num_frames_to_show):
+            frame_idx = i * (num_frames // num_frames_to_show) if num_frames > num_frames_to_show else i
+            frame_model = results_list.omniparser_result_models[frame_idx]
+            frame_path = frame_model.omniparser_result.original_image_path
+            
+            # Create subplot
+            plt.subplot(grid_size, grid_size, i + 1)
+            img = plt.imread(frame_path)
+            plt.imshow(img)
+            
+            # Add frame information
+            plt.title(f"Frame {frame_idx}", fontsize=12)
+            plt.axis('off')
+            
+            # Draw main areas if it's the last frame
+            if frame_idx == num_frames - 1:
+                for rule_name, bbox in main_areas.items():
+                    if bbox is not None:
+                        x1, y1, x2, y2 = bbox
+                        
+                        # Convert normalized coordinates to absolute if needed
+                        if max(x1, y1, x2, y2) <= 1.0:  # Normalized
+                            img_width = frame_model.omniparser_result.original_image_width
+                            img_height = frame_model.omniparser_result.original_image_height
+                            x1, y1, x2, y2 = x1 * img_width, y1 * img_height, x2 * img_width, y2 * img_height
+                        
+                        color = colors.get(rule_name, 'orange')
+                        rect = patches.Rectangle(
+                            (x1, y1), x2 - x1, y2 - y1,
+                            linewidth=3, edgecolor=color, facecolor=color, alpha=0.3
+                        )
+                        plt.gca().add_patch(rect)
+        
+        plt.suptitle("Dynamic Area Detection - Frame Sequence", fontsize=16)
+        plt.tight_layout(rect=[0, 0, 1, 0.96])
+        
+        # Save the visualization
+        output_file = OUTPUT_DIR / f"dynamic_area_detection_sequence.png"
+        plt.savefig(str(output_file), dpi=200, bbox_inches='tight')
+        plt.close()
+        
+        logger.info(f"Saved frame sequence visualization to {output_file}")
+    
+    except Exception as e:
+        logger.error(f"Error visualizing frame sequence: {e}")
+    
+    # Create a detailed visualization showing the dynamic regions
+    try:
+        # Create a heatmap of dynamic activity using the first and last frame
+        if len(results_list.omniparser_result_models) >= 2:
+            first_model = results_list.omniparser_result_models[0]
+            last_model = results_list.omniparser_result_models[-1]
+            
+            # Create ImageDiffCreator to visualize differences
+            diff_creator = ImageDiffCreator()
+            
+            # Compare first and last frame
+            diff_result = diff_creator.compare_results(first_model, last_model)
+            
+            # Visualize the differences
+            plt.figure(figsize=(15, 10))
+            img = plt.imread(last_model.omniparser_result.original_image_path)
+            plt.imshow(img)
+            
+            # Get image dimensions
+            img_width = last_model.omniparser_result.original_image_width
+            img_height = last_model.omniparser_result.original_image_height
+            
+            # Define colors for different area types
+            colors = {
+                'largest_area': 'red',
+                'center_weighted': 'green',
+                'highest_frequency': 'purple'
+            }
+            
+            # Draw all the changes with different colors based on change type
+            change_colors = {
+                "added": "lime",
+                "removed": "red",
+                "text-changed": "orange",
+                "visual-changed": "magenta"
+            }
+            
+            handles = []
+            for change_type, color in change_colors.items():
+                changes = getattr(diff_result, change_type if change_type != "visual-changed" else "visual_changed")
+                if changes:
+                    for change in changes:
+                        x1, y1, x2, y2 = change.bbox
+                        
+                        # Convert normalized coordinates to absolute if needed
+                        if max(x1, y1, x2, y2) <= 1.0:  # Normalized
+                            x1, y1, x2, y2 = x1 * img_width, y1 * img_height, x2 * img_width, y2 * img_height
+                        
+                        rect = patches.Rectangle(
+                            (x1, y1), x2 - x1, y2 - y1,
+                            linewidth=2, edgecolor=color, facecolor=color, alpha=0.3
+                        )
+                        plt.gca().add_patch(rect)
+                    
+                    # Add to legend handles
+                    handles.append(patches.Patch(color=color, alpha=0.5, label=f"{change_type.replace('-', ' ').title()}"))
+            
+            # Now overlay the main dynamic areas
+            for rule_name, bbox in main_areas.items():
+                if bbox is not None:
+                    x1, y1, x2, y2 = bbox
+                    
+                    # Convert normalized coordinates to absolute if needed
+                    if max(x1, y1, x2, y2) <= 1.0:  # Normalized
+                        x1, y1, x2, y2 = x1 * img_width, y1 * img_height, x2 * img_width, y2 * img_height
+                    
+                    color = colors.get(rule_name, 'orange')
+                    rect = patches.Rectangle(
+                        (x1, y1), x2 - x1, y2 - y1,
+                        linewidth=3, edgecolor=color, facecolor='none', alpha=0.8
+                    )
+                    plt.gca().add_patch(rect)
+                    
+                    # Add to legend handles if not already there
+                    if rule_name not in [h.get_label().replace("Main Area (", "").replace(")", "") for h in handles if "Main Area" in h.get_label()]:
+                        handles.append(patches.Patch(color=color, alpha=0.8, label=f"Main Area ({rule_name})"))
+            
+            plt.title("Dynamic Changes Detection (First to Last Frame)", fontsize=14)
+            if handles:
+                plt.legend(handles=handles, fontsize=12)
+            
+            # Save the visualization
+            output_file = OUTPUT_DIR / f"dynamic_area_changes.png"
+            plt.savefig(str(output_file), dpi=150, bbox_inches='tight')
+            plt.close()
+            
+            logger.info(f"Saved changes visualization to {output_file}")
+    
+    except Exception as e:
+        logger.error(f"Error visualizing changes: {e}")
+
 def load_screenshot_events(json_path: str) -> List[ScreenshotEvent]:
     """
     Load screenshot events from the specified JSON file.
@@ -213,15 +384,20 @@ def test_dynamic_area_detector():
             
         logger.info(f"Successfully loaded {len(test_data.omniparser_result_models)} models from JSON file")
         
-        # Initialize the detector with default parameters
-        embedder = ResNetImageEmbedder()
+        # Initialize the ImageDiffCreator with default parameters
+        diff_creator = ImageDiffCreator(
+            saliency_threshold=0.1,
+            text_similarity_threshold=0.8,
+            visual_change_threshold=0.1
+        )
+        
+        # Initialize the detector with the new implementation
         detector = DynamicAreaDetector(
-            embedder=embedder,
-            similarity_threshold=0.8,           # Updated from 0.7
-            proximity_threshold=0.1,
-            min_persistence=0.5,                # Updated from min_persistence_fraction
-            min_area_size=0.01,                 # New parameter
-            grouping_distance=0.1               # New parameter
+            image_diff_creator=diff_creator,
+            min_change_frequency=0.3,
+            min_area_size=0.01,
+            grouping_distance=0.1,
+            min_saliency=0.1
         )
         
         # Run detection
