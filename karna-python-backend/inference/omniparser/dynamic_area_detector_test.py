@@ -71,7 +71,12 @@ def visualize_detection_results(results_list: OmniParserResultModelList, main_ar
             )
             plt.gca().add_patch(rect)
         
-        # Draw detected main areas
+        # Draw detected main areas with different colors for each rule
+        colors = {
+            'largest_area': 'red',
+            'center_weighted': 'green'
+        }
+        
         for rule_name, bbox in main_areas.items():
             if bbox is not None:
                 x1, y1, x2, y2 = bbox
@@ -80,7 +85,7 @@ def visualize_detection_results(results_list: OmniParserResultModelList, main_ar
                 if max(x1, y1, x2, y2) <= 1.0:  # Normalized
                     x1, y1, x2, y2 = x1 * img_width, y1 * img_height, x2 * img_width, y2 * img_height
                 
-                color = 'red' if rule_name == 'largest_area' else 'green'
+                color = colors.get(rule_name, 'orange')
                 
                 rect = patches.Rectangle(
                     (x1, y1), x2 - x1, y2 - y1,
@@ -95,7 +100,7 @@ def visualize_detection_results(results_list: OmniParserResultModelList, main_ar
         # Save the visualization
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_file = OUTPUT_DIR / f"dynamic_area_detection_{timestamp}.png"
+        output_file = OUTPUT_DIR / f"dynamic_area_detection.png"
         plt.savefig(str(output_file), dpi=150, bbox_inches='tight')
         plt.close()
         
@@ -212,9 +217,11 @@ def test_dynamic_area_detector():
         embedder = ResNetImageEmbedder()
         detector = DynamicAreaDetector(
             embedder=embedder,
-            similarity_threshold=0.7,
+            similarity_threshold=0.8,           # Updated from 0.7
             proximity_threshold=0.1,
-            min_persistence_fraction=0.5
+            min_persistence=0.5,                # Updated from min_persistence_fraction
+            min_area_size=0.01,                 # New parameter
+            grouping_distance=0.1               # New parameter
         )
         
         # Run detection
