@@ -379,7 +379,7 @@ class DynamicAreaDetector:
     def _select_main_areas(
         self, 
         dynamic_regions: List[ChangeFrequencyRegion]
-    ) -> Dict[str, Optional[List[float]]]:
+    ) -> Dict[str, Any]:
         """
         Select main dynamic areas based on different criteria.
         
@@ -387,12 +387,13 @@ class DynamicAreaDetector:
             dynamic_regions: List of dynamic regions
             
         Returns:
-            Dictionary mapping criteria names to selected bboxes
+            Dictionary mapping criteria names to selected bboxes and all regions
         """
-        result: Dict[str, Optional[List[float]]] = {
+        result: Dict[str, Any] = {
             "largest_area": None,
             "center_weighted": None,
             "highest_frequency": None,
+            "all_regions": [region.bbox for region in dynamic_regions]
         }
         
         if not dynamic_regions:
@@ -432,7 +433,7 @@ class DynamicAreaDetector:
     def detect_main_areas(
         self, 
         results_list: OmniParserResultModelList
-    ) -> Dict[str, Optional[List[float]]]:
+    ) -> Dict[str, Any]:
         """
         Main method to detect dynamic content areas from a sequence of screenshots.
         
@@ -440,14 +441,16 @@ class DynamicAreaDetector:
             results_list: OmniParserResultModelList with results for multiple frames
             
         Returns:
-            Dictionary mapping criteria names to selected dynamic area bboxes
+            Dictionary mapping criteria names to selected dynamic area bboxes, 
+            plus all dynamic regions
         """
         logger.info(f"Starting dynamic area detection for {len(results_list.omniparser_result_models)} frames")
         
-        default_result: Dict[str, Optional[List[float]]] = {
+        default_result: Dict[str, Any] = {
             "largest_area": None,
             "center_weighted": None,
             "highest_frequency": None,
+            "all_regions": []
         }
         
         # Ensure we have at least 2 frames

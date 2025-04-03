@@ -1,5 +1,5 @@
 import logging
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Any
 import numpy as np
 
 from .dynamic_area_detector import DynamicAreaDetector, ChangeFrequencyRegion
@@ -187,7 +187,7 @@ class UIOptimizedDynamicAreaDetector(DynamicAreaDetector):
     def _select_main_areas(
         self, 
         dynamic_regions: List[ChangeFrequencyRegion]
-    ) -> Dict[str, Optional[List[float]]]:
+    ) -> Dict[str, Any]:
         """
         Override parent method to add vertical union-based selections.
         
@@ -356,7 +356,7 @@ class UIOptimizedDynamicAreaDetector(DynamicAreaDetector):
     def detect_main_areas(
         self, 
         results_list: OmniParserResultModelList
-    ) -> Dict[str, Optional[List[float]]]:
+    ) -> Dict[str, Any]:
         """
         Detect dynamic content areas with UI optimization for vertical layouts.
         
@@ -365,7 +365,7 @@ class UIOptimizedDynamicAreaDetector(DynamicAreaDetector):
             
         Returns:
             Dictionary mapping criteria names to selected dynamic area bboxes,
-            including vertical union-based areas
+            including vertical union-based areas and all regions
         """
         logger.info(f"Starting UI-optimized dynamic area detection for {len(results_list.omniparser_result_models)} frames")
         

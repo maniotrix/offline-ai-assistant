@@ -120,6 +120,10 @@ def visualize_all_ui_elements(results_list: OmniParserResultModelList, main_area
         handles = []  # For legend
         
         for rule_name, bbox in main_areas.items():
+            # Skip all_regions
+            if rule_name == "all_regions":
+                continue
+                
             if bbox is not None:
                 x1, y1, x2, y2 = bbox
                 
@@ -195,6 +199,10 @@ def visualize_standard_areas(results_list: OmniParserResultModelList, main_areas
         
         # Draw only standard areas
         for rule_name, bbox in main_areas.items():
+            # Skip all_regions
+            if rule_name == "all_regions":
+                continue
+                
             if bbox is not None and rule_name in standard_colors:
                 x1, y1, x2, y2 = bbox
                 
@@ -260,6 +268,10 @@ def visualize_ui_optimized_areas(results_list: OmniParserResultModelList, main_a
         
         # Draw only UI-optimized areas
         for rule_name, bbox in main_areas.items():
+            # Skip all_regions
+            if rule_name == "all_regions":
+                continue
+                
             if bbox is not None and rule_name in ui_colors:
                 x1, y1, x2, y2 = bbox
                 
@@ -298,7 +310,7 @@ def visualize_ui_optimized_areas(results_list: OmniParserResultModelList, main_a
 
 def visualize_comparison_largest_to_vertical(results_list: OmniParserResultModelList, main_areas: Dict[str, Optional[List[float]]]):
     """
-    Create a focused comparison between largest_area and vertical_union/main_content_area.
+    Visualize a comparison between largest area and vertical union.
     
     Args:
         results_list: The OmniParserResultModelList used for detection
@@ -311,71 +323,72 @@ def visualize_comparison_largest_to_vertical(results_list: OmniParserResultModel
     
     timestamp, last_model, img, img_width, img_height = viz_data
     
-    # Skip if we don't have both largest_area and at least one UI area
-    largest_area = main_areas.get('largest_area')
-    has_ui_area = main_areas.get('vertical_union') is not None or main_areas.get('main_content_area') is not None
-    
-    if not largest_area or not has_ui_area:
-        logger.warning("Cannot create largest-to-vertical comparison - missing required areas")
-        return
-    
     try:
+        # Get the largest area and vertical union
+        largest_area = main_areas.get('largest_area')
+        vertical_union = main_areas.get('vertical_union')
+        
+        # Only create visualization if both are present
+        if largest_area is None or vertical_union is None:
+            logger.warning("Cannot create comparison visualization, missing largest_area or vertical_union")
+            return
+        
         # Create figure
         plt.figure(figsize=(15, 10))
         plt.imshow(img)
         
-        handles = []  # For legend
-        
-        # First draw the largest area
-        x1, y1, x2, y2 = largest_area
+        # Draw the largest area
+        la_x1, la_y1, la_x2, la_y2 = largest_area
         
         # Convert normalized coordinates to absolute if needed
-        if max(x1, y1, x2, y2) <= 1.0:  # Normalized
-            x1, y1, x2, y2 = x1 * img_width, y1 * img_height, x2 * img_width, y2 * img_height
+        if max(la_x1, la_y1, la_x2, la_y2) <= 1.0:  # Normalized
+            la_x1, la_y1, la_x2, la_y2 = la_x1 * img_width, la_y1 * img_height, la_x2 * img_width, la_y2 * img_height
         
-        rect = patches.Rectangle(
-            (x1, y1), x2 - x1, y2 - y1,
-            linewidth=3, edgecolor='red', facecolor='red', alpha=0.2
+        largest_rect = patches.Rectangle(
+            (la_x1, la_y1), la_x2 - la_x1, la_y2 - la_y1,
+            linewidth=3, edgecolor='red', facecolor='red', alpha=0.3
         )
-        plt.gca().add_patch(rect)
+        plt.gca().add_patch(largest_rect)
         
-        # Add to legend
-        handles.append(patches.Patch(color='red', alpha=0.5, label="Largest Area"))
+        # Draw the vertical union
+        vu_x1, vu_y1, vu_x2, vu_y2 = vertical_union
         
-        # Add label
-        plt.text(x1, y1-5, "largest_area", color='red', fontsize=12, fontweight='bold')
+        # Convert normalized coordinates to absolute if needed
+        if max(vu_x1, vu_y1, vu_x2, vu_y2) <= 1.0:  # Normalized
+            vu_x1, vu_y1, vu_x2, vu_y2 = vu_x1 * img_width, vu_y1 * img_height, vu_x2 * img_width, vu_y2 * img_height
         
-        # Draw the UI areas with different styles
-        ui_areas = {
-            'vertical_union': ('orange', 'Vertical Union'),
-            'main_content_area': ('cyan', 'Main Content Area')
-        }
+        vertical_rect = patches.Rectangle(
+            (vu_x1, vu_y1), vu_x2 - vu_x1, vu_y2 - vu_y1,
+            linewidth=4, edgecolor='orange', facecolor='orange', alpha=0.3, 
+            linestyle='--'
+        )
+        plt.gca().add_patch(vertical_rect)
         
-        for area_name, (color, label) in ui_areas.items():
-            bbox = main_areas.get(area_name)
-            if bbox is not None:
-                x1, y1, x2, y2 = bbox
-                
-                # Convert normalized coordinates to absolute if needed
-                if max(x1, y1, x2, y2) <= 1.0:  # Normalized
-                    x1, y1, x2, y2 = x1 * img_width, y1 * img_height, x2 * img_width, y2 * img_height
-                
-                rect = patches.Rectangle(
-                    (x1, y1), x2 - x1, y2 - y1,
-                    linewidth=4, edgecolor=color, facecolor='none', alpha=0.7,
-                    linestyle='--'
-                )
-                plt.gca().add_patch(rect)
-                
-                # Add to legend
-                handles.append(patches.Patch(color=color, alpha=0.7, label=label))
-                
-                # Add label
-                plt.text(x1, y1-5, area_name, color=color, fontsize=12, fontweight='bold')
+        # Add legend
+        handles = [
+            patches.Patch(color='red', alpha=0.5, label="Largest Dynamic Area"),
+            patches.Patch(color='orange', alpha=0.5, label="Vertical Union")
+        ]
         
-        plt.title("Comparison: Largest Area vs UI-Optimized Areas", fontsize=14)
-        if handles:
-            plt.legend(handles=handles, fontsize=12)
+        # Add metrics text
+        largest_area_size = (la_x2 - la_x1) * (la_y2 - la_y1)
+        vertical_union_size = (vu_x2 - vu_x1) * (vu_y2 - vu_y1)
+        size_ratio = vertical_union_size / largest_area_size if largest_area_size > 0 else 0
+        
+        plt.figtext(
+            0.5, 0.02, 
+            f"Size Comparison: Vertical union is {size_ratio:.2f}x the size of largest area\n"
+            f"Height: Largest area = {la_y2-la_y1:.0f}px, Vertical union = {vu_y2-vu_y1:.0f}px\n"
+            f"Width: Largest area = {la_x2-la_x1:.0f}px, Vertical union = {vu_x2-vu_x1:.0f}px",
+            ha='center', fontsize=12, bbox=dict(facecolor='white', alpha=0.8)
+        )
+        
+        plt.title("Comparison: Largest Area vs Vertical Union", fontsize=14)
+        plt.legend(handles=handles, fontsize=12)
+        
+        # Add labels
+        plt.text(la_x1, la_y1-5, "Largest Area", color='red', fontsize=12, fontweight='bold')
+        plt.text(vu_x1, vu_y1-5, "Vertical Union", color='orange', fontsize=12, fontweight='bold')
         
         # Save the visualization
         output_file = OUTPUT_DIR / f"largest_to_vertical_comparison_.png"
@@ -500,6 +513,10 @@ def test_ui_dynamic_area_detector(use_viewport=False):
         # Print results
         logger.info("UI-Optimized Detection Results:")
         for rule_name, bbox in main_areas.items():
+            if rule_name == "all_regions":
+                logger.info(f"  {rule_name}: {len(bbox)} regions detected")
+                continue
+                
             if bbox is not None:
                 logger.info(f"  {rule_name}: {[round(coord, 3) for coord in bbox]}")
             else:
@@ -516,6 +533,9 @@ def test_ui_dynamic_area_detector(use_viewport=False):
         ui_specific_results = False
         
         for rule_name, bbox in main_areas.items():
+            if rule_name == "all_regions":
+                continue
+                
             if bbox is not None:
                 success = True
                 if rule_name in ['vertical_union', 'main_content_area']:
@@ -529,6 +549,10 @@ def test_ui_dynamic_area_detector(use_viewport=False):
                 logger.warning("No UI-specific areas detected (vertical_union, main_content_area)")
         else:
             logger.warning("Test FAILED: No dynamic areas detected")
+            
+        # Check if we have any regions in all_regions
+        if main_areas.get("all_regions") and len(main_areas["all_regions"]) > 0:
+            logger.info(f"Found {len(main_areas['all_regions'])} regions in all_regions")
         
         # Verify visualization files created
         vis_files = list(OUTPUT_DIR.glob("*.png"))
