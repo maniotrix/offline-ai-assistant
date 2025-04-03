@@ -273,15 +273,10 @@ class ImageDiffCreator:
                 
                 # If IoU is above adaptive threshold, consider it a potential match
                 if iou >= adaptive_threshold:
-                    # If similar content, use it directly
-                    if element1.content == element2.content:
-                        # Perfect text match
-                        if iou > best_iou:
-                            best_match_id = element2.id
-                            best_match_score = 1.0
-                            best_iou = iou
-                    else:
-                        # Check visual similarity for complex matches
+                    # For box_yolo_content_yolo sources, don't rely on content strings
+                    # as omniparser captioning might not be reliable for these elements
+                    if element1.source == 'box_yolo_content_yolo':
+                        # Always do visual comparison for YOLO elements
                         try:
                             # Extract element images
                             img1 = self.extract_element_image(result1, element1)
@@ -297,7 +292,33 @@ class ImageDiffCreator:
                                 best_match_score = score
                                 best_iou = iou
                         except Exception as e:
-                            logger.warning(f"Error comparing elements: {e}")
+                            logger.warning(f"Error comparing YOLO elements: {e}")
+                    else:
+                        # For other element types, content comparison is reliable
+                        if element1.content == element2.content:
+                            # Perfect text match
+                            if iou > best_iou:
+                                best_match_id = element2.id
+                                best_match_score = 1.0
+                                best_iou = iou
+                        else:
+                            # Check visual similarity for complex matches
+                            try:
+                                # Extract element images
+                                img1 = self.extract_element_image(result1, element1)
+                                img2 = self.extract_element_image(result2, element2)
+                                
+                                # Compute similarity
+                                sim_result = self.embedder.get_similarity_with_classification(img1, img2)
+                                score = float(sim_result['score'])  # Ensure score is float
+                                
+                                # Update best match if better
+                                if score > best_match_score and score > 0.5:  # Minimum similarity threshold
+                                    best_match_id = element2.id
+                                    best_match_score = score
+                                    best_iou = iou
+                            except Exception as e:
+                                logger.warning(f"Error comparing elements: {e}")
             
             # If a match was found, add it
             if best_match_id is not None:
