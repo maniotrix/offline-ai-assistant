@@ -4,51 +4,38 @@ from PIL import Image, ImageDraw # Added ImageDraw for potential visualization/d
 from typing import List, Dict, Tuple, Optional, Set, Any
 import logging
 import itertools # For unique IDs
-
-# Adjust imports based on actual project structure if necessary
-# Assuming execution context allows these relative imports or PYTHONPATH is set
-try:
-    from services.screen_capture_service import ScreenshotEvent
-except ImportError:
-    logger.warning("Could not import ScreenshotEvent from services. Assuming structure for now.")
-    # Define a placeholder if needed for standalone testing
-    from dataclasses import dataclass
-    from datetime import datetime
-    @dataclass
-    class ScreenshotEvent:
-        event_id: str
-        project_uuid: str
-        command_uuid: str
-        timestamp: datetime
-        description: str
-        screenshot_path: str
-        annotation_path: Optional[str] = None
-        mouse_x: Optional[int] = None
-        mouse_y: Optional[int] = None
-        mouse_event_tool_tip: Optional[str] = None
-        key_char: Optional[str] = None
-        key_code: Optional[str] = None
-        is_special_key: bool = False
-
-
-from .omniparser import Omniparser, OmniparserResult
-from .image_comparison import ResNetImageEmbedder
+from datetime import datetime # Import datetime globally
 from dataclasses import dataclass
 
+# Define logger early to be available in except blocks
 logger = logging.getLogger(__name__)
 # Configure logger basic settings if run standalone
 if not logger.handlers:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+# Keep Omniparser for type hint if needed
+from .image_comparison import ResNetImageEmbedder
+from .omni_helper import OmniParserResultModel, OmniParserResultModelList, ParsedContentResult # Import new input types
+
 
 # Define a structure for element info within a frame
 @dataclass
 class FrameElement:
     """Represents a detected element within a single frame."""
     frame_index: int
-    element_index: int # Original index within the frame's parsed_content_list
-    bbox: List[float] # Normalized xyxy coordinates [x1, y1, x2, y2]
-    content: Optional[str] # Text content or caption
+    # Use parsed_content_result.id directly or store original index if needed
+    element_id: int # ID from ParsedContentResult
+    parsed_content_result: ParsedContentResult # Keep original data
     embedding: np.ndarray # ResNet embedding of the element's patch
+
+    @property
+    def bbox(self) -> List[float]: # Helper to access bbox easily
+        return self.parsed_content_result.bbox
+
+    @property
+    def content(self) -> Optional[str]: # Helper to access content easily
+        return self.parsed_content_result.content
+
 
 # Define a structure for tracking persistent elements across frames
 @dataclass
@@ -60,11 +47,13 @@ class ElementTrack:
 
 class DynamicAreaDetector:
     """
-    Analyzes a sequence of screenshots from a task session to identify
+    Analyzes a sequence of pre-processed OmniParser results to identify
     dynamic content areas by tracking persistent UI elements.
     """
     def __init__(self,
-                 omniparser: Omniparser,
+                 # Omniparser instance might not be strictly needed anymore if parsing is always pre-done,
+                 # but keeping it for now in case of future utility or type hints.
+                 # omniparser: Omniparser,
                  embedder: ResNetImageEmbedder,
                  similarity_threshold: float = 0.7,
                  proximity_threshold: float = 0.1,
@@ -73,7 +62,6 @@ class DynamicAreaDetector:
         Initializes the detector.
 
         Args:
-            omniparser: An initialized Omniparser instance.
             embedder: An initialized ResNetImageEmbedder instance.
             similarity_threshold: Cosine similarity threshold (0-1) to consider
                                    elements similar for tracking. Higher means stricter.
@@ -82,12 +70,12 @@ class DynamicAreaDetector:
             min_persistence_fraction: An element track must exist in at least this
                                       fraction of valid frames to be considered persistent.
         """
-        if not isinstance(omniparser, Omniparser):
-            raise TypeError("omniparser must be an instance of Omniparser")
+        # if not isinstance(omniparser, Omniparser):
+        #     raise TypeError("omniparser must be an instance of Omniparser")
         if not isinstance(embedder, ResNetImageEmbedder):
             raise TypeError("embedder must be an instance of ResNetImageEmbedder")
 
-        self.omniparser = omniparser
+        # self.omniparser = omniparser # Store if needed, otherwise remove
         self.embedder = embedder
         self.similarity_threshold = similarity_threshold
         self.proximity_threshold = proximity_threshold
@@ -100,138 +88,25 @@ class DynamicAreaDetector:
     def _get_element_center(self, bbox: List[float]) -> Tuple[float, float]:
         """Calculates the normalized center coordinates (x, y) of a bounding box."""
         if len(bbox) != 4:
+            # Add logging for invalid bbox length
+            logger.error(f"Invalid bounding box length: {len(bbox)}. Expected 4 coordinates.")
             raise ValueError("Bounding box must contain 4 coordinates (x1, y1, x2, y2)")
         x1, y1, x2, y2 = bbox
+        # Ensure bbox coordinates are valid (x2 >= x1, y2 >= y1)
+        if x2 < x1 or y2 < y1:
+            logger.warning(f"Invalid bbox coordinates (x2<x1 or y2<y1): {[x1, y1, x2, y2]}. Center calculation might be incorrect.")
+            # Attempt to correct or proceed with caution
+            x2 = max(x1, x2)
+            y2 = max(y1, y2)
         return ((x1 + x2) / 2, (y1 + y2) / 2)
+
 
     def _get_distance(self, center1: Tuple[float, float], center2: Tuple[float, float]) -> float:
         """Calculates the Euclidean distance between two normalized points."""
         return np.sqrt((center1[0] - center2[0])**2 + (center1[1] - center2[1])**2)
 
-    def _extract_element_data_from_frame(self,
-                                         screenshot_event: ScreenshotEvent,
-                                         frame_index: int) -> Optional[List[FrameElement]]:
-        """
-        Runs Omniparser on a single screenshot, extracts element patches,
-        and computes their embeddings.
-
-        Args:
-            screenshot_event: The ScreenshotEvent containing the path.
-            frame_index: The index of this frame in the sequence.
-
-        Returns:
-            A list of FrameElement objects for the frame, or None if processing fails.
-        """
-        try:
-            screenshot_path = screenshot_event.screenshot_path
-            logger.info(f"Processing frame {frame_index}: {os.path.basename(screenshot_path)}")
-            if not os.path.exists(screenshot_path):
-                logger.error(f"Screenshot file not found: {screenshot_path}")
-                return None
-
-            # --- 1. Run Omniparser ---
-            try:
-                # Consider using parse_image_path_without_local_semantics if faster and sufficient
-                omni_result: OmniparserResult = self.omniparser.parse_image_path(screenshot_path)
-            except Exception as e:
-                 logger.error(f"Omniparser failed for {screenshot_path}: {e}", exc_info=True)
-                 return None
-
-            if not omni_result or not hasattr(omni_result, 'parsed_content_list') or not omni_result.parsed_content_list:
-                logger.warning(f"No elements parsed by Omniparser for frame {frame_index}.")
-                return [] # Return empty list if no elements found
-
-            img = Image.open(screenshot_path)
-            # Ensure image is RGB for consistency, ResNet expects 3 channels
-            if img.mode != 'RGB':
-                img = img.convert('RGB')
-            width, height = img.size
-            if width == 0 or height == 0:
-                 logger.error(f"Invalid image dimensions ({width}x{height}) for {screenshot_path}")
-                 return None
-
-            frame_elements: List[FrameElement] = []
-
-            # --- 2. Process Each Parsed Element ---
-            # parsed_content_list is a list of dicts from Omniparser
-            for element_index, element_data in enumerate(omni_result.parsed_content_list):
-                 # Validate required keys
-                 if 'bbox' not in element_data:
-                     logger.warning(f"Skipping element {element_index} in frame {frame_index}: missing 'bbox'.")
-                     continue
-
-                 bbox_normalized = element_data['bbox']
-                 content = element_data.get('content') # Content might be None
-
-                 # Validate bbox format and values
-                 if not isinstance(bbox_normalized, list) or len(bbox_normalized) != 4:
-                     logger.warning(f"Skipping element {element_index} in frame {frame_index}: invalid bbox format {bbox_normalized}.")
-                     continue
-                 if not all(isinstance(coord, (int, float)) for coord in bbox_normalized):
-                     logger.warning(f"Skipping element {element_index} in frame {frame_index}: non-numeric bbox coords {bbox_normalized}.")
-                     continue
-
-                 # Convert normalized bbox to absolute pixel coords for cropping
-                 x1_abs = int(bbox_normalized[0] * width)
-                 y1_abs = int(bbox_normalized[1] * height)
-                 x2_abs = int(bbox_normalized[2] * width)
-                 y2_abs = int(bbox_normalized[3] * height)
-
-                 # Ensure valid bbox dimensions after conversion (handle potential floating point inaccuracies)
-                 if x1_abs >= x2_abs or y1_abs >= y2_abs:
-                     # Allow zero-width/height if coords are almost equal
-                     if not (np.isclose(bbox_normalized[0], bbox_normalized[2]) or np.isclose(bbox_normalized[1], bbox_normalized[3])):
-                          logger.warning(f"Skipping invalid bbox {bbox_normalized} (abs: {[x1_abs, y1_abs, x2_abs, y2_abs]}) in frame {frame_index}")
-                          continue
-                     # Adjust slightly if dimensions are zero due to rounding
-                     x2_abs = max(x1_abs + 1, x2_abs)
-                     y2_abs = max(y1_abs + 1, y2_abs)
-                     # Recrop bounds to image size
-                     x1_abs, y1_abs = max(0, x1_abs), max(0, y1_abs)
-                     x2_abs, y2_abs = min(width, x2_abs), min(height, y2_abs)
-                     # Re-check after adjustments
-                     if x1_abs >= x2_abs or y1_abs >= y2_abs:
-                         logger.warning(f"Skipping element {element_index} in frame {frame_index} even after bbox adjustment.")
-                         continue
-
-
-                 try:
-                     # --- 2a. Extract Patch ---
-                     patch = img.crop((x1_abs, y1_abs, x2_abs, y2_abs))
-
-                     # Skip tiny patches which might not embed well
-                     if patch.width < 5 or patch.height < 5:
-                          logger.debug(f"Skipping very small patch (element {element_index}) in frame {frame_index}")
-                          continue
-
-                     # --- 2b. Compute Embedding ---
-                     embedding = self.embedder.get_embedding(patch)
-
-                     # --- 2c. Store Frame Element Data ---
-                     frame_elements.append(FrameElement(
-                         frame_index=frame_index,
-                         element_index=element_index,
-                         bbox=bbox_normalized,
-                         content=content,
-                         embedding=embedding
-                     ))
-                 except ValueError as ve:
-                      # Catch specific errors like zero-sized crops if they bypass initial checks
-                      logger.error(f"ValueError processing element {element_index} in frame {frame_index}: {ve}")
-                      continue
-                 except Exception as e:
-                     logger.error(f"Failed to extract/embed element {element_index} in frame {frame_index}: {e}", exc_info=True)
-                     continue # Skip this element if patch extraction or embedding fails
-
-            logger.info(f"Extracted {len(frame_elements)} valid elements from frame {frame_index}")
-            return frame_elements
-
-        except FileNotFoundError: # Already logged above
-            return None
-        except Exception as e:
-            # Catch-all for other unexpected errors during frame processing
-            logger.error(f"Unexpected error processing screenshot {screenshot_event.screenshot_path} for frame {frame_index}: {e}", exc_info=True)
-            return None
+    # Method _extract_element_data_from_frame is REMOVED as parsing is pre-done.
+    # The logic is moved into the main detect_main_areas method.
 
     def _track_elements(self, all_frame_data: List[List[FrameElement]]) -> List[ElementTrack]:
         """
@@ -265,21 +140,20 @@ class DynamicAreaDetector:
                  logger.debug(f"Skipping empty frame {frame_index} during tracking.")
                  continue
 
-            matched_current_frame_indices: Set[int] = set()
+            matched_current_frame_ids: Set[int] = set() # Track by ParsedContentResult ID
             next_active_tracks: List[ElementTrack] = []
 
             # --- Try to extend existing active tracks ---
-            # Sort tracks to potentially process more stable ones first? (Optional optimization)
             for track in active_tracks:
                 last_element_in_track = track.occurrences[-1]
                 best_match_element = None
-                best_match_index = -1
+                best_match_id = -1 # Store ParsedContentResult ID
                 highest_similarity = -1.0 # Initialize below valid similarity range
 
                 # Find the best matching element in the current frame for this track
-                for current_element_index, current_element in enumerate(current_frame_elements):
+                for current_element in current_frame_elements:
                     # Avoid re-matching elements already assigned to a track in this frame
-                    if current_element.element_index in matched_current_frame_indices:
+                    if current_element.element_id in matched_current_frame_ids:
                         continue
 
                     try:
@@ -300,22 +174,24 @@ class DynamicAreaDetector:
                                 if similarity > highest_similarity:
                                      highest_similarity = similarity
                                      best_match_element = current_element
-                                     best_match_index = current_element.element_index # Use original index
+                                     best_match_id = current_element.element_id # Use ParsedContentResult ID
 
+                    except ValueError as ve: # Catch specific errors like invalid bbox for center calc
+                         logger.error(f"ValueError during comparison involving track {track.track_id} element ID "
+                                      f"{last_element_in_track.element_id} and current element ID {current_element.element_id}: {ve}")
+                         continue
                     except Exception as e:
-                         logger.error(f"Error comparing track {track.track_id} element "
-                                      f"(frame {last_element_in_track.frame_index}, "
-                                      f"idx {last_element_in_track.element_index}) with current element "
-                                      f"(frame {frame_index}, idx {current_element.element_index}): {e}")
+                         logger.error(f"Error comparing track {track.track_id} element ID "
+                                      f"{last_element_in_track.element_id} with current element ID {current_element.element_id}: {e}")
                          continue # Skip comparison if error occurs
 
 
                 # If a suitable match was found, extend the track
                 if best_match_element is not None:
                     track.occurrences.append(best_match_element)
-                    matched_current_frame_indices.add(best_match_index)
+                    matched_current_frame_ids.add(best_match_id)
                     next_active_tracks.append(track) # This track continues
-                    # logger.debug(f"Extended track {track.track_id} with element (frame {frame_index}, idx {best_match_index}) sim={highest_similarity:.3f}")
+                    # logger.debug(f"Extended track {track.track_id} with element ID {best_match_id} in frame {frame_index} sim={highest_similarity:.3f}")
                 else:
                     # No match found, the track ends here
                     tracks.append(track)
@@ -324,11 +200,11 @@ class DynamicAreaDetector:
 
             # --- Start new tracks for unmatched elements ---
             for current_element in current_frame_elements:
-                if current_element.element_index not in matched_current_frame_indices:
+                if current_element.element_id not in matched_current_frame_ids:
                     track_id = next(self._track_id_counter)
                     new_track = ElementTrack(track_id=track_id, first_occurrence=current_element, occurrences=[current_element])
                     next_active_tracks.append(new_track) # Start a new active track
-                    # logger.debug(f"Started new track {track_id} at frame {frame_index} with element idx {current_element.element_index}")
+                    # logger.debug(f"Started new track {track_id} at frame {frame_index} with element ID {current_element.element_id}")
 
 
             active_tracks = next_active_tracks # Update active tracks for the next frame
@@ -426,27 +302,30 @@ class DynamicAreaDetector:
 
         # --- Identify potential rectangular dynamic areas ---
         # 1. Region above static area
-        if sy1 > 0.0:
+        if sy1 > 1e-6: # Use small epsilon for float comparison
             dynamic_regions.append([0.0, 0.0, 1.0, sy1])
         # 2. Region below static area
-        if sy2 < 1.0:
+        if sy2 < 1.0 - 1e-6:
             dynamic_regions.append([0.0, sy2, 1.0, 1.0])
         # 3. Region left of static area (only within the vertical span of the static area)
-        if sx1 > 0.0:
+        if sx1 > 1e-6:
             dynamic_regions.append([0.0, sy1, sx1, sy2])
         # 4. Region right of static area (only within the vertical span of the static area)
-        if sx2 < 1.0:
+        if sx2 < 1.0 - 1e-6:
             dynamic_regions.append([sx2, sy1, 1.0, sy2])
 
         # --- Filter out invalid or zero-area regions ---
         valid_dynamic_regions = []
+        min_area = 1e-5 # Define a minimum area threshold
         for r in dynamic_regions:
             # Check for valid coordinates and positive area
-            if r[0] < r[2] and r[1] < r[3]:
+            if r[0] < r[2] - 1e-6 and r[1] < r[3] - 1e-6:
                  # Ensure bounds are within [0, 1] although they should be by construction here
                  r = [max(0.0, min(1.0, coord)) for coord in r]
                  # Double check area after potential clamping
-                 if r[0] < r[2] and r[1] < r[3]:
+                 width = r[2] - r[0]
+                 height = r[3] - r[1]
+                 if width > 1e-6 and height > 1e-6 and (width * height) > min_area:
                      valid_dynamic_regions.append(r)
 
         # This simplified geometric subtraction might miss complex cases or result
@@ -525,8 +404,11 @@ class DynamicAreaDetector:
                             ex, ey = self._get_element_center(element.bbox)
                             if rx1 <= ex < rx2 and ry1 <= ey < ry2:
                                  count_in_frame += 1
+                        except ValueError: # Catch invalid bbox from center calc
+                             logger.warning(f"Skipping element ID {element.element_id} in frame {element.frame_index} due to invalid bbox for center calculation.")
+                             continue
                         except Exception as e:
-                             logger.error(f"Error checking element {element.element_index} "
+                             logger.error(f"Error checking element ID {element.element_id} "
                                           f"in frame {element.frame_index} against region {region_bbox}: {e}")
                     total_elements_in_region += count_in_frame
 
@@ -551,44 +433,135 @@ class DynamicAreaDetector:
         return results
 
     # === Public Method ===
-    def detect_main_areas(self, screenshot_events: List[ScreenshotEvent]) -> Dict[str, Optional[List[float]]]:
+    def detect_main_areas(self, results_list: OmniParserResultModelList) -> Dict[str, Optional[List[float]]]:
         """
-        Detects the main dynamic content area(s) from a sequence of screenshot events.
+        Detects the main dynamic content area(s) from a sequence of OmniParser results.
 
         This is the main entry point for the class. It orchestrates the analysis
         pipeline: per-frame processing, element tracking, static/dynamic region
         calculation, and rule-based selection.
 
         Args:
-            screenshot_events: A list of ScreenshotEvent objects, typically obtained
-                               from a ScreenCaptureService session. Requires at least 2 events.
+            results_list: An OmniParserResultModelList object containing the pre-processed
+                          results for a sequence of screenshots. Requires at least 2 results.
 
         Returns:
             A dictionary where keys are rule names (e.g., 'largest_area', 'most_elements')
             and values are the corresponding main area bounding box ([x1, y1, x2, y2] normalized)
             or None if no area could be determined for that rule or if an error occurred.
         """
-        logger.info(f"Starting dynamic area detection for {len(screenshot_events)} screenshot events.")
+        logger.info(f"Starting dynamic area detection for {len(results_list.omniparser_result_models)} pre-parsed frames.")
         default_result: Dict[str, Optional[List[float]]] = {"largest_area": None, "most_elements": None} # Match rule names in _apply_selection_rules
 
-        if not isinstance(screenshot_events, list) or len(screenshot_events) < 2:
-            logger.warning("Input must be a list of at least 2 ScreenshotEvent objects.")
+        if not isinstance(results_list, OmniParserResultModelList) or len(results_list.omniparser_result_models) < 2:
+            logger.warning("Input must be an OmniParserResultModelList with at least 2 results.")
             return default_result
 
-        # --- Step 1: Per-Frame Analysis ---
+        # --- Step 1: Extract FrameElement Data (Embeddings & Patches) ---
         all_frame_data: List[List[FrameElement]] = []
         valid_frame_count = 0
-        for i, event in enumerate(screenshot_events):
-             # Ensure it's a ScreenshotEvent and has a path
-             if not hasattr(event, 'screenshot_path') or not event.screenshot_path:
-                 logger.warning(f"Skipping event at index {i}: Not a valid ScreenshotEvent or missing path.")
-                 continue
 
-             frame_data = self._extract_element_data_from_frame(event, i)
-             if frame_data is not None: # Handles None return on processing error
-                 all_frame_data.append(frame_data)
-                 valid_frame_count += 1
-             # Error/Warning already logged in _extract_element_data_from_frame
+        for frame_index, omni_model in enumerate(results_list.omniparser_result_models):
+            frame_elements: List[FrameElement] = []
+            screenshot_path = omni_model.omniparser_result.original_image_path
+            logger.info(f"Extracting elements for frame {frame_index}: {os.path.basename(screenshot_path)}")
+
+            try:
+                if not os.path.exists(screenshot_path):
+                    logger.error(f"Screenshot file not found for frame {frame_index}: {screenshot_path}")
+                    continue # Skip this frame
+
+                img = Image.open(screenshot_path)
+                # Ensure image is RGB for consistency
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                width, height = img.size
+                if width == 0 or height == 0:
+                    logger.error(f"Invalid image dimensions ({width}x{height}) for frame {frame_index}")
+                    continue # Skip this frame
+
+                if not omni_model.parsed_content_results:
+                     logger.warning(f"No parsed content results found for frame {frame_index}.")
+                     # Still append empty list to maintain frame count correspondence
+                     all_frame_data.append(frame_elements)
+                     valid_frame_count += 1 # Count as valid if parsing happened but found 0 elements
+                     continue
+
+                # Process each parsed element from the OmniParserResultModel
+                for pcr in omni_model.parsed_content_results:
+                    bbox_normalized = pcr.bbox
+
+                    # Validate bbox format and values (already normalized, maybe pre-processed)
+                    if not isinstance(bbox_normalized, list) or len(bbox_normalized) != 4:
+                        logger.warning(f"Skipping element ID {pcr.id} in frame {frame_index}: invalid bbox format {bbox_normalized}.")
+                        continue
+                    if not all(isinstance(coord, (int, float)) for coord in bbox_normalized):
+                        logger.warning(f"Skipping element ID {pcr.id} in frame {frame_index}: non-numeric bbox coords {bbox_normalized}.")
+                        continue
+                    # Check if bbox is already absolute (heuristic: check if values > 1.0)
+                    # The helper expects absolute bboxes, so we convert if needed
+                    if max(bbox_normalized) <= 1.0 + 1e-6: # Allow small tolerance over 1.0
+                        # Convert normalized bbox to absolute pixel coords for cropping
+                        x1_abs = int(bbox_normalized[0] * width)
+                        y1_abs = int(bbox_normalized[1] * height)
+                        x2_abs = int(bbox_normalized[2] * width)
+                        y2_abs = int(bbox_normalized[3] * height)
+                    else:
+                         # Assume bbox was already absolute (e.g., from pre-processor in omni_helper)
+                         x1_abs, y1_abs, x2_abs, y2_abs = map(int, bbox_normalized)
+
+
+                    # Ensure valid bbox dimensions after conversion
+                    if x1_abs >= x2_abs or y1_abs >= y2_abs:
+                        # Allow zero-width/height if coords are almost equal
+                        if not (np.isclose(bbox_normalized[0], bbox_normalized[2]) or np.isclose(bbox_normalized[1], bbox_normalized[3])):
+                             logger.warning(f"Skipping invalid bbox {bbox_normalized} (abs: {[x1_abs, y1_abs, x2_abs, y2_abs]}) for element {pcr.id} frame {frame_index}")
+                             continue
+                        # Adjust slightly
+                        x2_abs = max(x1_abs + 1, x2_abs)
+                        y2_abs = max(y1_abs + 1, y2_abs)
+                        x1_abs, y1_abs = max(0, x1_abs), max(0, y1_abs)
+                        x2_abs, y2_abs = min(width, x2_abs), min(height, y2_abs)
+                        if x1_abs >= x2_abs or y1_abs >= y2_abs:
+                             logger.warning(f"Skipping element {pcr.id} frame {frame_index} even after bbox adjustment.")
+                             continue
+
+
+                    try:
+                        # Extract Patch
+                        patch = img.crop((x1_abs, y1_abs, x2_abs, y2_abs))
+                        if patch.width < 5 or patch.height < 5:
+                             logger.debug(f"Skipping very small patch (element ID {pcr.id}) in frame {frame_index}")
+                             continue
+
+                        # Compute Embedding
+                        embedding = self.embedder.get_embedding(patch)
+
+                        # Store Frame Element Data
+                        frame_elements.append(FrameElement(
+                            frame_index=frame_index,
+                            element_id=pcr.id, # Use the ID from ParsedContentResult
+                            parsed_content_result=pcr, # Store the whole object
+                            embedding=embedding
+                        ))
+                    except ValueError as ve:
+                         logger.error(f"ValueError processing element ID {pcr.id} in frame {frame_index}: {ve}")
+                         continue
+                    except Exception as e:
+                        logger.error(f"Failed to extract/embed element ID {pcr.id} in frame {frame_index}: {e}", exc_info=True)
+                        continue # Skip this element
+
+                logger.info(f"Extracted {len(frame_elements)} valid elements from frame {frame_index}")
+                all_frame_data.append(frame_elements)
+                valid_frame_count += 1
+
+            except FileNotFoundError: # Already logged
+                continue
+            except Exception as e:
+                logger.error(f"Unexpected error processing pre-parsed frame {frame_index}: {e}", exc_info=True)
+                continue # Skip this frame entirely
+
+        # --- End Per-Frame Loop ---
 
         if valid_frame_count < 2:
              logger.error(f"Failed to process enough frames ({valid_frame_count}) for analysis. Need at least 2.")
@@ -614,6 +587,7 @@ class DynamicAreaDetector:
 
         # --- Step 5: Identify Dynamic Regions ---
         try:
+            # Use normalized bbox from PCR if static_region_bbox is calculated from normalized values
             dynamic_regions = self._calculate_dynamic_regions(static_region_bbox)
         except Exception as e:
              logger.error(f"Error calculating dynamic regions: {e}", exc_info=True)
@@ -621,6 +595,7 @@ class DynamicAreaDetector:
 
         # --- Step 6: Apply Selection Rules ---
         try:
+             # Pass all_frame_data which contains FrameElement objects with PCRs
              main_area_results = self._apply_selection_rules(dynamic_regions, all_frame_data)
         except Exception as e:
              logger.error(f"Error applying selection rules: {e}", exc_info=True)
@@ -629,77 +604,3 @@ class DynamicAreaDetector:
 
         logger.info("Dynamic area detection completed successfully.")
         return main_area_results
-
-
-# Example Usage (Illustrative - requires actual Omniparser/Embedder instances)
-if __name__ == '__main__':
-    print("Setting up example...")
-    # This example won't run without actual models/data, but shows structure
-
-    # --- Dummy Components (Replace with actual initialized objects) ---
-    class DummyEmbedder:
-        def get_embedding(self, img): return np.random.rand(512) # Example dim
-    class DummyOmniparser:
-        def parse_image_path(self, path):
-            # Return dummy data structure matching OmniparserResult
-            print(f"Dummy parsing: {path}")
-            num_elements = np.random.randint(5, 15)
-            content_list = []
-            for i in range(num_elements):
-                x1, y1 = np.random.rand(2) * 0.8 # Ensure x2>x1, y2>y1
-                w, h = np.random.rand(2) * (1.0 - max(x1, y1)) * 0.5 + 0.05 # Min size
-                x2, y2 = x1 + w, y1 + h
-                content_list.append({
-                    'bbox': [x1, y1, min(1.0, x2), min(1.0, y2)],
-                    'content': f'Dummy Element {i}',
-                    'type': 'text' if np.random.rand() > 0.5 else 'icon',
-                    'source': 'dummy_source'
-                })
-            # Construct a dummy object mimicking OmniparserResult structure
-            class DummyOmniResult:
-                def __init__(self, content):
-                    self.parsed_content_list = content
-                    self.label_coordinates = {} # Add other fields if needed by detector
-                    self.phrases = []
-            return DummyOmniResult(content_list)
-
-    # --- Setup Detector ---
-    dummy_omni = DummyOmniparser()
-    dummy_emb = DummyEmbedder()
-    detector = DynamicAreaDetector(omniparser=dummy_omni, embedder=dummy_emb)
-
-    # --- Create Dummy Screenshot Events ---
-    # Create dummy png files for testing if needed
-    dummy_files = []
-    if not os.path.exists("dummy_screenshots"): os.makedirs("dummy_screenshots")
-    for i in range(5):
-        fpath = os.path.join("dummy_screenshots", f"dummy_{i}.png")
-        try:
-            Image.new('RGB', (800, 600), color = (np.random.randint(0,255), np.random.randint(0,255), np.random.randint(0,255))).save(fpath)
-            dummy_files.append(fpath)
-        except Exception as e:
-             print(f"Could not create dummy file {fpath}: {e}")
-
-    if not dummy_files:
-         print("Could not create dummy files, skipping example run.")
-    else:
-        dummy_events = [
-            ScreenshotEvent(
-                event_id=f'ev{i}', project_uuid='proj1', command_uuid='cmd1',
-                timestamp=datetime.now(), description=f'Dummy event {i}',
-                screenshot_path=fpath
-            ) for i, fpath in enumerate(dummy_files)
-        ]
-
-        # --- Run Detection ---
-        print("\nRunning detection...")
-        main_areas = detector.detect_main_areas(dummy_events)
-
-        print("\nDetection Results:")
-        print(f"  Largest Area Rule: {main_areas.get('largest_area')}")
-        print(f"  Most Elements Rule: {main_areas.get('most_elements')}")
-
-        # --- Cleanup ---
-        # import shutil
-        # if os.path.exists("dummy_screenshots"): shutil.rmtree("dummy_screenshots")
-        print("\nExample finished (Note: used dummy data, results are random).") 
