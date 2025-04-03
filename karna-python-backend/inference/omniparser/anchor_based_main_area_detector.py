@@ -3,6 +3,10 @@ from PIL import Image
 import logging
 from typing import List, Dict, Tuple, Optional, Any, Union
 import os
+import json
+from pydantic import BaseModel, Field
+from datetime import datetime
+from pathlib import Path
 
 # Import from existing components
 from .ui_dynamic_area_detector import UIOptimizedDynamicAreaDetector
@@ -16,72 +20,42 @@ logger = logging.getLogger(__name__)
 if not logger.handlers:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
+# Pydantic data models for serialization
+class AnchorPointData(BaseModel):
+    """Data model for anchor points to be serialized/deserialized."""
+    element_id: str
+    element_type: str
+    bbox: List[float]
+    source: str
+    constraint_direction: str
+    constraint_ratio: float
+    stability_score: float
+    patch_path: str
+    embedding_path: str
 
-class AnchorPoint:
-    """Represents a stable anchor point with its spatial relationship to the main area."""
-    
-    def __init__(
-        self,
-        element_id: int,
-        element_type: str,
-        bbox: List[float],
-        source: str,
-        patch: Image.Image,
-        embedding: np.ndarray,
-        constraint_direction: str,  # 'top', 'bottom', 'left', 'right'
-        constraint_ratio: float,    # Position relative to main area
-        stability_score: float      # Higher means more stable across frames
-    ):
-        self.element_id = element_id
-        self.element_type = element_type
-        self.bbox = bbox
-        self.source = source
-        self.patch = patch
-        self.embedding = embedding
-        self.constraint_direction = constraint_direction
-        self.constraint_ratio = constraint_ratio
-        self.stability_score = stability_score
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for serialization."""
-        return {
-            "element_id": self.element_id,
-            "element_type": self.element_type,
-            "bbox": self.bbox,
-            "source": self.source,
-            "constraint_direction": self.constraint_direction,
-            "constraint_ratio": self.constraint_ratio,
-            "stability_score": self.stability_score
-        }
+class MainAreaReferenceData(BaseModel):
+    """Data model for main area reference patches to be serialized/deserialized."""
+    bbox: List[float]
+    frame_index: int
+    patch_path: str
+    embedding_path: str
 
-
-class MainAreaReference:
-    """Stores a visual representation of the main content area."""
-    
-    def __init__(
-        self,
-        bbox: List[float],
-        patch: Image.Image,
-        embedding: np.ndarray,
-        frame_index: int
-    ):
-        self.bbox = bbox
-        self.patch = patch
-        self.embedding = embedding
-        self.frame_index = frame_index
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for serialization."""
-        return {
-            "bbox": self.bbox,
-            "frame_index": self.frame_index
-        }
-
+class DetectionModelData(BaseModel):
+    """Data model for the complete detection model to be serialized/deserialized."""
+    model_version: str = "1.0.0"
+    model_created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    main_area: List[float]
+    screen_dimensions: List[float]
+    anchor_points: List[AnchorPointData] = []
+    main_area_references: List[MainAreaReferenceData] = []
 
 class AnchorBasedMainAreaDetector:
     """
     Detector that uses stable anchors and main area patches to identify
     the main content area in UI screenshots.
+    
+    This class focuses on the training phase - creating and saving models.
+    For runtime detection, use AnchorBasedMainAreaDetectorRuntime.
     """
     
     def __init__(
@@ -89,19 +63,17 @@ class AnchorBasedMainAreaDetector:
         model_name: str = 'resnet50',
         dynamic_detector: Optional[UIOptimizedDynamicAreaDetector] = None,
         min_stability_score: float = 0.7,
-        main_area_match_threshold: float = 0.7,
         anchor_match_threshold: float = 0.8,
         max_anchor_points: int = 10,
         max_main_area_references: int = 4
     ):
         """
-        Initialize the detector.
+        Initialize the detector for training.
         
         Args:
             model_name: ResNet model to use for embeddings
             dynamic_detector: Optional detector for finding dynamic areas
             min_stability_score: Minimum stability score for anchor points
-            main_area_match_threshold: Threshold for main area patch matching
             anchor_match_threshold: Threshold for anchor point matching
             max_anchor_points: Maximum number of anchor points to store
             max_main_area_references: Maximum number of main area references to store
@@ -112,7 +84,6 @@ class AnchorBasedMainAreaDetector:
         self.diff_creator = ImageDiffCreator(model_name=model_name)
         
         self.min_stability_score = min_stability_score
-        self.main_area_match_threshold = main_area_match_threshold
         self.anchor_match_threshold = anchor_match_threshold
         self.max_anchor_points = max_anchor_points
         self.max_main_area_references = max_main_area_references
@@ -290,20 +261,64 @@ class AnchorBasedMainAreaDetector:
             "distance": min_dist
         }
     
+    def _extract_all_patches(
+        self,
+        image: Image.Image,
+        result_model: OmniParserResultModel
+    ) -> Dict[str, Dict[str, Any]]:
+        """
+        Extract patches for all UI elements in the current frame.
+        
+        Args:
+            image: Image of the current frame
+            result_model: OmniParser result for the current frame
+            
+        Returns:
+            Dictionary mapping element IDs to element data with patches
+        """
+        logger.info("Extracting patches for all UI elements")
+        
+        element_data = {}
+        
+        for element in result_model.parsed_content_results:
+            try:
+                # Extract patch
+                patch = self._extract_patch(image, element.bbox)
+                
+                # Generate embedding
+                embedding = self.embedder.get_embedding(patch)
+                
+                # Store element data
+                element_data[element.id] = {
+                    "element": element,
+                    "patch": patch,
+                    "embedding": embedding,
+                    "bbox": element.bbox
+                }
+            except Exception as e:
+                logger.warning(f"Failed to extract patch for element {element.id}: {e}")
+        
+        logger.info(f"Extracted patches for {len(element_data)} elements")
+        return element_data
+    
     def _identify_anchor_points(
         self,
-        stable_elements: Dict[int, Dict[str, Any]],
+        image: Image.Image,
+        stable_elements: Dict[str, Dict[str, Any]],
+        result_model: OmniParserResultModel,
         main_area: List[float]
-    ) -> List[AnchorPoint]:
+    ) -> List[Dict[str, Any]]:
         """
         Identify anchor points from stable elements.
         
         Args:
+            image: Image of the current frame
             stable_elements: Dictionary of stable elements
+            result_model: OmniParser result for the current frame
             main_area: Main area bounding box
             
         Returns:
-            List of AnchorPoint objects
+            List of anchor point dictionaries
         """
         logger.info("Identifying anchor points")
         
@@ -321,28 +336,28 @@ class AnchorBasedMainAreaDetector:
             # Only consider elements near borders
             if position_data["is_at_border"]:
                 # Create anchor point
-                anchor_point = AnchorPoint(
-                    element_id=element.id,
-                    element_type=element.type,
-                    bbox=avg_position,
-                    source=element.source,
-                    patch=data["patch"],
-                    embedding=data["embedding"],
-                    constraint_direction=position_data["direction"],
-                    constraint_ratio=position_data["ratio"],
-                    stability_score=data["stability_score"]
-                )
+                anchor_point = {
+                    "element_id": element.id,
+                    "element_type": element.type,
+                    "bbox": avg_position,
+                    "source": element.source,
+                    "patch": data["patch"],
+                    "embedding": data["embedding"],
+                    "constraint_direction": position_data["direction"],
+                    "constraint_ratio": position_data["ratio"],
+                    "stability_score": data["stability_score"]
+                }
                 
                 anchor_points.append(anchor_point)
         
         # Sort by stability score and take up to max_anchor_points
-        anchor_points.sort(key=lambda x: x.stability_score, reverse=True)
+        anchor_points.sort(key=lambda x: x["stability_score"], reverse=True)
         anchor_points = anchor_points[:self.max_anchor_points]
         
         # Ensure diversity of constraint directions
         directions = {"top": 0, "bottom": 0, "left": 0, "right": 0}
         for anchor in anchor_points:
-            directions[anchor.constraint_direction] += 1
+            directions[anchor["constraint_direction"]] += 1
         
         logger.info(f"Selected {len(anchor_points)} anchor points with direction distribution: {directions}")
         return anchor_points
@@ -351,7 +366,7 @@ class AnchorBasedMainAreaDetector:
         self,
         results_list: OmniParserResultModelList,
         main_area: List[float]
-    ) -> List[MainAreaReference]:
+    ) -> List[Dict[str, Any]]:
         """
         Extract visual references of the main area from multiple frames.
         
@@ -360,7 +375,7 @@ class AnchorBasedMainAreaDetector:
             main_area: Main area bounding box
             
         Returns:
-            List of MainAreaReference objects
+            List of main area reference dictionaries
         """
         logger.info("Extracting main area references")
         
@@ -395,12 +410,12 @@ class AnchorBasedMainAreaDetector:
                 embedding = self.embedder.get_embedding(patch)
                 
                 # Create reference
-                reference = MainAreaReference(
-                    bbox=main_area,
-                    patch=patch,
-                    embedding=embedding,
-                    frame_index=idx
-                )
+                reference = {
+                    "bbox": main_area,
+                    "patch": patch,
+                    "embedding": embedding,
+                    "frame_index": idx
+                }
                 
                 main_area_references.append(reference)
             except Exception as e:
@@ -409,121 +424,112 @@ class AnchorBasedMainAreaDetector:
         logger.info(f"Created {len(main_area_references)} main area references")
         return main_area_references
     
-    def train(
+    def _save_model_files(
         self,
-        results_list: OmniParserResultModelList,
-        save_dir: Optional[str] = None
-    ) -> Dict[str, Any]:
+        save_dir: str,
+        anchor_points: List[Dict[str, Any]],
+        main_area_references: List[Dict[str, Any]]
+    ) -> Tuple[List[AnchorPointData], List[MainAreaReferenceData]]:
         """
-        Train the detector on a sequence of frames.
+        Save model files to disk and return serializable data.
         
         Args:
-            results_list: List of OmniParser results
-            save_dir: Optional directory to save visual references
+            save_dir: Directory to save model files
+            anchor_points: List of anchor point dictionaries
+            main_area_references: List of main area reference dictionaries
             
         Returns:
-            Detection model with main area references and anchor points
+            Tuple of serializable anchor points and main area references
         """
-        logger.info("Training anchor-based main area detector")
+        logger.info(f"Saving model files to {save_dir}")
         
-        # Get screen dimensions from first frame
-        first_result = results_list.omniparser_result_models[0]
-        screen_width = first_result.omniparser_result.original_image_width
-        screen_height = first_result.omniparser_result.original_image_height
-        
-        # Step 1: Detect dynamic areas using existing detector
-        dynamic_areas = self.dynamic_detector.detect_main_areas(results_list)
-        
-        # Use main_content_area if available, otherwise use largest_area
-        main_area = dynamic_areas.get("main_content_area") or dynamic_areas.get("largest_area")
-        
-        if not main_area:
-            logger.warning("No main content area detected")
-            return {"success": False, "error": "No main content area detected"}
-        
-        # Step 2: Find stable elements
-        stable_elements = self._find_stable_elements(results_list)
-        
-        # Step 3: Identify anchor points
-        anchor_points = self._identify_anchor_points(stable_elements, main_area)
-        
-        # Step 4: Extract main area references
-        main_area_references = self._extract_main_area_references(results_list, main_area)
-        
-        # Step 5: Save visual references if requested
-        if save_dir:
-            self._save_visual_references(anchor_points, main_area_references, save_dir)
-        
-        # Create detection model
-        detection_model = {
-            "success": True,
-            "main_area": main_area,
-            "screen_dimensions": [screen_width, screen_height],
-            "anchor_points": [anchor.to_dict() for anchor in anchor_points],
-            "main_area_references": [ref.to_dict() for ref in main_area_references],
-            # Save patches and embeddings separately as they can't be serialized
-            "visual_data": {
-                "anchors": anchor_points,
-                "main_areas": main_area_references
-            }
-        }
-        
-        logger.info("Detector training completed successfully")
-        return detection_model
-    
-    def _save_visual_references(
-        self,
-        anchor_points: List[AnchorPoint],
-        main_area_references: List[MainAreaReference],
-        save_dir: str
-    ) -> None:
-        """
-        Save visual references to disk.
-        
-        Args:
-            anchor_points: List of anchor points
-            main_area_references: List of main area references
-            save_dir: Directory to save visual references
-        """
-        logger.info(f"Saving visual references to {save_dir}")
-        
-        # Create directories if they don't exist
+        # Create directories
+        os.makedirs(save_dir, exist_ok=True)
         anchors_dir = os.path.join(save_dir, "anchors")
         main_areas_dir = os.path.join(save_dir, "main_areas")
+        embeddings_dir = os.path.join(save_dir, "embeddings")
         
         os.makedirs(anchors_dir, exist_ok=True)
         os.makedirs(main_areas_dir, exist_ok=True)
+        os.makedirs(embeddings_dir, exist_ok=True)
         
         # Save anchor points
+        serializable_anchors = []
         for i, anchor in enumerate(anchor_points):
-            anchor_path = os.path.join(anchors_dir, f"anchor_{i}_{anchor.constraint_direction}.png")
-            anchor.patch.save(anchor_path)
+            # Save patch image
+            patch_filename = f"anchor_{i}_{anchor['constraint_direction']}.png"
+            patch_path = os.path.join(anchors_dir, patch_filename)
+            anchor["patch"].save(patch_path)
+            
+            # Save embedding
+            embedding_filename = f"anchor_{i}_{anchor['constraint_direction']}.npy"
+            embedding_path = os.path.join(embeddings_dir, embedding_filename)
+            if anchor["embedding"] is not None:
+                np.save(embedding_path, anchor["embedding"])
+            
+            # Create serializable anchor data
+            anchor_data = AnchorPointData(
+                element_id=anchor["element_id"],
+                element_type=anchor["element_type"],
+                bbox=anchor["bbox"],
+                source=anchor["source"],
+                constraint_direction=anchor["constraint_direction"],
+                constraint_ratio=anchor["constraint_ratio"],
+                stability_score=anchor["stability_score"],
+                patch_path=os.path.join("anchors", patch_filename),
+                embedding_path=os.path.join("embeddings", embedding_filename)
+            )
+            
+            serializable_anchors.append(anchor_data)
         
         # Save main area references
+        serializable_references = []
         for i, reference in enumerate(main_area_references):
-            main_area_path = os.path.join(main_areas_dir, f"main_area_{i}_frame_{reference.frame_index}.png")
-            reference.patch.save(main_area_path)
+            # Save patch image
+            patch_filename = f"main_area_{i}_frame_{reference['frame_index']}.png"
+            patch_path = os.path.join(main_areas_dir, patch_filename)
+            reference["patch"].save(patch_path)
+            
+            # Save embedding
+            embedding_filename = f"main_area_{i}_frame_{reference['frame_index']}.npy"
+            embedding_path = os.path.join(embeddings_dir, embedding_filename)
+            np.save(embedding_path, reference["embedding"])
+            
+            # Create serializable reference data
+            reference_data = MainAreaReferenceData(
+                bbox=reference["bbox"],
+                frame_index=reference["frame_index"],
+                patch_path=os.path.join("main_areas", patch_filename),
+                embedding_path=os.path.join("embeddings", embedding_filename)
+            )
+            
+            serializable_references.append(reference_data)
         
-        logger.info(f"Saved {len(anchor_points)} anchor points and {len(main_area_references)} main area references")
+        logger.info(f"Saved {len(serializable_anchors)} anchor points and {len(serializable_references)} main area references")
+        return serializable_anchors, serializable_references
     
-    def detect(
+    def train(
         self,
         result_model: OmniParserResultModel,
-        detection_model: Dict[str, Any]
+        frames: List[OmniParserResultModel],
+        main_area: List[float],
+        save_dir: str = None
     ) -> Dict[str, Any]:
         """
-        Detect the main content area in a new frame using the trained model.
+        Train the detector using extracted patches from frames and save the model.
         
         Args:
-            result_model: OmniParser result for the new frame
-            detection_model: Model created by train()
+            result_model: OmniParser result for the current frame
+            frames: List of OmniParser results for all training frames
+            main_area: Bounding box of the main content area [x1, y1, x2, y2]
+            save_dir: Directory to save model data (if None, no saving is done)
             
         Returns:
-            Dictionary with detection results
+            Dictionary with training results
         """
-        logger.info("Detecting main content area using anchor-based approach")
+        logger.info("Training anchor-based main area detector")
         
-        # Load image
+        # Get the first frame's image path for reference
         image_path = result_model.omniparser_result.original_image_path
         image = Image.open(image_path).convert("RGB")
         
@@ -531,331 +537,93 @@ class AnchorBasedMainAreaDetector:
         image_width = result_model.omniparser_result.original_image_width
         image_height = result_model.omniparser_result.original_image_height
         
-        # Extract visual data
-        anchors = detection_model["visual_data"]["anchors"]
-        main_areas = detection_model["visual_data"]["main_areas"]
+        logger.info(f"Training with image dimensions: {image_width}x{image_height}")
         
-        # Step 1: Try direct main area matching
-        main_area_result = self._match_main_area_directly(image, main_areas)
+        # 1. Extract patches
+        self._extract_all_patches(image, result_model)
         
-        if main_area_result["match_found"] and main_area_result["confidence"] >= 0.8:
-            logger.info("Main area matched directly with high confidence")
-            return {
-                "success": True,
-                "main_area": main_area_result["bbox"],
-                "method": "direct_match",
-                "confidence": main_area_result["confidence"]
-            }
+        # 2. Find stable elements
+        stable_elements = self._find_stable_elements(frames)
         
-        # Step 2: Try anchor-based reconstruction
-        anchor_result = self._match_and_reconstruct_from_anchors(
-            image, result_model, anchors, detection_model["main_area"],
-            detection_model["screen_dimensions"]
+        # 3. Identify anchor points
+        anchor_points = self._identify_anchor_points(
+            image, stable_elements, result_model, main_area
         )
         
-        if anchor_result["match_found"]:
-            logger.info("Main area reconstructed from anchors")
+        # 4. Save model files if save_dir is provided
+        if save_dir:
+            # Create directory if it doesn't exist
+            os.makedirs(save_dir, exist_ok=True)
             
-            # If we have both results, use the one with higher confidence
-            if main_area_result["match_found"]:
-                if main_area_result["confidence"] > anchor_result["confidence"]:
-                    return {
-                        "success": True,
-                        "main_area": main_area_result["bbox"],
-                        "method": "direct_match",
-                        "confidence": main_area_result["confidence"]
-                    }
+            # Initialize the model data
+            model_data = DetectionModelData(
+                main_area=main_area,
+                screen_dimensions=[image_width, image_height],
+                anchor_points=[],
+                main_area_references=[]
+            )
             
-            return {
-                "success": True,
-                "main_area": anchor_result["bbox"],
-                "method": "anchor_reconstruction",
-                "confidence": anchor_result["confidence"],
-                "anchors_matched": anchor_result["anchors_matched"]
-            }
-        
-        # If direct match found but with low confidence, use it as fallback
-        if main_area_result["match_found"]:
-            logger.info("Using direct match as fallback (low confidence)")
-            return {
-                "success": True,
-                "main_area": main_area_result["bbox"],
-                "method": "direct_match_fallback",
-                "confidence": main_area_result["confidence"]
-            }
-        
-        # If all else fails, use the original main area with scaling
-        logger.info("No matches found, using scaled original main area as fallback")
-        
-        # Scale original main area to new image dimensions
-        orig_main_area = detection_model["main_area"]
-        orig_width, orig_height = detection_model["screen_dimensions"]
-        
-        scale_x = image_width / orig_width
-        scale_y = image_height / orig_height
-        
-        scaled_main_area = [
-            orig_main_area[0] * scale_x,
-            orig_main_area[1] * scale_y,
-            orig_main_area[2] * scale_x,
-            orig_main_area[3] * scale_y
-        ]
+            # Save anchor point patches and add to model data
+            for i, anchor in enumerate(anchor_points):
+                patch = anchor["patch"]
+                embedding = anchor["embedding"]
+                
+                # Save patch image
+                patch_filename = f"anchor_{i}_patch.png"
+                patch_path = os.path.join(save_dir, patch_filename)
+                patch.save(patch_path)
+                
+                # Save embedding
+                embedding_filename = f"anchor_{i}_embedding.npy"
+                embedding_path = os.path.join(save_dir, embedding_filename)
+                np.save(embedding_path, embedding)
+                
+                # Add to model data
+                anchor_data = AnchorPointData(
+                    element_id=str(anchor["element_id"]),
+                    element_type=anchor["element_type"],
+                    bbox=anchor["bbox"],
+                    source=anchor["source"],
+                    constraint_direction=anchor["constraint_direction"],
+                    constraint_ratio=anchor["constraint_ratio"],
+                    stability_score=float(anchor["stability_score"]),
+                    patch_path=patch_filename,
+                    embedding_path=embedding_filename
+                )
+                model_data.anchor_points.append(anchor_data)
+            
+            # Save main area reference patches
+            # Use the original image as a reference
+            main_area_patch = image.crop((main_area[0], main_area[1], main_area[2], main_area[3]))
+            main_area_embedding = self.embedder.get_embedding(main_area_patch)
+            
+            # Save main area patch and embedding
+            patch_filename = "main_area_0_patch.png"
+            patch_path = os.path.join(save_dir, patch_filename)
+            main_area_patch.save(patch_path)
+            
+            embedding_filename = "main_area_0_embedding.npy"
+            embedding_path = os.path.join(save_dir, embedding_filename)
+            np.save(embedding_path, main_area_embedding)
+            
+            # Add to model data
+            main_area_data = MainAreaReferenceData(
+                bbox=main_area,
+                frame_index=0,
+                patch_path=patch_filename,
+                embedding_path=embedding_filename
+            )
+            model_data.main_area_references.append(main_area_data)
+            
+            # Save model metadata
+            model_path = os.path.join(save_dir, "model.json")
+            with open(model_path, "w") as f:
+                f.write(model_data.json(indent=2))
+            
+            logger.info(f"Saved model data to {save_dir}")
         
         return {
             "success": True,
-            "main_area": scaled_main_area,
-            "method": "scaled_fallback",
-            "confidence": 0.3
-        }
-    
-    def _match_main_area_directly(
-        self,
-        image: Image.Image,
-        main_areas: List[MainAreaReference]
-    ) -> Dict[str, Any]:
-        """
-        Attempt to match the main area directly using stored references.
-        
-        Args:
-            image: Current image
-            main_areas: List of main area references
-            
-        Returns:
-            Dictionary with match results
-        """
-        logger.info("Attempting direct main area matching")
-        
-        best_match = {
-            "match_found": False,
-            "confidence": 0.0,
-            "bbox": None,
-            "reference": None
-        }
-        
-        for reference in main_areas:
-            try:
-                # Generate embedding for the whole image
-                image_embedding = self.embedder.get_embedding(image)
-                
-                # Compare with reference embedding
-                similarity = np.dot(image_embedding, reference.embedding)
-                
-                if similarity > best_match["confidence"]:
-                    best_match["match_found"] = True
-                    best_match["confidence"] = similarity
-                    best_match["bbox"] = reference.bbox
-                    best_match["reference"] = reference
-            except Exception as e:
-                logger.warning(f"Error during direct main area matching: {e}")
-        
-        return best_match
-    
-    def _match_and_reconstruct_from_anchors(
-        self,
-        image: Image.Image,
-        result_model: OmniParserResultModel,
-        anchors: List[AnchorPoint],
-        original_main_area: List[float],
-        original_dimensions: List[float]
-    ) -> Dict[str, Any]:
-        """
-        Match anchor points and reconstruct the main area.
-        
-        Args:
-            image: Current image
-            result_model: OmniParser result
-            anchors: List of anchor points
-            original_main_area: Original main area bbox
-            original_dimensions: Original screen dimensions [width, height]
-            
-        Returns:
-            Dictionary with reconstruction results
-        """
-        logger.info("Attempting to match and reconstruct from anchors")
-        
-        matched_anchors = []
-        
-        # Step 1: Find matches for each anchor
-        for anchor in anchors:
-            best_match = None
-            best_score = 0.0
-            
-            for element in result_model.parsed_content_results:
-                # Skip if source types don't match
-                if element.source != anchor.source:
-                    continue
-                
-                # Extract element patch
-                try:
-                    element_patch = self._extract_patch(image, element.bbox)
-                    element_embedding = self.embedder.get_embedding(element_patch)
-                    
-                    # Compare embeddings
-                    similarity = np.dot(element_embedding, anchor.embedding)
-                    
-                    if similarity > best_score and similarity >= self.anchor_match_threshold:
-                        best_match = element
-                        best_score = similarity
-                except Exception as e:
-                    logger.warning(f"Error matching anchor: {e}")
-            
-            if best_match:
-                matched_anchors.append({
-                    "anchor": anchor,
-                    "match": best_match,
-                    "score": best_score
-                })
-        
-        logger.info(f"Matched {len(matched_anchors)} anchors")
-        
-        # Step 2: Reconstruct main area from matched anchors
-        if len(matched_anchors) >= 2:
-            # Group anchors by constraint direction
-            direction_groups = {"top": [], "bottom": [], "left": [], "right": []}
-            
-            for match_data in matched_anchors:
-                anchor = match_data["anchor"]
-                element = match_data["match"]
-                direction_groups[anchor.constraint_direction].append({
-                    "anchor": anchor,
-                    "element": element,
-                    "score": match_data["score"]
-                })
-            
-            # Calculate constraints for each direction
-            constraints = {}
-            for direction, group in direction_groups.items():
-                if group:
-                    # Sort by score and use the best match
-                    group.sort(key=lambda x: x["score"], reverse=True)
-                    best = group[0]
-                    
-                    anchor_pos = best["anchor"].bbox
-                    element_pos = best["element"].bbox
-                    
-                    # Convert bbox to center points
-                    anchor_center = [(anchor_pos[0] + anchor_pos[2]) / 2,
-                                    (anchor_pos[1] + anchor_pos[3]) / 2]
-                    element_center = [(element_pos[0] + element_pos[2]) / 2,
-                                     (element_pos[1] + element_pos[3]) / 2]
-                    
-                    # Calculate constraint position based on direction and ratio
-                    if direction == "top":
-                        constraints["top"] = element_center[1] + (
-                            (original_main_area[1] - anchor_center[1]) *
-                            (element_pos[3] - element_pos[1]) / (anchor_pos[3] - anchor_pos[1])
-                        )
-                    elif direction == "bottom":
-                        constraints["bottom"] = element_center[1] + (
-                            (original_main_area[3] - anchor_center[1]) *
-                            (element_pos[3] - element_pos[1]) / (anchor_pos[3] - anchor_pos[1])
-                        )
-                    elif direction == "left":
-                        constraints["left"] = element_center[0] + (
-                            (original_main_area[0] - anchor_center[0]) *
-                            (element_pos[2] - element_pos[0]) / (anchor_pos[2] - anchor_pos[0])
-                        )
-                    elif direction == "right":
-                        constraints["right"] = element_center[0] + (
-                            (original_main_area[2] - anchor_center[0]) *
-                            (element_pos[2] - element_pos[0]) / (anchor_pos[2] - anchor_pos[0])
-                        )
-            
-            # If we have opposite constraints, use them directly
-            reconstructed_bbox = None
-            
-            if "left" in constraints and "right" in constraints:
-                x1 = constraints["left"]
-                x2 = constraints["right"]
-            elif "left" in constraints:
-                # Use left constraint with original aspect ratio
-                x1 = constraints["left"]
-                aspect_ratio = (original_main_area[2] - original_main_area[0]) / (original_main_area[3] - original_main_area[1])
-                if "top" in constraints and "bottom" in constraints:
-                    height = constraints["bottom"] - constraints["top"]
-                    x2 = x1 + height * aspect_ratio
-                else:
-                    # Scale based on image size
-                    orig_width, orig_height = original_dimensions
-                    scale = image.width / orig_width
-                    x2 = x1 + (original_main_area[2] - original_main_area[0]) * scale
-            elif "right" in constraints:
-                # Use right constraint with original aspect ratio
-                x2 = constraints["right"]
-                aspect_ratio = (original_main_area[2] - original_main_area[0]) / (original_main_area[3] - original_main_area[1])
-                if "top" in constraints and "bottom" in constraints:
-                    height = constraints["bottom"] - constraints["top"]
-                    x1 = x2 - height * aspect_ratio
-                else:
-                    # Scale based on image size
-                    orig_width, orig_height = original_dimensions
-                    scale = image.width / orig_width
-                    x1 = x2 - (original_main_area[2] - original_main_area[0]) * scale
-            else:
-                # Default to original x values scaled to new image
-                orig_width, orig_height = original_dimensions
-                scale_x = image.width / orig_width
-                x1 = original_main_area[0] * scale_x
-                x2 = original_main_area[2] * scale_x
-            
-            if "top" in constraints and "bottom" in constraints:
-                y1 = constraints["top"]
-                y2 = constraints["bottom"]
-            elif "top" in constraints:
-                # Use top constraint with original aspect ratio
-                y1 = constraints["top"]
-                aspect_ratio = (original_main_area[3] - original_main_area[1]) / (original_main_area[2] - original_main_area[0])
-                if "left" in constraints and "right" in constraints:
-                    width = constraints["right"] - constraints["left"]
-                    y2 = y1 + width * aspect_ratio
-                else:
-                    # Scale based on image size
-                    orig_width, orig_height = original_dimensions
-                    scale = image.height / orig_height
-                    y2 = y1 + (original_main_area[3] - original_main_area[1]) * scale
-            elif "bottom" in constraints:
-                # Use bottom constraint with original aspect ratio
-                y2 = constraints["bottom"]
-                aspect_ratio = (original_main_area[3] - original_main_area[1]) / (original_main_area[2] - original_main_area[0])
-                if "left" in constraints and "right" in constraints:
-                    width = constraints["right"] - constraints["left"]
-                    y1 = y2 - width * aspect_ratio
-                else:
-                    # Scale based on image size
-                    orig_width, orig_height = original_dimensions
-                    scale = image.height / orig_height
-                    y1 = y2 - (original_main_area[3] - original_main_area[1]) * scale
-            else:
-                # Default to original y values scaled to new image
-                orig_width, orig_height = original_dimensions
-                scale_y = image.height / orig_height
-                y1 = original_main_area[1] * scale_y
-                y2 = original_main_area[3] * scale_y
-            
-            # Clamp coordinates to image boundaries
-            x1 = max(0, min(x1, image.width))
-            y1 = max(0, min(y1, image.height))
-            x2 = max(0, min(x2, image.width))
-            y2 = max(0, min(y2, image.height))
-            
-            reconstructed_bbox = [x1, y1, x2, y2]
-            
-            # Calculate confidence based on number of matched anchors and their scores
-            anchor_count_factor = min(len(matched_anchors) / 4, 1.0)  # 4+ anchors = full confidence
-            avg_score = sum(m["score"] for m in matched_anchors) / len(matched_anchors)
-            confidence = 0.7 * anchor_count_factor + 0.3 * avg_score
-            
-            return {
-                "match_found": True,
-                "bbox": reconstructed_bbox,
-                "confidence": confidence,
-                "anchors_matched": len(matched_anchors),
-                "constraints": constraints
-            }
-        
-        return {
-            "match_found": False,
-            "bbox": None,
-            "confidence": 0,
-            "anchors_matched": len(matched_anchors)
+            "anchor_points": anchor_points,
+            "main_area": main_area
         }
