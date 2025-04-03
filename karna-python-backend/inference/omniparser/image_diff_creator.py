@@ -554,8 +554,12 @@ class ImageDiffCreator:
             if saliency < self.saliency_threshold:
                 continue
             
-            # Check for text changes
-            if element1.content != element2.content:
+            # For YOLO elements, only check for visual changes, not text changes
+            if element1.source == 'box_yolo_content_yolo':
+                # Skip text change detection for YOLO elements - they're visual only
+                pass
+            # For non-YOLO elements, check for text changes first
+            elif element1.content != element2.content:
                 text_similarity = self.get_text_similarity(element1.content, element2.content)
                 
                 # Consider it a text change if similarity is below threshold
