@@ -27,7 +27,7 @@ class ParsedContentResult:
     type: str
     bbox: List[float]
     interactivity: bool
-    content: str # is inaccurate for source type box_yolo_content_yolo
+    content: str # WARNING: is inaccurate for source type box_yolo_content_yolo
     source: str
     id: int
     
