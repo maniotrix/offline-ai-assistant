@@ -19,6 +19,119 @@ The implementation follows a decoupled architecture with two main components:
 - **Constraint Directions**: How anchor points relate spatially to the main area (top, bottom, left, right).
 - **Serialization**: Using Pydantic models to save and load all detection data.
 
+## Technical Implementation Details
+
+### Visual Embedding System
+
+- **ResNet-based Embeddings**: The system uses ResNet50 (default) to generate high-dimensional embeddings of visual elements.
+- **Similarity Metrics**: Cosine similarity between embedding vectors determines visual similarity.
+- **Threshold-based Matching**: 
+  - Main area matching threshold: 0.7 (configurable) 
+  - Anchor matching threshold: 0.8 (configurable)
+
+### Element Stability Algorithm
+
+1. **Presence Tracking**: Elements are tracked across frames by counting their appearances.
+2. **Position Variance**: 
+   ```
+   position_variance = np.mean(np.var(positions, axis=0))
+   position_stability = 1.0 / (1.0 + position_variance)
+   ```
+3. **Combined Stability Score**:
+   ```
+   stability_score = (appearance_count / total_frames) * position_stability
+   ```
+4. **Threshold Filtering**: Only elements with stability scores above `min_stability_score` (default: 0.7) are considered.
+
+### Anchor Selection Strategy
+
+1. **Border Proximity**: Elements near the borders of the main area are preferred (within 10% of edge).
+2. **Direction Distribution**: The system aims to select anchors representing all four directions (top, bottom, left, right).
+3. **Stability Priority**: Anchors are sorted by stability score and limited to `max_anchor_points` (default: 10).
+4. **Reference Diversity**: Multiple main area references are stored from different frames (up to `max_main_area_references`, default: 4).
+
+### Spatial Constraint System
+
+1. **Direction Determination**: For each anchor, the system calculates the closest edge of the main area.
+2. **Constraint Ratio Calculation**:
+   ```python
+   # For left edge
+   ratio = (elem_center_x - main_left) / main_width
+   # For right edge
+   ratio = (main_right - elem_center_x) / main_width
+   # For top edge
+   ratio = (elem_center_y - main_top) / main_height
+   # For bottom edge
+   ratio = (main_bottom - elem_center_y) / main_height
+   ```
+3. **Relative Positioning**: Constraint ratios preserve the proportional relationship between anchors and the main area.
+
+### Main Area Reconstruction Algorithm
+
+The reconstruction process follows these steps:
+
+1. **Anchor Matching**: Match anchor points from the model with elements in the new frame.
+2. **Direction Grouping**: Group matched anchors by constraint direction.
+3. **Constraint Calculation**: 
+   ```python
+   # Example for top constraint
+   constraints["top"] = element_center[1] + (
+       (original_main_area[1] - anchor_center[1]) *
+       (element_pos[3] - element_pos[1]) / (anchor_pos[3] - anchor_pos[1])
+   )
+   ```
+4. **Boundary Reconstruction**:
+   - Directly use constraints if available for opposite edges
+   - Apply aspect ratio constraints when only some edges are constrained
+   - Fall back to scaling if constraints are insufficient
+
+5. **Confidence Calculation**:
+   ```python
+   anchor_count_factor = min(len(matched_anchors) / 4, 1.0)
+   avg_score = sum(m["score"] for m in matched_anchors) / len(matched_anchors)
+   confidence = 0.7 * anchor_count_factor + 0.3 * avg_score
+   ```
+
+### Fallback Strategy
+
+The system implements a progressive fallback strategy:
+
+1. **Direct Matching**: Try to match the entire main area directly (highest confidence).
+2. **Anchor Reconstruction**: Use anchor points to reconstruct the main area (medium confidence).
+3. **Low-Confidence Direct Match**: Use direct matching results even with low confidence.
+4. **Scaled Original**: Scale the original main area proportionally to the new image size (lowest confidence).
+
+### Error Handling Strategies
+
+1. **Missing Model Files**: The system checks for file existence before loading and gracefully handles missing files.
+2. **Failed Embedding Generation**: When embedding generation fails, the system logs warnings and continues with available data.
+3. **Insufficient Anchor Matches**: If fewer than 2 anchors match, the system falls back to other detection methods.
+4. **Boundary Conditions**: All coordinates are clamped to image boundaries to prevent out-of-bounds issues.
+5. **Type Safety**: The system uses explicit type checking and defensive programming against dictionary key errors.
+
+### Performance Optimizations
+
+1. **Selective Embedding Generation**: Embeddings are only generated when needed, not for all elements.
+2. **Embedding Caching**: Pre-computed embeddings are saved to disk to avoid regeneration.
+3. **Prioritized Matching**: Elements are filtered by source type before visual matching to reduce computation.
+4. **Early Exit**: Detection stops at the first high-confidence method rather than trying all methods.
+5. **Selective Frame Sampling**: For main area references, a subset of evenly spaced frames is used instead of all frames.
+
+### Dictionary Access Safety Measures
+
+To address potential dictionary key errors and type checking issues:
+
+1. **Defensive Key Access**: 
+   ```python
+   value = data.get("key", default_value) 
+   ```
+2. **Type Checking**:
+   ```python
+   if isinstance(data, dict) and "key" in data:
+       # Access data safely
+   ```
+3. **Dictionary Initialization**: All dictionaries are initialized with expected keys before modification.
+
 ## Training Process
 
 The training component (`anchor_based_main_area_detector.py`) implements these key steps:
@@ -84,6 +197,37 @@ The implementation uses Pydantic for data serialization:
 - `MainAreaReferenceData`: Stores information about main area references
 - `DetectionModelData`: Top-level model containing all detection data
 
+```python
+# Pydantic data models for serialization
+class AnchorPointData(BaseModel):
+    """Data model for anchor points to be serialized/deserialized."""
+    element_id: str
+    element_type: str
+    bbox: List[float]
+    source: str
+    constraint_direction: str
+    constraint_ratio: float
+    stability_score: float
+    patch_path: str
+    embedding_path: str
+
+class MainAreaReferenceData(BaseModel):
+    """Data model for main area reference patches to be serialized/deserialized."""
+    bbox: List[float]
+    frame_index: int
+    patch_path: str
+    embedding_path: str
+
+class DetectionModelData(BaseModel):
+    """Data model for the complete detection model to be serialized/deserialized."""
+    model_version: str = "1.0.0"
+    model_created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    main_area: List[float]
+    screen_dimensions: List[float]
+    anchor_points: List[AnchorPointData] = []
+    main_area_references: List[MainAreaReferenceData] = []
+```
+
 ## Directory Structure
 
 When a model is saved, it creates the following structure:
@@ -116,3 +260,11 @@ The implementation includes robust error handling for:
 - The training process is computationally intensive due to image embedding generation
 - Runtime detection is optimized for speed with fallback mechanisms
 - The system degrades gracefully when perfect matches aren't possible
+
+## Known Issues and Future Improvements
+
+1. **Type Checking**: Some linter errors related to type checking in dictionary access need to be addressed.
+2. **Embedding Dimension Verification**: Verify embedding dimensions before comparison to prevent shape mismatches.
+3. **Multi-threading**: Add optional multi-threading for embedding generation to improve training performance.
+4. **Adaptive Thresholds**: Implement adaptive thresholds that adjust based on image quality and content.
+5. **Visual Anchor Grouping**: Group visually similar anchors to improve robustness against UI element changes.
