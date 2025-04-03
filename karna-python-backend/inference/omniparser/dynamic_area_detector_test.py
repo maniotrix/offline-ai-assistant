@@ -7,6 +7,9 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from pathlib import Path
 import numpy as np
+from PIL import Image
+import tempfile
+import json
 
 # Add parent directory to path for imports
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -22,7 +25,6 @@ from inference.omniparser.omni_helper import (
 )
 from config.paths import workspace_dir
 from services.screen_capture_service import ScreenshotEvent
-import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO,
@@ -279,17 +281,24 @@ def visualize_detection_results(results_list: OmniParserResultModelList, main_ar
     except Exception as e:
         logger.error(f"Error visualizing changes: {e}")
 
-def load_screenshot_events(json_path: str) -> List[ScreenshotEvent]:
+def load_screenshot_events(json_path: str, viewport: Dict = None) -> List[ScreenshotEvent]:
     """
     Load screenshot events from the specified JSON file.
     
     Args:
         json_path: Path to the JSON file.
+        viewport: Optional dictionary with x, y, width, height keys for cropping screenshots.
 
     Returns:
         List of ScreenshotEvent objects sorted by timestamp.
     """
     logger.info(f"Loading screenshot events from JSON file: {json_path}")
+    
+    # Create temporary directory for cropped images if viewport is provided
+    temp_dir = None
+    if viewport:
+        temp_dir = Path(tempfile.mkdtemp(prefix="omni_viewport_"))
+        logger.info(f"Created temporary directory for cropped images: {temp_dir}")
     
     try:
         with open(json_path, 'r', encoding='utf-8') as f:
@@ -313,8 +322,48 @@ def load_screenshot_events(json_path: str) -> List[ScreenshotEvent]:
         if not screenshot_path_str or not isinstance(screenshot_path_str, str):
              logger.warning(f"Skipping event with missing or invalid screenshot_path: {event_dict.get('timestamp')}")
              continue
-        abs_path = workspace_dir / screenshot_path_str
-        event_dict["screenshot_path"] = str(abs_path)
+        event_screenshot_path = workspace_dir / screenshot_path_str
+        if viewport:
+            # Filter screenshot path by viewport if provided
+            try:
+                # Check if original screenshot exists
+                if not os.path.exists(event_screenshot_path):
+                    logger.warning(f"Original screenshot not found: {event_screenshot_path}")
+                    continue
+                
+                # Load the image
+                img = Image.open(event_screenshot_path)
+                
+                # Crop image according to viewport
+                cropped_img = img.crop((
+                    viewport["x"],
+                    viewport["y"],
+                    viewport["x"] + viewport["width"],
+                    viewport["y"] + viewport["height"]
+                ))
+                
+                # Create filename for cropped image
+                original_filename = os.path.basename(event_screenshot_path)
+                cropped_filename = f"cropped_{original_filename}"
+                # Ensure temp_dir is not None before using / operator
+                if temp_dir is not None:
+                    cropped_path = temp_dir / cropped_filename
+                    
+                    # Save the cropped image
+                    cropped_img.save(cropped_path)
+                    logger.debug(f"Saved cropped image to {cropped_path}")
+                    
+                    # Update screenshot path in event dictionary
+                    event_dict["screenshot_path"] = str(cropped_path)
+                    event_screenshot_path = cropped_path
+                else:
+                    logger.error("Temporary directory is None, cannot save cropped image")
+            except Exception as e:
+                logger.error(f"Error cropping image {event_screenshot_path}: {e}")
+                # Continue with original image if cropping fails
+                event_dict["screenshot_path"] = str(event_screenshot_path)
+        else:
+            event_dict["screenshot_path"] = str(event_screenshot_path)
         
         # Get and process timestamp safely
         timestamp_val = event_dict.get('timestamp')
@@ -361,9 +410,12 @@ def load_screenshot_events(json_path: str) -> List[ScreenshotEvent]:
     logger.info(f"Loaded {len(screenshot_events)} valid mouse events with screenshots")
     return screenshot_events
 
-def test_dynamic_area_detector():
+def test_dynamic_area_detector(use_viewport=False):
     """
     Test the DynamicAreaDetector using real data from JSON file.
+    
+    Args:
+        use_viewport: Whether to crop screenshots according to viewport rendering area
     """
     logger.info("Starting DynamicAreaDetector test...")
     
@@ -373,9 +425,20 @@ def test_dynamic_area_detector():
             logger.error(f"JSON file not found: {JSON_FILE_PATH}")
             return
 
+        # Define viewport if needed
+        viewport = None
+        if use_viewport:
+            viewport = {
+                "x": 0,
+                "y": 121,
+                "width": 1920,
+                "height": 919
+            }
+            logger.info(f"Using viewport for cropping: {viewport}")
+
         # Load real data from JSON file using omni_helper function
         logger.info(f"Loading data from: {JSON_FILE_PATH}")
-        screenshot_events = load_screenshot_events(JSON_FILE_PATH)
+        screenshot_events = load_screenshot_events(JSON_FILE_PATH, viewport=viewport)
         test_data = get_omniparser_inference_data(screenshot_events)
         
         if not test_data.omniparser_result_models:
