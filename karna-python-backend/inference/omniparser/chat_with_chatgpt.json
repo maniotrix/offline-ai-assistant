@@ -39,7 +39,7 @@
             "action": "none",
             "target": {
                 "type": "box_yolo_content_yolo",
-                "value": "send_button.png"
+                "value": "38_Up_or_down.png"
             },
             "attention": "center"
         },
