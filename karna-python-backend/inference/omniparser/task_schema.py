@@ -213,7 +213,7 @@ class TaskExecutor():
         else:
             logger.info("Chrome robot ready")
         
-    def find_patch_for_target(self, target: Target, omniparser_result_model: OmniParserResultModel) -> Optional[PatchMatchResult]:
+    def find_match_for_target(self, target: Target, omniparser_result_model: OmniParserResultModel) -> Optional[PatchMatchResult]:
         """
         Find the patch for the target.
         
@@ -291,7 +291,10 @@ class TaskExecutor():
     
     def execute_task(self):
         # execute the task
-        pass
+        for step in self.task_planner.task_schema.steps:
+            if isinstance(step, MouseStep):
+                self.execute_mouse_step(step)
+                break
     
     def execute_mouse_step(self, mouse_step: MouseStep):
         """
@@ -301,14 +304,17 @@ class TaskExecutor():
         """
         # get the omniparser result model
         omniparser_result_model = self.get_omniparser_result_model()
-        # get the patch
-        patch = self.find_patch_for_target(mouse_step.target, omniparser_result_model)
+        # get the match for the target
+        match : Optional[PatchMatchResult] = self.find_match_for_target(mouse_step.target, omniparser_result_model)
         # execute the mouse step
-        if patch:
-            self.chrome_robot.click(patch)
+        parsed_content_result = match.parsed_content_result if match else None
+        if parsed_content_result:
+            logger.info(f"Parsed content result: {parsed_content_result}")
+            x = parsed_content_result.bbox[0]
+            y = parsed_content_result.bbox[1]
+            self.chrome_robot.click(int(x), int(y))
         else:
             logger.error(f"Could not find patch for target: {mouse_step.target}")
-        pass
     
     def open_app_snapped_right(self) -> bool:
         """

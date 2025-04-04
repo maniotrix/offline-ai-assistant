@@ -1,4 +1,5 @@
 import os
+import time
 #  add karna-python-backend to the path
 import sys
 sys.path.append('C:/Users/Prince/Documents/GitHub/Proejct-Karna/offline-ai-assistant/karna-python-backend')
@@ -28,6 +29,9 @@ def test_task_schema():
     print("Steps with target:", len(task_schema.get_steps_with_target()))
     
     task_executor = TaskExecutor(task_planner)
-    task_executor.prepare_for_task()
+    # task_executor.prepare_for_task()
+    time.sleep(2)
+    print("Executing task...")
+    task_executor.execute_task()
 
 test_task_schema()

@@ -11,8 +11,8 @@
             "action_type": "mouse_action",
             "action": "click",
             "target": {
-                "type": "box_ocr_content_ocr",
-                "value": "Ask Anything"
+                "type": "box_yolo_content_ocr",
+                "value": "10_AAsk_anything.png"
             },
             "attention": "bottom"
         },
