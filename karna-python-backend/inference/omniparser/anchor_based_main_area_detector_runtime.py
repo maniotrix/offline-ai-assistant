@@ -300,13 +300,12 @@ class AnchorBasedMainAreaDetectorRuntime:
                 anchor = match_data["anchor"]
                 element = match_data["match"]
                 
-                # Get the element center
+                # Get the element center and boundaries
                 element_x1, element_y1, element_x2, element_y2 = element.bbox
                 element_center_x = (element_x1 + element_x2) / 2
                 element_center_y = (element_y1 + element_y2) / 2
                 
-                # Apply directional constraints based on anchor's relationship to main area
-                direction = anchor["constraint_direction"]
+                # Get the horizontal and vertical relations
                 h_relation = anchor["horizontal_relation"]
                 v_relation = anchor["vertical_relation"]
                 
@@ -314,20 +313,23 @@ class AnchorBasedMainAreaDetectorRuntime:
                 padding_x = image_width * 0.05  # 5% padding
                 padding_y = image_height * 0.05  # 5% padding
                 
-                if direction == "left" and h_relation == "left":
-                    # Main area should be to the right of this element
+                # Apply horizontal constraints regardless of primary direction
+                if h_relation == "left":
+                    # Anchor is left of main area - main area should be to the right of this element
                     if constraints["left"] is None or element_x2 + padding_x > constraints["left"]:
                         constraints["left"] = element_x2 + padding_x
-                elif direction == "right" and h_relation == "right":
-                    # Main area should be to the left of this element
+                elif h_relation == "right":
+                    # Anchor is right of main area - main area should be to the left of this element
                     if constraints["right"] is None or element_x1 - padding_x < constraints["right"]:
                         constraints["right"] = element_x1 - padding_x
-                elif direction == "top" and v_relation == "top":
-                    # Main area should be below this element
+                
+                # Apply vertical constraints regardless of primary direction
+                if v_relation == "top":
+                    # Anchor is above main area - main area should be below this element
                     if constraints["top"] is None or element_y2 + padding_y > constraints["top"]:
                         constraints["top"] = element_y2 + padding_y
-                elif direction == "bottom" and v_relation == "bottom":
-                    # Main area should be above this element
+                elif v_relation == "bottom":
+                    # Anchor is below main area - main area should be above this element
                     if constraints["bottom"] is None or element_y1 - padding_y < constraints["bottom"]:
                         constraints["bottom"] = element_y1 - padding_y
             
