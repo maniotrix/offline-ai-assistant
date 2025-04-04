@@ -108,8 +108,9 @@ class AnchorBasedMainAreaDetectorRuntime:
                 embedding = self.embedder.get_embedding(patch)
                 
                 # Create loaded anchor with patch and embedding
+                # Ensure element_id is a string (should already be since it comes from AnchorPointData)
                 loaded_anchor = {
-                    "element_id": anchor.element_id,
+                    "element_id": str(anchor.element_id),
                     "element_type": anchor.element_type,
                     "bbox": anchor.bbox,
                     "source": anchor.source,

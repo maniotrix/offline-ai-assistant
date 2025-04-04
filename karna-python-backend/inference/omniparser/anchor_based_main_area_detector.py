@@ -340,7 +340,7 @@ class AnchorBasedMainAreaDetector:
             if position_data["is_at_border"]:
                 # Create anchor point
                 anchor_point = {
-                    "element_id": element.id,
+                    "element_id": str(element.id),  # Ensure element_id is a string
                     "element_type": element.type,
                     "bbox": avg_position,
                     "source": element.source,
@@ -458,8 +458,11 @@ class AnchorBasedMainAreaDetector:
             anchor["patch"].save(patch_path)
             
             # Create serializable anchor data
+            # Ensure element_id is a string to satisfy Pydantic validation
+            element_id = str(anchor["element_id"]) if anchor["element_id"] is not None else ""
+            
             anchor_data = AnchorPointData(
-                element_id=anchor["element_id"],
+                element_id=element_id,
                 element_type=anchor["element_type"],
                 bbox=anchor["bbox"],
                 source=anchor["source"],
@@ -589,7 +592,7 @@ class AnchorBasedMainAreaDetector:
             # Save model metadata
             model_path = os.path.join(save_dir, "model.json")
             with open(model_path, "w") as f:
-                f.write(model_data.json(indent=2))
+                f.write(model_data.model_dump_json(indent=2))
             
             logger.info(f"Saved model data to {save_dir}")
         
