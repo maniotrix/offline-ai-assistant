@@ -2,269 +2,202 @@
 
 ## Overview
 
-The Anchor-Based Main Area Detector is a sophisticated system designed to identify and track the main content area in UI screenshots across different frames and screen resolutions. It uses a decoupled architecture with separate components for training and runtime detection.
+The Anchor-Based Main Area Detector is a sophisticated system designed to identify and track the main content area in UI screenshots across different frames and screen resolutions. It uses a hybrid approach combining visual matching and spatial constraints from anchor elements to ensure robust detection across diverse conditions.
 
 ## Architecture
 
 The implementation follows a decoupled architecture with two main components:
 
-1. **Training Component** (`anchor_based_main_area_detector.py`): Responsible for analyzing multiple frames, identifying stable UI elements as anchors, and creating a serializable model.
+1. **Training Component** (`anchor_based_main_area_detector.py`): Responsible for analyzing multiple frames, identifying stable UI elements as anchors, extracting main area references, and creating a serializable model.
 
 2. **Runtime Component** (`anchor_based_main_area_detector_runtime.py`): Loads a trained model and performs detection on new screenshots without requiring the original training data.
 
 ## Key Concepts
 
-- **Anchor Points**: Stable UI elements that maintain consistent positioning relative to the main content area.
-- **Main Area References**: Visual samples of the main content area from training frames.
-- **Constraint Directions**: How anchor points relate spatially to the main area (top, bottom, left, right).
-- **Serialization**: Using Pydantic models to save and load all detection data.
+- **Main Area**: The primary content region on a screen that contains the main UI/content (excluding navigation bars, menus, etc.)
+- **Main Area References**: Visual samples of the main content area from multiple frames used for direct matching
+- **Anchor Points**: Stable UI elements that maintain consistent positioning relative to the main content area
+- **Constraint Directions**: How anchor points relate spatially to the main area (top, bottom, left, right)
+- **Stability Score**: Metric measuring how stable an element is across frames
+- **Direct Matching**: Primary detection method using visual similarity of main area references
+- **Anchor-based Reconstruction**: Fallback method using spatial constraints from anchor points
 
-## Technical Implementation Details
+## Training Phase - `AnchorBasedMainAreaDetector`
 
-### Visual Embedding System
+### Initialization
+```python
+detector = AnchorBasedMainAreaDetector(
+    model_name='resnet50',
+    min_stability_score=0.7,
+    anchor_match_threshold=0.8,
+    max_anchor_points=10,
+    max_main_area_references=4
+)
+```
 
-- **ResNet-based Embeddings**: The system uses ResNet50 (default) to generate high-dimensional embeddings of visual elements.
-- **Similarity Metrics**: Cosine similarity between embedding vectors determines visual similarity.
-- **Threshold-based Matching**: 
-  - Main area matching threshold: 0.7 (configurable) 
-  - Anchor matching threshold: 0.8 (configurable)
+### Training Process
+1. **Main Area Detection**: Uses `UIOptimizedDynamicAreaDetector` to identify the main content area across frames
+2. **Stable Element Identification**: Finds UI elements that maintain stable position and appearance across frames
+3. **Anchor Point Selection**: Identifies elements near the main area borders with high stability scores
+4. **Main Area Reference Extraction**: Takes visual samples of the main area from multiple frames
+5. **Model Saving**: Serializes the model to disk, including:
+   - Main area coordinates and screen dimensions
+   - Anchor point data and patches
+   - Main area reference patches
 
 ### Element Stability Algorithm
-
-1. **Presence Tracking**: Elements are tracked across frames by counting their appearances.
-2. **Position Variance**: 
-   ```
-   position_variance = np.mean(np.var(positions, axis=0))
-   position_stability = 1.0 / (1.0 + position_variance)
-   ```
-3. **Combined Stability Score**:
-   ```
-   stability_score = (appearance_count / total_frames) * position_stability
-   ```
-4. **Threshold Filtering**: Only elements with stability scores above `min_stability_score` (default: 0.7) are considered.
+Elements are evaluated for stability using:
+- **Presence Frequency**: Elements must appear in at least 75% of frames
+- **Position Stability**: Lower position variance results in higher stability
+- **Combined Score**: `stability_score = (appearance_count / total_frames) * position_stability`
+- **Threshold Filtering**: Only elements with `stability_score >= min_stability_score` are considered
 
 ### Anchor Selection Strategy
+1. **Border Proximity**: Elements near the borders of the main area are preferred (within 10% of edge)
+2. **Direction Distribution**: The system aims to select anchors representing all four directions (top, bottom, left, right)
+3. **Stability Priority**: Anchors are sorted by stability score and limited to `max_anchor_points`
+4. **Reference Diversity**: Multiple main area references are stored from different frames (up to `max_main_area_references`)
 
-1. **Border Proximity**: Elements near the borders of the main area are preferred (within 10% of edge).
-2. **Direction Distribution**: The system aims to select anchors representing all four directions (top, bottom, left, right).
-3. **Stability Priority**: Anchors are sorted by stability score and limited to `max_anchor_points` (default: 10).
-4. **Reference Diversity**: Multiple main area references are stored from different frames (up to `max_main_area_references`, default: 4).
+## Detection Phase - `AnchorBasedMainAreaDetectorRuntime`
 
-### Spatial Constraint System
+### Initialization
+```python
+detector = AnchorBasedMainAreaDetectorRuntime(
+    model_name='resnet50',
+    main_area_match_threshold=0.7,
+    anchor_match_threshold=0.8
+)
+```
 
-1. **Direction Determination**: For each anchor, the system calculates the closest edge of the main area.
-2. **Constraint Ratio Calculation**:
-   ```python
-   # For left edge
-   ratio = (elem_center_x - main_left) / main_width
-   # For right edge
-   ratio = (main_right - elem_center_x) / main_width
-   # For top edge
-   ratio = (elem_center_y - main_top) / main_height
-   # For bottom edge
-   ratio = (main_bottom - elem_center_y) / main_height
-   ```
-3. **Relative Positioning**: Constraint ratios preserve the proportional relationship between anchors and the main area.
+### Detection Algorithm
+The detection process follows a two-tier approach:
 
-### Main Area Reconstruction Algorithm
+1. **Direct Matching (Primary Method)**:
+   - Compares each stored main area reference with the current frame using visual embeddings
+   - If a match is found with confidence >= 0.8, its bounding box is returned
+   - Fast and effective when visual content is similar
 
-The reconstruction process follows these steps:
+2. **Anchor-based Reconstruction (Fallback Method)**:
+   - Used when direct matching fails or has low confidence
+   - Matches anchor points in the current frame using visual similarity
+   - Applies both horizontal and vertical constraints from each matched anchor:
+     - For horizontal: left/right constraints based on horizontal_relation
+     - For vertical: top/bottom constraints based on vertical_relation
+   - Reconstructs the main area using available constraints
+   - More resilient to visual changes but requires good anchor distribution
 
-1. **Anchor Matching**: Match anchor points from the model with elements in the new frame.
-2. **Direction Grouping**: Group matched anchors by constraint direction.
-3. **Constraint Calculation**: 
-   ```python
-   # Example for top constraint
-   constraints["top"] = element_center[1] + (
-       (original_main_area[1] - anchor_center[1]) *
-       (element_pos[3] - element_pos[1]) / (anchor_pos[3] - anchor_pos[1])
-   )
-   ```
-4. **Boundary Reconstruction**:
-   - Directly use constraints if available for opposite edges
-   - Apply aspect ratio constraints when only some edges are constrained
-   - Fall back to scaling if constraints are insufficient
+3. **Scaled Original (Last Resort)**:
+   - If both methods fail, scales the original main area to the new dimensions
 
-5. **Confidence Calculation**:
-   ```python
-   anchor_count_factor = min(len(matched_anchors) / 4, 1.0)
-   avg_score = sum(m["score"] for m in matched_anchors) / len(matched_anchors)
-   confidence = 0.7 * anchor_count_factor + 0.3 * avg_score
-   ```
+### Confidence Calculation
+- **Direct Matching**: Cosine similarity between embeddings
+- **Anchor Reconstruction**: Combination of anchor count and matching scores
 
-### Fallback Strategy
-
-The system implements a progressive fallback strategy:
-
-1. **Direct Matching**: Try to match the entire main area directly (highest confidence).
-2. **Anchor Reconstruction**: Use anchor points to reconstruct the main area (medium confidence).
-3. **Low-Confidence Direct Match**: Use direct matching results even with low confidence.
-4. **Scaled Original**: Scale the original main area proportionally to the new image size (lowest confidence).
-
-### Error Handling Strategies
-
-1. **Missing Model Files**: The system checks for file existence before loading and gracefully handles missing files.
-2. **Failed Embedding Generation**: When embedding generation fails, the system logs warnings and continues with available data.
-3. **Insufficient Anchor Matches**: If fewer than 2 anchors match, the system falls back to other detection methods.
-4. **Boundary Conditions**: All coordinates are clamped to image boundaries to prevent out-of-bounds issues.
-5. **Type Safety**: The system uses explicit type checking and defensive programming against dictionary key errors.
-
-### Performance Optimizations
-
-1. **Selective Embedding Generation**: Embeddings are only generated when needed, not for all elements.
-2. **Embedding Caching**: Pre-computed embeddings are saved to disk to avoid regeneration.
-3. **Prioritized Matching**: Elements are filtered by source type before visual matching to reduce computation.
-4. **Early Exit**: Detection stops at the first high-confidence method rather than trying all methods.
-5. **Selective Frame Sampling**: For main area references, a subset of evenly spaced frames is used instead of all frames.
-
-### Dictionary Access Safety Measures
-
-To address potential dictionary key errors and type checking issues:
-
-1. **Defensive Key Access**: 
-   ```python
-   value = data.get("key", default_value) 
-   ```
-2. **Type Checking**:
-   ```python
-   if isinstance(data, dict) and "key" in data:
-       # Access data safely
-   ```
-3. **Dictionary Initialization**: All dictionaries are initialized with expected keys before modification.
-
-## Training Process
-
-The training component (`anchor_based_main_area_detector.py`) implements these key steps:
-
-1. Extract patches from UI elements in multiple frames
-2. Identify stable elements that appear consistently across frames
-3. Select anchor points based on stability and position relative to the main area
-4. Create visual references of the main content area
-5. Save the model with all necessary data for runtime detection
-
-## Detection Process
-
-The runtime component (`anchor_based_main_area_detector_runtime.py`) implements these key steps:
-
-1. Load a trained model with anchor points and main area references
-2. Try direct matching of the main area using visual references
-3. If direct matching fails, find matches for anchor points
-4. Reconstruct the main area position using matched anchors and their constraints
-5. Fall back to scaled original area if other methods fail
-
-## Usage
+## Integration and Usage
 
 ### Training
-
 ```python
-from inference.omniparser.anchor_based_main_area_detector import AnchorBasedMainAreaDetector
-
-# Initialize detector
+# Create detector
 detector = AnchorBasedMainAreaDetector()
 
-# Train with omniparser results and main area bounding box
-result = detector.train(
-    result_model=current_frame_result,
-    frames=all_frame_results,
-    main_area=[x1, y1, x2, y2],
-    save_dir="path/to/model_dir"
-)
-```
-
-### Runtime Detection
-
-```python
-from inference.omniparser.anchor_based_main_area_detector_runtime import AnchorBasedMainAreaDetectorRuntime
-
-# Initialize runtime detector
-detector = AnchorBasedMainAreaDetectorRuntime()
-
-# Load model and detect main area in new frame
-detection_result = detector.detect(
-    result_model=new_frame_result,
-    model_dir="path/to/model_dir"
+# Train with frames
+result = detector.train_with_frames(
+    results_list=omniparser_results,
+    save_dir="./model_directory"
 )
 
-# Use the detected main area
-main_area = detection_result["main_area"]
+if result["success"]:
+    print(f"Training successful. Found {len(result['anchor_points'])} anchor points.")
+    print(f"Main area: {result['main_area']} (source: {result['area_source']})")
 ```
 
-## Data Models
-
-The implementation uses Pydantic for data serialization:
-
-- `AnchorPointData`: Stores information about anchor points
-- `MainAreaReferenceData`: Stores information about main area references
-- `DetectionModelData`: Top-level model containing all detection data
-
+### Detection
 ```python
-# Pydantic data models for serialization
-class AnchorPointData(BaseModel):
-    """Data model for anchor points to be serialized/deserialized."""
-    element_id: str
-    element_type: str
-    bbox: List[float]
-    source: str
-    constraint_direction: str
-    constraint_ratio: float
-    stability_score: float
-    patch_path: str
-    embedding_path: str
+# Create runtime detector
+runtime_detector = AnchorBasedMainAreaDetectorRuntime()
 
-class MainAreaReferenceData(BaseModel):
-    """Data model for main area reference patches to be serialized/deserialized."""
-    bbox: List[float]
-    frame_index: int
-    patch_path: str
-    embedding_path: str
+# Detect main area in a new frame
+detection_result = runtime_detector.detect(
+    result_model=omniparser_result,
+    model_dir="./model_directory"
+)
 
-class DetectionModelData(BaseModel):
-    """Data model for the complete detection model to be serialized/deserialized."""
-    model_version: str = "1.0.0"
-    model_created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
-    main_area: List[float]
-    screen_dimensions: List[float]
-    anchor_points: List[AnchorPointData] = []
-    main_area_references: List[MainAreaReferenceData] = []
+if detection_result["success"]:
+    print(f"Detection method: {detection_result['method']}")
+    print(f"Confidence: {detection_result['confidence']}")
+    print(f"Detected main area: {detection_result['main_area']}")
 ```
 
-## Directory Structure
+## Testing Implementation
 
-When a model is saved, it creates the following structure:
+The system includes a comprehensive test file (`anchor_based_main_area_detector_test.py`).
 
+### Running the Test
+```python
+# Basic test
+test_anchor_based_detector()
+
+# Test with viewport
+test_anchor_based_detector(use_viewport=True)
 ```
-model_dir/
-  ├── model.json             # Model metadata and configuration
-  ├── anchors/               # Anchor point patch images
-  ├── main_areas/            # Main area reference images
-  └── embeddings/            # Neural network embeddings
-```
 
-## Dependencies
+### Test Process
+1. Loads real screenshot events from a JSON file
+2. Trains the detector on multiple frames
+3. Tests detection on the same frames
+4. Creates visualizations to explain the system
 
-- Pydantic: For data serialization
-- PIL/Pillow: For image processing
-- NumPy: For numerical operations
-- ResNet (via torchvision): For generating image embeddings
+### Visualizations
+The test creates several visualizations to explain how the system works:
 
-## Error Handling
+1. **Main Area References**: Shows the original main area and extracted reference patches
+2. **Anchor Points**: Displays all anchor points on the original image and individual patches
+3. **Anchor Relationships**: Illustrates spatial relationships between anchors and the main area
+4. **Direct Matching**: Visualizes the direct matching process with confidence scores
+5. **Reconstruction Simulation**: Shows how the system would reconstruct the main area using only anchor constraints
+6. **Detection Workflow**: Comprehensive workflow diagram explaining the full detection pipeline
 
-The implementation includes robust error handling for:
-- Missing or corrupted model files
-- Failed embedding generation
-- Insufficient anchor matches
-- Boundary conditions
+### Understanding the Reconstruction Simulation
+The reconstruction simulation specifically shows what would happen if direct matching failed and the system had to rely only on anchor points. It's divided into four quadrants:
+
+1. **Original Main Area** (top-left): The reference main area detected during training
+2. **Horizontal Constraints** (top-right): Shows horizontal constraints from anchors
+3. **Vertical Constraints** (bottom-left): Shows vertical constraints from anchors
+4. **Reconstructed Main Area** (bottom-right): Shows the reconstructed area based only on anchor constraints compared to the original
+
+The IoU (Intersection over Union) score shows the overlap between the original and reconstructed areas. This simulation helps identify if more or better-distributed anchor points are needed.
 
 ## Performance Considerations
 
-- The training process is computationally intensive due to image embedding generation
-- Runtime detection is optimized for speed with fallback mechanisms
-- The system degrades gracefully when perfect matches aren't possible
+- **Direct Matching**: Fast but sensitive to visual changes
+- **Anchor Reconstruction**: More robust but requires good anchor distribution
+- **Training Frequency**: The system should be retrained periodically as the UI evolves
+- **Anchor Diversity**: For best results, ensure anchors cover all four directions (top, bottom, left, right)
 
-## Known Issues and Future Improvements
+## Troubleshooting
 
-1. **Type Checking**: Some linter errors related to type checking in dictionary access need to be addressed.
-2. **Embedding Dimension Verification**: Verify embedding dimensions before comparison to prevent shape mismatches.
-3. **Multi-threading**: Add optional multi-threading for embedding generation to improve training performance.
-4. **Adaptive Thresholds**: Implement adaptive thresholds that adjust based on image quality and content.
-5. **Visual Anchor Grouping**: Group visually similar anchors to improve robustness against UI element changes.
+### Poor Detection Performance
+- **Check Anchor Distribution**: Ensure anchors represent all four directions
+- **Examine Anchor Stability**: Look for high stability scores (ideally > 0.8)
+- **Verify Main Area References**: Ensure references cover diverse states of the UI
+- **Increase Training Frames**: More training frames can improve stability detection
+
+### Failed Direct Matching
+- **Lower Match Threshold**: Try reducing `main_area_match_threshold`
+- **Add More References**: Increase `max_main_area_references`
+- **Retrain with Diverse Frames**: Include frames with different states of the UI
+
+### Failed Anchor Reconstruction
+- **Increase Anchor Points**: Try increasing `max_anchor_points`
+- **Improve Anchor Distribution**: Ensure anchors cover all sides of the main area
+- **Lower Anchor Match Threshold**: Try reducing `anchor_match_threshold`
+
+## File Structure
+
+```
+inference/omniparser/
+├── anchor_based_main_area_detector.py       # Training component
+├── anchor_based_main_area_detector_runtime.py  # Detection component
+├── anchor_based_main_area_detector_test.py  # Test implementation
+└── ANCHOR_BASED_MAIN_AREA_README.md         # This documentation
+```
