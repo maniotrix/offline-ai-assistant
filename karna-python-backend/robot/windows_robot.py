@@ -34,10 +34,23 @@ class WindowsRobot(Robot):
         self.press_win_key('left')
         logger.debug("Snapped window left")
     
-    def snap_window_right(self) -> None:
-        """Snap the active window to the right (Windows+Right)."""
-        self.press_win_key('right')
-        logger.debug("Snapped window right")
+    def snap_window_right(self, wait_time: float = 2.0) -> bool:
+        """Snap the active window to the right (Windows+Right).
+        
+        Args:
+            wait_time: Time to wait after snapping
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            self.press_win_key('right')
+            self.wait(wait_time)
+            logger.debug("Snapped window right")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to snap window right: {str(e)}")
+            return False
     
     def maximize_window(self, wait_time: float = 2.0) -> bool:
         """

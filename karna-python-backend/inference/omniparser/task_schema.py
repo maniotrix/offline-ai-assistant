@@ -2,6 +2,17 @@ from typing import List, Optional
 from pydantic import BaseModel
 from enum import Enum
 from robot.chrome_robot import ChromeRobot
+import tempfile
+import os
+from datetime import datetime
+from robot.base_robot import Region
+from util.omniparser import OmniparserResult, Omniparser
+from inference.omniparser.omni_helper import get_omniparser_result_model_from_image_path, OmniParserResultModel
+import logging
+from vertical_patch_matcher import VerticalPatchMatcher
+from vertical_patch_matcher import PatchMatchResult
+from PIL import Image
+logger = logging.getLogger(__name__)
 
 class ScreenObjectType(str, Enum):
     """
@@ -165,6 +176,12 @@ def load_task_schema_from_json(json_file_path: str) -> Task:
         
         return Task.model_validate(task_data)
 
+DEFAULT_VIEWPORT = {
+    "x": 952,
+    "y": 121,
+    "width": 960,
+    "height": 927
+}
 class TaskPlanner():
     task_schema: Task
     def __init__(self, task_schema: Task):
@@ -173,12 +190,169 @@ class TaskPlanner():
 class TaskExecutor():
     task_planner: TaskPlanner
     chrome_robot: ChromeRobot
+    omniparser: Omniparser
+    omniparser_results_list: List[OmniParserResultModel]
+    chrome_robot_ready: bool
+    vertical_patch_matcher: VerticalPatchMatcher
     def __init__(self, task_planner: TaskPlanner):
         self.task_planner = task_planner
         self.chrome_robot = ChromeRobot()
-
+        self.omniparser = Omniparser()
+        self.omniparser_results_list = []
+        self.chrome_robot_ready = False
+        self.vertical_patch_matcher = VerticalPatchMatcher()
+        self.current_directory = os.path.dirname(os.path.abspath(__file__))
+    
+    def prepare_for_task(self):
+        """
+        Prepare for the task.
+        """
+        self.chrome_robot_ready = self.open_app_snapped_right()
+        if not self.chrome_robot_ready:
+            raise Exception("Chrome robot not ready")
+        else:
+            logger.info("Chrome robot ready")
+        
+    def find_patch_for_target(self, target: Target, omniparser_result_model: OmniParserResultModel) -> Optional[PatchMatchResult]:
+        """
+        Find the patch for the target.
+        
+        Args:
+            target: Target containing the type and value
+            omniparser_result_model: OmniParserResultModel containing parsed elements
+            
+        Returns:
+            Optional[PatchMatchResult]: The match result if found, None otherwise
+        """
+        target_type = target.type
+        target_value = target.value
+        
+        if target_type == ScreenObjectType.NONE:
+            logger.info("Target type is NONE, no patch matching required")
+            return None
+        
+        if target_value is None:
+            logger.warning(f"Target value is None for target type {target_type}")
+            return None
+        
+        # Construct full patch path
+        patch_path = os.path.join(self.current_directory, target_value)
+        
+        # Check if patch file exists
+        if not os.path.exists(patch_path):
+            logger.error(f"Patch image not found: {patch_path}")
+            return None
+        
+        # Load patch image with proper error handling
+        try:
+            patch_img = Image.open(patch_path)
+            logger.info(f"Loaded patch image: {patch_path} ({patch_img.size})")
+        except Exception as e:
+            logger.error(f"Failed to load patch image {patch_path}: {e}")
+            return None
+            
+        # Select appropriate matching method based on target type
+        # Convert ScreenObjectType enum to string value for source_types
+        source_types = [str(target_type)]  # This converts the enum to its string value
+        use_identical_match = False  # Flag for using identical matching
+        
+        # For certain target types, we might want exact matches
+        if target_type == ScreenObjectType.BOX_YOLO_CONTENT_YOLO:
+            use_identical_match = True
+        
+        # Perform matching
+        try:
+            if use_identical_match:
+                # Use higher threshold for exact matches
+                result = self.vertical_patch_matcher.find_identical_element(
+                    patch_img, 
+                    omniparser_result_model, 
+                    source_types=source_types
+                )
+            else:
+                # Use standard matching
+                result = self.vertical_patch_matcher.find_matching_element(
+                    patch_img, 
+                    omniparser_result_model, 
+                    source_types=source_types
+                )
+                
+            # Log the result
+            if result and result.match_found:
+                logger.info(f"Found match for {target_type} with score {result.similarity_score:.4f} (ID: {result.matched_element_id})")
+            else:
+                logger.warning(f"No match found for {target_type}")
+                
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error during patch matching: {e}")
+            return None
+    
     def execute_task(self):
         # execute the task
         pass
+    
+    def execute_mouse_step(self, mouse_step: MouseStep):
+        """
+        Execute a mouse step.
+        Args:
+            mouse_step: MouseStep
+        """
+        # get the omniparser result model
+        omniparser_result_model = self.get_omniparser_result_model()
+        # get the patch
+        patch = self.find_patch_for_target(mouse_step.target, omniparser_result_model)
+        # execute the mouse step
+        if patch:
+            self.chrome_robot.click(patch)
+        else:
+            logger.error(f"Could not find patch for target: {mouse_step.target}")
+        pass
+    
+    def open_app_snapped_right(self) -> bool:
+        """
+        Open the app snapped to the right.
+        """
+        url = self.task_planner.task_schema.app_url
+        return self.chrome_robot.open_url_snapped_right(url, wait_time=2.0)
+
+    def capture_viewport_screenshot(self) -> str:
+        """
+        Takes a full screen screenshot using chrome_robot, crops it according to 
+        DEFAULT_VIEWPORT, saves in a temp directory, and returns the absolute path.
+        
+        Returns:
+            str: Absolute path to the cropped screenshot file
+        """
+        
+        # Create temporary directory if it doesn't exist
+        temp_dir = os.path.join(tempfile.gettempdir(), "karna_screenshots")
+        os.makedirs(temp_dir, exist_ok=True)
+        
+        # Generate unique filename based on timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        screenshot_path = os.path.join(temp_dir, f"viewport_screenshot_{timestamp}.png")
+        
+        # Create a Region object from DEFAULT_VIEWPORT for cropping
+        viewport_region = Region(
+            x=DEFAULT_VIEWPORT["x"],
+            y=DEFAULT_VIEWPORT["y"],
+            width=DEFAULT_VIEWPORT["width"],
+            height=DEFAULT_VIEWPORT["height"]
+        )
+        
+        # Take and save cropped screenshot
+        self.chrome_robot.save_screenshot(screenshot_path, region=viewport_region)
+        
+        # Return absolute path to the saved screenshot
+        return os.path.abspath(screenshot_path)
+    
+    def get_omniparser_result_model(self) -> OmniParserResultModel:
+        """
+        Get the omniparser result model.
+        """
+        image_path = self.capture_viewport_screenshot()
+        return get_omniparser_result_model_from_image_path(image_path, self.omniparser)
 
 

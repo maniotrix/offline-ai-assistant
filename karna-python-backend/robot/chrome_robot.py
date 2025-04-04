@@ -39,11 +39,6 @@ class ChromeRobot(WindowsRobot):
         self.press_win_key('left')
         logger.debug("Snapped window left")
     
-    def snap_window_right(self) -> None:
-        """Snap the active window to the right (Windows+Right)."""
-        self.press_win_key('right')
-        logger.debug("Snapped window right")
-    
     def maximize_window(self, wait_time: float = 2.0) -> bool:
         """
         Maximize the current window using Windows+Up shortcut.
@@ -298,6 +293,31 @@ class ChromeRobot(WindowsRobot):
             return False
             
         return self.open_url_in_new_tab(url, wait_time)
+    
+    def open_url_snapped_right(self, url: str, wait_time: float = 2.0) -> bool:
+        """
+        Open the url snapped to the right.
+        
+        Args:
+            url: URL to navigate to
+            wait_time: Time to wait between actions in seconds
+            maximize: Whether to maximize the Chrome window
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        if not self.launch_chrome(wait_time):
+            return False
+        
+        for i in range(3):
+            if not self.maximize_window(wait_time):
+                return False
+        if not self.snap_window_right(wait_time):
+            return False
+            
+        return self.open_url_in_new_tab(url, wait_time)
+        
+        
     
     def open_html_file(self, html_file_path: str, wait_time: float = 2.0, maximize: bool = True) -> bool:
         """
