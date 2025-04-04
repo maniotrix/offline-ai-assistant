@@ -38,6 +38,35 @@ logger = logging.getLogger(__name__)
 # Output directory for visualizations 
 OUTPUT_DIR = Path(current_dir) / "anchor_detector_output"
 
+def calculate_iou(box1, box2):
+    """
+    Calculate Intersection over Union between two bounding boxes.
+    
+    Args:
+        box1: First bounding box [x1, y1, x2, y2]
+        box2: Second bounding box [x1, y1, x2, y2]
+        
+    Returns:
+        IoU value between 0 and 1
+    """
+    # Calculate intersection area
+    x1_i = max(box1[0], box2[0])
+    y1_i = max(box1[1], box2[1])
+    x2_i = min(box1[2], box2[2])
+    y2_i = min(box1[3], box2[3])
+    
+    if x2_i < x1_i or y2_i < y1_i:
+        return 0.0  # No intersection
+        
+    intersection = (x2_i - x1_i) * (y2_i - y1_i)
+    
+    # Calculate union area
+    box1_area = (box1[2] - box1[0]) * (box1[3] - box1[1])
+    box2_area = (box2[2] - box2[0]) * (box2[3] - box2[1])
+    union = box1_area + box2_area - intersection
+    
+    return intersection / union if union > 0 else 0.0
+
 def ensure_output_dir():
     """Ensure output directory exists and return timestamp."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -122,8 +151,8 @@ def visualize_main_area_references(
     
     # Save the figures
     plt.tight_layout()
-    fig.savefig(OUTPUT_DIR / f"{timestamp}_main_area_references.png", dpi=150)
-    fig2.savefig(OUTPUT_DIR / f"{timestamp}_main_area_location.png", dpi=150)
+    fig.savefig(OUTPUT_DIR / f"_main_area_references.png", dpi=150)
+    fig2.savefig(OUTPUT_DIR / f"_main_area_location.png", dpi=150)
     plt.close(fig)
     plt.close(fig2)
     logger.info(f"Saved main area references visualization")
@@ -186,7 +215,7 @@ def visualize_anchor_points(
     
     # Save the figure
     plt.tight_layout()
-    fig.savefig(OUTPUT_DIR / f"{timestamp}_anchor_points.png", dpi=150)
+    fig.savefig(OUTPUT_DIR / f"_anchor_points.png", dpi=150)
     plt.close(fig)
     
     # Now create a grid visualization showing each anchor patch
@@ -246,7 +275,7 @@ def visualize_anchor_points(
     
     # Save the grid figure
     plt.tight_layout()
-    fig2.savefig(OUTPUT_DIR / f"{timestamp}_anchor_patches.png", dpi=150)
+    fig2.savefig(OUTPUT_DIR / f"_anchor_patches.png", dpi=150)
     plt.close(fig2)
     
     logger.info(f"Saved anchor points visualization")
@@ -382,11 +411,11 @@ def visualize_anchor_relationships(
     
     # Save the figure
     plt.tight_layout()
-    fig.savefig(OUTPUT_DIR / f"{timestamp}_anchor_relationships.png", dpi=150)
+    fig.savefig(OUTPUT_DIR / f"_anchor_relationships.png", dpi=150)
     plt.close(fig)
     logger.info(f"Saved anchor relationships visualization")
 
-def visualize_reconstruction_simulation(
+def visualize_reconstruction_simulation_only_anchors(
     anchor_points: List[Dict[str, Any]],
     main_area: List[float],
     original_image: Image.Image,
@@ -562,27 +591,7 @@ def visualize_reconstruction_simulation(
     axes[1, 1].legend(handles=handles, loc='lower right')
     
     # Calculate and display IOU
-    def calculate_iou(box1, box2):
-        # Calculate intersection area
-        x1_i = max(box1[0], box2[0])
-        y1_i = max(box1[1], box2[1])
-        x2_i = min(box1[2], box2[2])
-        y2_i = min(box1[3], box2[3])
-        
-        if x2_i < x1_i or y2_i < y1_i:
-            return 0.0  # No intersection
-            
-        intersection = (x2_i - x1_i) * (y2_i - y1_i)
-        
-        # Calculate union area
-        box1_area = (box1[2] - box1[0]) * (box1[3] - box1[1])
-        box2_area = (box2[2] - box2[0]) * (box2[3] - box2[1])
-        union = box1_area + box2_area - intersection
-        
-        return intersection / union if union > 0 else 0.0
-    
-    reconstructed_box = [left_bound, top_bound, right_bound, bottom_bound]
-    iou = calculate_iou(main_area, reconstructed_box)
+    iou = calculate_iou(main_area, [left_bound, top_bound, right_bound, bottom_bound])
     
     # Add IOU and dimension metrics
     original_width = main_x2 - main_x1
@@ -609,7 +618,7 @@ def visualize_reconstruction_simulation(
     
     # Save the figure
     plt.tight_layout()
-    fig.savefig(OUTPUT_DIR / f"{timestamp}_reconstruction_simulation.png", dpi=150)
+    fig.savefig(OUTPUT_DIR / f"_reconstruction_simulation_only_anchors.png", dpi=150)
     plt.close(fig)
     logger.info(f"Saved reconstruction simulation visualization")
 
@@ -718,7 +727,7 @@ def visualize_direct_matching(
     
     # Save the figure
     plt.tight_layout()
-    fig.savefig(OUTPUT_DIR / f"{timestamp}_direct_matching.png", dpi=150)
+    fig.savefig(OUTPUT_DIR / f"_direct_matching.png", dpi=150)
     plt.close(fig)
     logger.info(f"Saved direct matching visualization")
 
@@ -886,7 +895,7 @@ def visualize_detection_workflow(
             bbox=dict(facecolor='white', alpha=0.7, boxstyle='round,pad=1'))
     
     # Save the figure
-    plt.savefig(OUTPUT_DIR / f"{timestamp}_detection_workflow.png", dpi=150)
+    plt.savefig(OUTPUT_DIR / f"_detection_workflow.png", dpi=150)
     plt.close(fig)
     logger.info(f"Saved detection workflow visualization")
 
@@ -932,6 +941,22 @@ def test_anchor_based_detector(use_viewport=False):
             
         logger.info(f"Successfully loaded {len(test_data.omniparser_result_models)} models from JSON file")
         
+        # Log frame information
+        for i, model in enumerate(test_data.omniparser_result_models):
+            logger.info(f"Frame {i}: {model.omniparser_result.original_image_path}")
+            logger.info(f"  - Dimensions: {model.omniparser_result.original_image_width}x{model.omniparser_result.original_image_height}")
+            logger.info(f"  - Elements: {len(model.parsed_content_results)}")
+            
+            # Count elements by type and source
+            element_types = {}
+            element_sources = {}
+            for elem in model.parsed_content_results:
+                element_types[elem.type] = element_types.get(elem.type, 0) + 1
+                element_sources[elem.source] = element_sources.get(elem.source, 0) + 1
+            
+            logger.info(f"  - Element types: {element_types}")
+            logger.info(f"  - Element sources: {element_sources}")
+        
         # Get sample model for visualizations
         sample_model = test_data.omniparser_result_models[0]
         image_path = sample_model.omniparser_result.original_image_path
@@ -947,6 +972,10 @@ def test_anchor_based_detector(use_viewport=False):
             
             # Train the detector - now uses dynamic detector to find main area
             logger.info("Training the detector...")
+            logger.info("-" * 50)
+            logger.info("TRAINING PHASE")
+            logger.info("-" * 50)
+            
             training_result = detector.train_with_frames(
                 results_list=test_data,
                 save_dir=temp_dir
@@ -960,40 +989,125 @@ def test_anchor_based_detector(use_viewport=False):
             logger.info(f"Training successful. Found {len(training_result['anchor_points'])} anchor points.")
             logger.info(f"Detected main area: {training_result['main_area']} (source: {training_result['area_source']})")
             
-            # Load and test the runtime detector
-            runtime_detector = AnchorBasedMainAreaDetectorRuntime()
-            
-            # Get the automatically detected main area for visualizations
+            # Log detailed information about the main area
             main_area = training_result["main_area"]
+            main_area_width = main_area[2] - main_area[0]
+            main_area_height = main_area[3] - main_area[1]
+            logger.info(f"Main area dimensions: {main_area_width}x{main_area_height} pixels")
+            logger.info(f"Main area center: ({(main_area[0] + main_area[2])/2}, {(main_area[1] + main_area[3])/2})")
+            logger.info(f"Main area relative size: {(main_area_width * main_area_height) / (sample_model.omniparser_result.original_image_width * sample_model.omniparser_result.original_image_height) * 100:.2f}% of screen")
             
-            # Create visualizations
-            logger.info("Creating visualizations...")
+            # Log detailed information about each anchor point
+            logger.info("-" * 50)
+            logger.info("ANCHOR POINTS DETAILS")
+            logger.info("-" * 50)
             
-            # 1. Main area references visualization
-            # Extract main area references directly from the training result
+            anchor_points = training_result["anchor_points"]
+            
+            # Count anchor points by direction
+            direction_counts = {"top": 0, "bottom": 0, "left": 0, "right": 0}
+            for anchor in anchor_points:
+                direction = anchor["constraint_direction"]
+                direction_counts[direction] += 1
+            
+            logger.info(f"Anchor points by direction: {direction_counts}")
+            
+            for i, anchor in enumerate(anchor_points):
+                logger.info(f"Anchor #{i}:")
+                logger.info(f"  - Element ID: {anchor['element_id']}")
+                logger.info(f"  - Element Type: {anchor['element_type']}")
+                logger.info(f"  - Source: {anchor['source']}")
+                logger.info(f"  - Direction: {anchor['constraint_direction']}")
+                logger.info(f"  - Position: {anchor['bbox']}")
+                logger.info(f"  - Stability Score: {anchor['stability_score']:.4f}")
+                logger.info(f"  - Horizontal Relation: {anchor['horizontal_relation']}")
+                logger.info(f"  - Vertical Relation: {anchor['vertical_relation']}")
+                
+                # Calculate position relative to main area
+                anchor_center_x = (anchor['bbox'][0] + anchor['bbox'][2]) / 2
+                anchor_center_y = (anchor['bbox'][1] + anchor['bbox'][3]) / 2
+                main_center_x = (main_area[0] + main_area[2]) / 2
+                main_center_y = (main_area[1] + main_area[3]) / 2
+                
+                rel_x = (anchor_center_x - main_center_x) / main_area_width
+                rel_y = (anchor_center_y - main_center_y) / main_area_height
+                
+                logger.info(f"  - Relative position to main area center: ({rel_x:.2f}, {rel_y:.2f})")
+            
+            # Log information about main area references
             main_area_references = detector._extract_main_area_references(
                 test_data, main_area
             )
+            
+            logger.info("-" * 50)
+            logger.info("MAIN AREA REFERENCES")
+            logger.info("-" * 50)
+            
+            logger.info(f"Number of main area references: {len(main_area_references)}")
+            for i, ref in enumerate(main_area_references):
+                logger.info(f"Reference #{i}:")
+                logger.info(f"  - Frame index: {ref['frame_index']}")
+                logger.info(f"  - Bounding box: {ref['bbox']}")
+                
+                # Calculate patch dimensions
+                patch_width, patch_height = ref['patch'].size
+                logger.info(f"  - Patch dimensions: {patch_width}x{patch_height}")
+            
+            # Load and test the runtime detector
+            logger.info("-" * 50)
+            logger.info("RUNTIME DETECTION PHASE")
+            logger.info("-" * 50)
+            
+            runtime_detector = AnchorBasedMainAreaDetectorRuntime()
+            
+            # Test the runtime detector on each frame
+            for i, model in enumerate(test_data.omniparser_result_models):
+                logger.info(f"Detecting main area in frame {i}...")
+                detection_result = runtime_detector.detect(model, temp_dir)
+                
+                logger.info(f"  - Success: {detection_result['success']}")
+                logger.info(f"  - Method: {detection_result.get('method', 'N/A')}")
+                logger.info(f"  - Confidence: {detection_result.get('confidence', 0):.4f}")
+                logger.info(f"  - Detected main area: {detection_result.get('main_area', 'None')}")
+                
+                if detection_result.get('method') == 'anchor_reconstruction':
+                    logger.info(f"  - Anchors matched: {detection_result.get('anchors_matched', 0)}")
+                    
+                # Calculate IoU if both main areas are available
+                if detection_result.get('main_area') and main_area:
+                    iou = calculate_iou(detection_result['main_area'], main_area)
+                    logger.info(f"  - IoU with reference main area: {iou:.4f}")
+                
+                # Skip remaining frames for brevity
+                if i >= 2:
+                    logger.info("Skipping remaining frames for brevity...")
+                    break
+            
+            # Create visualizations
+            logger.info("-" * 50)
+            logger.info("CREATING VISUALIZATIONS")
+            logger.info("-" * 50)
+            
+            # 1. Main area references visualization
             visualize_main_area_references(main_area_references, main_area, img, timestamp)
             
             # 2. Direct matching visualization
             visualize_direct_matching(main_area_references, main_area, img, timestamp)
             
             # 3. Anchor points visualization
-            anchor_points = training_result["anchor_points"]
             visualize_anchor_points(anchor_points, img, timestamp)
             
             # 4. Anchor relationships visualization
             visualize_anchor_relationships(anchor_points, main_area, img, timestamp)
             
             # 5. Reconstruction simulation
-            visualize_reconstruction_simulation(anchor_points, main_area, img, timestamp)
+            visualize_reconstruction_simulation_only_anchors(anchor_points, main_area, img, timestamp)
             
             # 6. Create a detection workflow visualization showing the full pipeline
             visualize_detection_workflow(main_area_references, anchor_points, main_area, img, timestamp)
             
             # Log success and list visualization files
-            vis_files = list(OUTPUT_DIR.glob(f"{timestamp}_*.png"))
+            vis_files = list(OUTPUT_DIR.glob(f"_*.png"))
             logger.info(f"Test completed. Created {len(vis_files)} visualization files:")
             for file in vis_files:
                 logger.info(f"  - {file.name}")
