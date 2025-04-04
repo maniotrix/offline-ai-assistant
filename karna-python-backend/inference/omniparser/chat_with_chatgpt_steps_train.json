@@ -1,0 +1,39 @@
+    {
+    "task": "Send message and copy latest response",
+    "description": "This task is to send a message to the chatgpt and copy the latest response",
+    "app_name": "chatgpt",
+    "app_type": "web",
+    "default_attention": "bottom",
+    "app_url": "https://chatgpt.com/?temporary-chat=true",
+    "steps": [
+        {   "step_id": 1,
+            "description": "Click on the chatgpt input box"
+        },
+        {   "step_id": 2,
+            "description": "Paste the message to the chatgpt input box"
+        },
+        {   "step_id": 3,
+            "description": "Send the message to the chatgpt",
+            "keyboard_shortcut": "enter"
+        },
+        {   "step_id": 4,
+            "description": "Wait for the chatgpt to respond",
+            "action_type": "wait",
+            "action": "none",
+            "import_target_from_step": 3,
+            "attention": "center"
+        },
+        {   "step_id": 5,
+            "description": "Click on the latest chatgpt response",
+            "attention": "center"
+        },
+        {   "step_id": 6,
+            "description": "Srcoll to end of the chatgpt chat history",
+            "attention": "center"
+        },
+        {
+            "step_id": 7,
+            "description": "Click the first matching copy icon starting from the bottom"
+        }
+    ]
+    }

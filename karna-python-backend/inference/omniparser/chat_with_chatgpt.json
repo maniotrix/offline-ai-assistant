@@ -3,62 +3,71 @@
     "description": "This task is to send a message to the chatgpt and copy the latest response",
     "app_name": "chatgpt",
     "app_type": "web",
+    "default_attention": "bottom",
     "app_url": "https://chatgpt.com/?temporary-chat=true",
     "steps": [
         {   "step_id": 1,
             "description": "Click on the chatgpt input box",
             "action_type": "mouse_action",
             "action": "click",
-            "target_type": "box_ocr_content_ocr",
-            "visual_position_state": "dynamic",
-            "visual_count": "single"
+            "target": {
+                "type": "box_ocr_content_ocr",
+                "value": "Ask Anything"
+            },
+            "attention": "bottom"
         },
         {   "step_id": 2,
             "description": "Paste the message to the chatgpt input box",
             "action_type": "keyboard_action",
-            "action": "paste"
+            "action": "paste",
+            "attention": "bottom"
         },
         {   "step_id": 3,
             "description": "Send the message to the chatgpt",
             "action_type": "mouse_action",
             "action": "click",
-            "target_type": "box_yolo_content_yolo",
-            "keyboard_shortcut": "enter"
+            "target": {
+                "type": "box_yolo_content_yolo",
+                "value": "38_Up_or_down.png"
+            },
+            "keyboard_shortcut": "enter",
+            "attention": "bottom"
         },
         {   "step_id": 4,
             "description": "Wait for the chatgpt to respond",
             "action_type": "wait",
             "action": "none",
-            "target_type": "box_yolo_content_yolo"
+            "target": {
+                "type": "box_yolo_content_yolo",
+                "value": "send_button.png"
+            },
+            "attention": "center"
         },
         {   "step_id": 5,
-            "description": "Click on the latest chatgpt response",
+            "description": "Click at the center of the screen",
             "action_type": "mouse_action",
             "action": "click",
-            "target_type": "box_ocr_content_ocr",
-            "is_full_visual_expansion_required": true
+            "attention": "center",
+            "target": {
+                "type": "none"
+            }
         },
         {   "step_id": 6,
             "description": "Srcoll to end of the chatgpt chat history",
             "action_type": "keyboard_action",
-            "action": "end"
+            "action": "end",
+            "attention": "center"
         },
         {
             "step_id": 7,
             "description": "Click the first matching copy icon starting from the bottom",
             "action_type": "mouse_action",
             "action": "click",
-            "target_type": "box_yolo_content_yolo",
-            "visual_patch_file": "copy_icon_patch.png",
-            "expected_target_similarity": "identical",
-            "visual_attention": {
-              "focus_area": "bottom",
-              "scan_direction": "bottom-up"
-            },
-            "selection_criteria": "first_match_in_scan",
-            "visual_position_state": "fixed",
-            "visual_count": "multiple",
-            "is_full_visual_expansion_required": true
+            "attention": "bottom",
+            "target": {
+                "type": "box_yolo_content_yolo",
+                "value": "44_Copy.png"
+            }
           }
     ]
     }
