@@ -28,7 +28,8 @@ class AnchorPointData(BaseModel):
     bbox: List[float]
     source: str
     constraint_direction: str
-    constraint_ratio: float
+    horizontal_relation: str
+    vertical_relation: str
     stability_score: float
     patch_path: str
     embedding_path: str
@@ -38,7 +39,6 @@ class MainAreaReferenceData(BaseModel):
     bbox: List[float]
     frame_index: int
     patch_path: str
-    embedding_path: str
 
 class DetectionModelData(BaseModel):
     """Data model for the complete detection model to be serialized/deserialized."""
@@ -210,22 +210,23 @@ class AnchorBasedMainAreaDetector:
     ) -> Dict[str, Any]:
         """
         Calculate an element's position relative to the main area.
+        Simplified to use only directional constraints without proportional ratios.
         
         Args:
             element_position: Element bounding box [x1, y1, x2, y2]
             main_area: Main area bounding box [x1, y1, x2, y2]
             
         Returns:
-            Dictionary with constraint direction and ratio information
+            Dictionary with constraint direction information
         """
         # Calculate element center
         elem_center_x = (element_position[0] + element_position[2]) / 2
         elem_center_y = (element_position[1] + element_position[3]) / 2
         
-        # Main area dimensions
+        # Main area dimensions and center
         main_left, main_top, main_right, main_bottom = main_area
-        main_width = main_right - main_left
-        main_height = main_bottom - main_top
+        main_center_x = (main_left + main_right) / 2
+        main_center_y = (main_top + main_bottom) / 2
         
         # Calculate distances to each edge of main area
         dist_to_left = abs(elem_center_x - main_left)
@@ -236,27 +237,30 @@ class AnchorBasedMainAreaDetector:
         # Determine closest edge
         min_dist = min(dist_to_left, dist_to_right, dist_to_top, dist_to_bottom)
         
-        # Determine constraint direction
+        # Calculate directional relationship (simpler approach)
+        horizontal_relation = "left" if elem_center_x < main_center_x else "right"
+        vertical_relation = "top" if elem_center_y < main_center_y else "bottom"
+        
+        # Determine primary constraint direction based on closest edge
         if min_dist == dist_to_left:
             direction = "left"
-            ratio = (elem_center_x - main_left) / main_width
         elif min_dist == dist_to_right:
             direction = "right"
-            ratio = (main_right - elem_center_x) / main_width
         elif min_dist == dist_to_top:
             direction = "top"
-            ratio = (elem_center_y - main_top) / main_height
         else:  # Bottom
             direction = "bottom"
-            ratio = (main_bottom - elem_center_y) / main_height
         
         # Determine if element is at a border
         border_threshold = 0.1  # Within 10% of edge
+        main_width = main_right - main_left
+        main_height = main_bottom - main_top
         is_at_border = min_dist / max(main_width, main_height) < border_threshold
         
         return {
             "direction": direction,
-            "ratio": ratio,
+            "horizontal_relation": horizontal_relation,
+            "vertical_relation": vertical_relation,
             "is_at_border": is_at_border,
             "distance": min_dist
         }
@@ -344,7 +348,8 @@ class AnchorBasedMainAreaDetector:
                     "patch": data["patch"],
                     "embedding": data["embedding"],
                     "constraint_direction": position_data["direction"],
-                    "constraint_ratio": position_data["ratio"],
+                    "horizontal_relation": position_data["horizontal_relation"],
+                    "vertical_relation": position_data["vertical_relation"],
                     "stability_score": data["stability_score"]
                 }
                 
@@ -369,6 +374,7 @@ class AnchorBasedMainAreaDetector:
     ) -> List[Dict[str, Any]]:
         """
         Extract visual references of the main area from multiple frames.
+        Only extracts patches, without generating embeddings.
         
         Args:
             results_list: List of OmniParser results
@@ -405,21 +411,14 @@ class AnchorBasedMainAreaDetector:
             # Extract main area patch
             patch = self._extract_patch(image, main_area)
             
-            # Generate embedding
-            try:
-                embedding = self.embedder.get_embedding(patch)
-                
-                # Create reference
-                reference = {
-                    "bbox": main_area,
-                    "patch": patch,
-                    "embedding": embedding,
-                    "frame_index": idx
-                }
-                
-                main_area_references.append(reference)
-            except Exception as e:
-                logger.warning(f"Failed to generate embedding for frame {idx}: {e}")
+            # Create reference (without embedding)
+            reference = {
+                "bbox": main_area,
+                "patch": patch,
+                "frame_index": idx
+            }
+            
+            main_area_references.append(reference)
         
         logger.info(f"Created {len(main_area_references)} main area references")
         return main_area_references
@@ -474,7 +473,8 @@ class AnchorBasedMainAreaDetector:
                 bbox=anchor["bbox"],
                 source=anchor["source"],
                 constraint_direction=anchor["constraint_direction"],
-                constraint_ratio=anchor["constraint_ratio"],
+                horizontal_relation=anchor["horizontal_relation"],
+                vertical_relation=anchor["vertical_relation"],
                 stability_score=anchor["stability_score"],
                 patch_path=os.path.join("anchors", patch_filename),
                 embedding_path=os.path.join("embeddings", embedding_filename)
@@ -490,17 +490,11 @@ class AnchorBasedMainAreaDetector:
             patch_path = os.path.join(main_areas_dir, patch_filename)
             reference["patch"].save(patch_path)
             
-            # Save embedding
-            embedding_filename = f"main_area_{i}_frame_{reference['frame_index']}.npy"
-            embedding_path = os.path.join(embeddings_dir, embedding_filename)
-            np.save(embedding_path, reference["embedding"])
-            
             # Create serializable reference data
             reference_data = MainAreaReferenceData(
                 bbox=reference["bbox"],
                 frame_index=reference["frame_index"],
-                patch_path=os.path.join("main_areas", patch_filename),
-                embedding_path=os.path.join("embeddings", embedding_filename)
+                patch_path=os.path.join("main_areas", patch_filename)
             )
             
             serializable_references.append(reference_data)
@@ -550,70 +544,33 @@ class AnchorBasedMainAreaDetector:
             image, stable_elements, result_model, main_area
         )
         
-        # 4. Save model files if save_dir is provided
+        # 4. Extract main area references from all frames
+        results_list = OmniParserResultModelList(
+            omniparser_result_models=frames,
+            project_uuid="",  # Placeholder value
+            command_uuid=""   # Placeholder value
+        )
+        main_area_references = self._extract_main_area_references(
+            results_list, main_area
+        )
+        
+        # 5. Save model files if save_dir is provided
         if save_dir:
             # Create directory if it doesn't exist
             os.makedirs(save_dir, exist_ok=True)
+            
+            # Use _save_model_files to save anchor points and main area references
+            serializable_anchors, serializable_references = self._save_model_files(
+                save_dir, anchor_points, main_area_references
+            )
             
             # Initialize the model data
             model_data = DetectionModelData(
                 main_area=main_area,
                 screen_dimensions=[image_width, image_height],
-                anchor_points=[],
-                main_area_references=[]
+                anchor_points=serializable_anchors,
+                main_area_references=serializable_references
             )
-            
-            # Save anchor point patches and add to model data
-            for i, anchor in enumerate(anchor_points):
-                patch = anchor["patch"]
-                embedding = anchor["embedding"]
-                
-                # Save patch image
-                patch_filename = f"anchor_{i}_patch.png"
-                patch_path = os.path.join(save_dir, patch_filename)
-                patch.save(patch_path)
-                
-                # Save embedding
-                embedding_filename = f"anchor_{i}_embedding.npy"
-                embedding_path = os.path.join(save_dir, embedding_filename)
-                np.save(embedding_path, embedding)
-                
-                # Add to model data
-                anchor_data = AnchorPointData(
-                    element_id=str(anchor["element_id"]),
-                    element_type=anchor["element_type"],
-                    bbox=anchor["bbox"],
-                    source=anchor["source"],
-                    constraint_direction=anchor["constraint_direction"],
-                    constraint_ratio=anchor["constraint_ratio"],
-                    stability_score=float(anchor["stability_score"]),
-                    patch_path=patch_filename,
-                    embedding_path=embedding_filename
-                )
-                model_data.anchor_points.append(anchor_data)
-            
-            # Save main area reference patches
-            # Use the original image as a reference
-            main_area_patch = image.crop((main_area[0], main_area[1], main_area[2], main_area[3]))
-            main_area_embedding = self.embedder.get_embedding(main_area_patch)
-            
-            # Save main area patch and embedding
-            patch_filename = "main_area_0_patch.png"
-            patch_path = os.path.join(save_dir, patch_filename)
-            main_area_patch.save(patch_path)
-            
-            embedding_filename = "main_area_0_embedding.npy"
-            embedding_path = os.path.join(save_dir, embedding_filename)
-            np.save(embedding_path, main_area_embedding)
-            
-            # Add to model data
-            main_area_data = MainAreaReferenceData(
-                bbox=main_area,
-                frame_index=0,
-                patch_path=patch_filename,
-                embedding_path=embedding_filename
-            )
-            model_data.main_area_references.append(main_area_data)
             
             # Save model metadata
             model_path = os.path.join(save_dir, "model.json")

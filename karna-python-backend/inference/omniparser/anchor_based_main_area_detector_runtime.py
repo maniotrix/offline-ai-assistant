@@ -71,6 +71,7 @@ class AnchorBasedMainAreaDetectorRuntime:
         with open(model_path, "r") as f:
             model_json = f.read()
         
+        # Parse model data
         model_data = DetectionModelData.parse_raw(model_json)
         
         logger.info(f"Loaded model (version {model_data.model_version}) created at {model_data.model_created_at}")
@@ -122,7 +123,8 @@ class AnchorBasedMainAreaDetectorRuntime:
                 "bbox": anchor.bbox,
                 "source": anchor.source,
                 "constraint_direction": anchor.constraint_direction,
-                "constraint_ratio": anchor.constraint_ratio,
+                "horizontal_relation": anchor.horizontal_relation,
+                "vertical_relation": anchor.vertical_relation,
                 "stability_score": anchor.stability_score,
                 "patch": patch,
                 "embedding": embedding
@@ -139,14 +141,14 @@ class AnchorBasedMainAreaDetectorRuntime:
         main_area_references: List[MainAreaReferenceData]
     ) -> List[Dict[str, Any]]:
         """
-        Load main area references with their visual embeddings.
+        Load main area references and generate their visual embeddings at runtime.
         
         Args:
             model_dir: Directory containing the model files
             main_area_references: List of main area reference data
             
         Returns:
-            List of main area references with loaded patches and embeddings
+            List of main area references with loaded patches and generated embeddings
         """
         loaded_references = []
         
@@ -159,28 +161,22 @@ class AnchorBasedMainAreaDetectorRuntime:
             
             patch = Image.open(patch_path).convert("RGB")
             
-            # Load the embedding if it exists
-            embedding_path = os.path.join(model_dir, reference.embedding_path)
-            if os.path.exists(embedding_path):
-                embedding = np.load(embedding_path)
-            else:
-                # Generate embedding if file not found
-                logger.warning(f"Embedding file not found: {embedding_path}")
-                try:
-                    embedding = self.embedder.get_embedding(patch)
-                except Exception as e:
-                    logger.error(f"Failed to generate embedding: {e}")
-                    continue
-            
-            # Create loaded reference with patch and embedding
-            loaded_reference = {
-                "bbox": reference.bbox,
-                "frame_index": reference.frame_index,
-                "patch": patch,
-                "embedding": embedding
-            }
-            
-            loaded_references.append(loaded_reference)
+            # Generate embedding at runtime
+            try:
+                embedding = self.embedder.get_embedding(patch)
+                
+                # Create loaded reference with patch and embedding
+                loaded_reference = {
+                    "bbox": reference.bbox,
+                    "frame_index": reference.frame_index,
+                    "patch": patch,
+                    "embedding": embedding
+                }
+                
+                loaded_references.append(loaded_reference)
+            except Exception as e:
+                logger.error(f"Failed to generate embedding: {e}")
+                continue
         
         logger.info(f"Loaded {len(loaded_references)} main area references with embeddings")
         return loaded_references
@@ -236,7 +232,7 @@ class AnchorBasedMainAreaDetectorRuntime:
         original_dimensions: List[float]
     ) -> Dict[str, Any]:
         """
-        Match anchor points and reconstruct the main area.
+        Match anchor points and reconstruct the main area using simplified directional constraints.
         
         Args:
             image: Current image
@@ -285,133 +281,109 @@ class AnchorBasedMainAreaDetectorRuntime:
         
         logger.info(f"Matched {len(matched_anchors)} anchors")
         
-        # Step 2: Reconstruct main area from matched anchors
+        # Step 2: Reconstruct main area from matched anchors using directional constraints
         if len(matched_anchors) >= 2:
-            # Group anchors by constraint direction
-            direction_groups = {"top": [], "bottom": [], "left": [], "right": []}
+            # Initialize constraints for each edge of the screen
+            constraints = {
+                "left": None,
+                "right": None,
+                "top": None,
+                "bottom": None
+            }
             
-            for match_data in matched_anchors:
-                anchor = match_data["anchor"]
-                element = match_data["match"]
-                direction_groups[anchor["constraint_direction"]].append({
-                    "anchor": anchor,
-                    "element": element,
-                    "score": match_data["score"]
-                })
-            
-            # Calculate constraints for each direction
-            constraints = {}
-            for direction, group in direction_groups.items():
-                if group:
-                    # Sort by score and use the best match
-                    group.sort(key=lambda x: x["score"], reverse=True)
-                    best = group[0]
-                    
-                    anchor_pos = best["anchor"]["bbox"]
-                    element_pos = best["element"].bbox
-                    
-                    # Convert bbox to center points
-                    anchor_center = [(anchor_pos[0] + anchor_pos[2]) / 2,
-                                    (anchor_pos[1] + anchor_pos[3]) / 2]
-                    element_center = [(element_pos[0] + element_pos[2]) / 2,
-                                     (element_pos[1] + element_pos[3]) / 2]
-                    
-                    # Calculate constraint position based on direction and ratio
-                    if direction == "top":
-                        constraints["top"] = element_center[1] + (
-                            (original_main_area[1] - anchor_center[1]) *
-                            (element_pos[3] - element_pos[1]) / (anchor_pos[3] - anchor_pos[1])
-                        )
-                    elif direction == "bottom":
-                        constraints["bottom"] = element_center[1] + (
-                            (original_main_area[3] - anchor_center[1]) *
-                            (element_pos[3] - element_pos[1]) / (anchor_pos[3] - anchor_pos[1])
-                        )
-                    elif direction == "left":
-                        constraints["left"] = element_center[0] + (
-                            (original_main_area[0] - anchor_center[0]) *
-                            (element_pos[2] - element_pos[0]) / (anchor_pos[2] - anchor_pos[0])
-                        )
-                    elif direction == "right":
-                        constraints["right"] = element_center[0] + (
-                            (original_main_area[2] - anchor_center[0]) *
-                            (element_pos[2] - element_pos[0]) / (anchor_pos[2] - anchor_pos[0])
-                        )
-            
-            # If we have opposite constraints, use them directly
-            reconstructed_bbox = None
+            # Get current image dimensions
             image_width = result_model.omniparser_result.original_image_width
             image_height = result_model.omniparser_result.original_image_height
             
-            if "left" in constraints and "right" in constraints:
+            # Apply directional constraints from each matched anchor
+            for match_data in matched_anchors:
+                anchor = match_data["anchor"]
+                element = match_data["match"]
+                
+                # Get the element center
+                element_x1, element_y1, element_x2, element_y2 = element.bbox
+                element_center_x = (element_x1 + element_x2) / 2
+                element_center_y = (element_y1 + element_y2) / 2
+                
+                # Apply directional constraints based on anchor's relationship to main area
+                direction = anchor["constraint_direction"]
+                h_relation = anchor["horizontal_relation"]
+                v_relation = anchor["vertical_relation"]
+                
+                # Calculate constraint values (with some padding)
+                padding_x = image_width * 0.05  # 5% padding
+                padding_y = image_height * 0.05  # 5% padding
+                
+                if direction == "left" and h_relation == "left":
+                    # Main area should be to the right of this element
+                    if constraints["left"] is None or element_x2 + padding_x > constraints["left"]:
+                        constraints["left"] = element_x2 + padding_x
+                elif direction == "right" and h_relation == "right":
+                    # Main area should be to the left of this element
+                    if constraints["right"] is None or element_x1 - padding_x < constraints["right"]:
+                        constraints["right"] = element_x1 - padding_x
+                elif direction == "top" and v_relation == "top":
+                    # Main area should be below this element
+                    if constraints["top"] is None or element_y2 + padding_y > constraints["top"]:
+                        constraints["top"] = element_y2 + padding_y
+                elif direction == "bottom" and v_relation == "bottom":
+                    # Main area should be above this element
+                    if constraints["bottom"] is None or element_y1 - padding_y < constraints["bottom"]:
+                        constraints["bottom"] = element_y1 - padding_y
+            
+            # Calculate the reconstructed bbox using available constraints
+            reconstructed_bbox = None
+            
+            # Default values based on original proportions if constraints are missing
+            orig_width, orig_height = original_dimensions
+            orig_main_width = original_main_area[2] - original_main_area[0]
+            orig_main_height = original_main_area[3] - original_main_area[1]
+            
+            # Scale factors
+            scale_x = image_width / orig_width
+            scale_y = image_height / orig_height
+            
+            # Default main area size (scaled from original)
+            default_width = orig_main_width * scale_x
+            default_height = orig_main_height * scale_y
+            
+            # Apply horizontal constraints
+            if constraints["left"] is not None and constraints["right"] is not None:
+                # We have both left and right constraints
                 x1 = constraints["left"]
                 x2 = constraints["right"]
-            elif "left" in constraints:
-                # Use left constraint with original aspect ratio
+            elif constraints["left"] is not None:
+                # Only left constraint
                 x1 = constraints["left"]
-                aspect_ratio = (original_main_area[2] - original_main_area[0]) / (original_main_area[3] - original_main_area[1])
-                if "top" in constraints and "bottom" in constraints:
-                    height = constraints["bottom"] - constraints["top"]
-                    x2 = x1 + height * aspect_ratio
-                else:
-                    # Scale based on image size
-                    orig_width, orig_height = original_dimensions
-                    scale = image_width / orig_width
-                    x2 = x1 + (original_main_area[2] - original_main_area[0]) * scale
-            elif "right" in constraints:
-                # Use right constraint with original aspect ratio
+                x2 = min(x1 + default_width, image_width)
+            elif constraints["right"] is not None:
+                # Only right constraint
                 x2 = constraints["right"]
-                aspect_ratio = (original_main_area[2] - original_main_area[0]) / (original_main_area[3] - original_main_area[1])
-                if "top" in constraints and "bottom" in constraints:
-                    height = constraints["bottom"] - constraints["top"]
-                    x1 = x2 - height * aspect_ratio
-                else:
-                    # Scale based on image size
-                    orig_width, orig_height = original_dimensions
-                    scale = image_width / orig_width
-                    x1 = x2 - (original_main_area[2] - original_main_area[0]) * scale
+                x1 = max(x2 - default_width, 0)
             else:
-                # Default to original x values scaled to new image
-                orig_width, orig_height = original_dimensions
-                scale_x = image_width / orig_width
-                x1 = original_main_area[0] * scale_x
-                x2 = original_main_area[2] * scale_x
+                # No horizontal constraints, center it
+                x1 = (image_width - default_width) / 2
+                x2 = x1 + default_width
             
-            if "top" in constraints and "bottom" in constraints:
+            # Apply vertical constraints
+            if constraints["top"] is not None and constraints["bottom"] is not None:
+                # We have both top and bottom constraints
                 y1 = constraints["top"]
                 y2 = constraints["bottom"]
-            elif "top" in constraints:
-                # Use top constraint with original aspect ratio
+            elif constraints["top"] is not None:
+                # Only top constraint
                 y1 = constraints["top"]
-                aspect_ratio = (original_main_area[3] - original_main_area[1]) / (original_main_area[2] - original_main_area[0])
-                if "left" in constraints and "right" in constraints:
-                    width = constraints["right"] - constraints["left"]
-                    y2 = y1 + width * aspect_ratio
-                else:
-                    # Scale based on image size
-                    orig_width, orig_height = original_dimensions
-                    scale = image_height / orig_height
-                    y2 = y1 + (original_main_area[3] - original_main_area[1]) * scale
-            elif "bottom" in constraints:
-                # Use bottom constraint with original aspect ratio
+                y2 = min(y1 + default_height, image_height)
+            elif constraints["bottom"] is not None:
+                # Only bottom constraint
                 y2 = constraints["bottom"]
-                aspect_ratio = (original_main_area[3] - original_main_area[1]) / (original_main_area[2] - original_main_area[0])
-                if "left" in constraints and "right" in constraints:
-                    width = constraints["right"] - constraints["left"]
-                    y1 = y2 - width * aspect_ratio
-                else:
-                    # Scale based on image size
-                    orig_width, orig_height = original_dimensions
-                    scale = image_height / orig_height
-                    y1 = y2 - (original_main_area[3] - original_main_area[1]) * scale
+                y1 = max(y2 - default_height, 0)
             else:
-                # Default to original y values scaled to new image
-                orig_width, orig_height = original_dimensions
-                scale_y = image_height / orig_height
-                y1 = original_main_area[1] * scale_y
-                y2 = original_main_area[3] * scale_y
+                # No vertical constraints, center it
+                y1 = (image_height - default_height) / 2
+                y2 = y1 + default_height
             
-            # Clamp coordinates to image boundaries
+            # Clamp to image boundaries
             x1 = max(0, min(x1, image_width))
             y1 = max(0, min(y1, image_height))
             x2 = max(0, min(x2, image_width))
