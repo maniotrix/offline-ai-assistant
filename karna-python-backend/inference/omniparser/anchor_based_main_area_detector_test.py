@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 # Output directory for visualizations 
 OUTPUT_DIR = Path(current_dir) / "anchor_detector_output"
 
-def calculate_iou(box1, box2):
+def calculate_iou(box1: List[float], box2: List[float]) -> float:
     """
     Calculate Intersection over Union between two bounding boxes.
     
@@ -613,6 +613,16 @@ def visualize_reconstruction_simulation_only_anchors(
         bbox=dict(facecolor='white', alpha=0.7)
     )
     
+    # Add a note about element matching
+    axes[1, 1].text(
+        0.05, 0.95, 
+        "Note: In actual runtime, elements are matched using\nvisual similarity before applying constraints",
+        transform=axes[1, 1].transAxes,
+        fontsize=9,
+        verticalalignment='top',
+        bbox=dict(facecolor='yellow', alpha=0.5)
+    )
+    
     axes[1, 1].set_title("Reconstructed Main Area", fontsize=12)
     axes[1, 1].axis('off')
     
@@ -639,7 +649,7 @@ def visualize_direct_matching(
     """
     # Create a figure with a 2x2 grid showing the direct matching process
     fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-    fig.suptitle("Direct Matching with Main Area References", fontsize=16)
+    fig.suptitle("Sliding Window Matching with Main Area References", fontsize=16)
     
     # Original image with main area
     axes[0, 0].imshow(original_image)
@@ -664,35 +674,37 @@ def visualize_direct_matching(
                         ha='center', fontsize=12)
         axes[0, 1].axis('off')
     
-    # Illustration of embedding comparison process
+    # Illustration of sliding window approach
     axes[1, 0].imshow(original_image, alpha=0.6)  # Semi-transparent original image
     
-    # Create a heatmap-like overlay to represent similarity comparison
-    # This is just a visualization representation of the process
+    # Create a grid to represent sliding windows
     img_width, img_height = original_image.size
-    heatmap = np.zeros((img_height, img_width))
     
-    # Create a Gaussian peak centered at the main area
-    x = np.arange(0, img_width, 1)
-    y = np.arange(0, img_height, 1)
-    X, Y = np.meshgrid(x, y)
+    # Draw a few sliding windows at different scales
+    window_scales = [0.4, 0.6, 0.8]
+    for scale in window_scales:
+        window_width = int(img_width * scale)
+        window_height = int(img_height * scale)
+        
+        # Draw one window at the center for visualization
+        center_x = img_width // 2 - window_width // 2
+        center_y = img_height // 2 - window_height // 2
+        
+        rect = patches.Rectangle(
+            (center_x, center_y), window_width, window_height,
+            linewidth=2, edgecolor='yellow', facecolor='none', linestyle='--'
+        )
+        axes[1, 0].add_patch(rect)
+        
+        # Add text label
+        axes[1, 0].text(
+            center_x + window_width // 2, center_y - 5,
+            f"Window: {scale*100:.0f}% scale", 
+            color='white', fontsize=10, ha='center',
+            bbox=dict(facecolor='black', alpha=0.7)
+        )
     
-    # Center of the main area
-    center_x = (main_x1 + main_x2) / 2
-    center_y = (main_y1 + main_y2) / 2
-    
-    # Create the heatmap with a peak at the center of the main area
-    heatmap = np.exp(-0.5 * (((X - center_x) / (img_width * 0.1)) ** 2 + 
-                             ((Y - center_y) / (img_height * 0.1)) ** 2))
-    
-    # Display the heatmap
-    heatmap_display = axes[1, 0].imshow(heatmap, cmap='hot', alpha=0.5)
-    
-    # Add a colorbar
-    cbar = plt.colorbar(heatmap_display, ax=axes[1, 0], orientation='vertical', shrink=0.7)
-    cbar.set_label('Embedding Similarity')
-    
-    axes[1, 0].set_title("Similarity Matching Process", fontsize=12)
+    axes[1, 0].set_title("Sliding Window Approach", fontsize=12)
     axes[1, 0].axis('off')
     
     # Direct match result visualization
@@ -707,11 +719,13 @@ def visualize_direct_matching(
     
     # Add a text box explaining the process
     explanation = (
-        "1. Extract patch from current screen\n"
-        "2. Generate embedding\n"
+        "Sliding Window Matching Process:\n\n"
+        "1. Generate candidate regions at multiple scales\n"
+        "2. Generate embedding for each region\n"
         "3. Compare with reference embeddings\n"
-        "4. If similarity ≥ 0.8, use directly\n"
-        "5. Else fall back to anchor reconstruction"
+        "4. If similarity ≥ 0.7, use as a match\n"
+        "5. Refine using UI elements if needed\n"
+        "6. Else fall back to anchor reconstruction"
     )
     
     axes[1, 1].text(
@@ -722,7 +736,7 @@ def visualize_direct_matching(
         bbox=dict(facecolor='white', alpha=0.7)
     )
     
-    axes[1, 1].set_title("Direct Match Result", fontsize=12)
+    axes[1, 1].set_title("Match Result", fontsize=12)
     axes[1, 1].axis('off')
     
     # Save the figure
@@ -779,10 +793,10 @@ def visualize_detection_workflow(
     arrow2 = patches.FancyArrowPatch((20, 50), (20, 40), arrowstyle='->', linewidth=2, color='black')
     ax.add_patch(arrow2)
     
-    # Step 3: Direct Matching (left branch)
-    direct_box = patches.Rectangle((5, 25), 15, 15, linewidth=2, edgecolor='black', facecolor='yellow', alpha=0.5)
-    ax.add_patch(direct_box)
-    ax.text(12.5, 32.5, "Direct\nMatching", ha='center', fontsize=10)
+    # Step 3: Sliding Window Matching (left branch)
+    sliding_box = patches.Rectangle((5, 25), 15, 15, linewidth=2, edgecolor='black', facecolor='yellow', alpha=0.5)
+    ax.add_patch(sliding_box)
+    ax.text(12.5, 32.5, "Sliding\nWindow\nMatching", ha='center', fontsize=10)
     
     # Step 3 alternative: Anchor Matching (right branch)
     anchor_box = patches.Rectangle((30, 25), 15, 15, linewidth=2, edgecolor='black', facecolor='orange', alpha=0.5)
@@ -801,7 +815,7 @@ def visualize_detection_workflow(
     
     # Decision text
     ax.text(20, 45, "First try", ha='center', fontsize=10)
-    ax.text(37.5, 45, "If direct match fails", ha='center', fontsize=10)
+    ax.text(37.5, 45, "If sliding window match fails", ha='center', fontsize=10)
     
     # Arrows down
     arrow4a = patches.FancyArrowPatch((12.5, 25), (12.5, 15), arrowstyle='->', linewidth=2, color='black')
@@ -812,27 +826,27 @@ def visualize_detection_workflow(
     # Step 4: Results
     result_box1 = patches.Rectangle((5, 0), 15, 15, linewidth=2, edgecolor='black', facecolor='lightcoral', alpha=0.5)
     ax.add_patch(result_box1)
-    ax.text(12.5, 7.5, "Direct\nMatch Result", ha='center', fontsize=10)
+    ax.text(12.5, 7.5, "Sliding\nWindow\nMatch Result", ha='center', fontsize=10)
     
     result_box2 = patches.Rectangle((30, 0), 15, 15, linewidth=2, edgecolor='black', facecolor='lightcoral', alpha=0.5)
     ax.add_patch(result_box2)
     ax.text(37.5, 7.5, "Anchor\nReconstruction\nResult", ha='center', fontsize=10)
     
     # Right side: Visual examples from actual implementation
-    # Direct matching example (thumbnail)
+    # Reference patch example (thumbnail)
     if len(main_area_references) > 0:
         ref = main_area_references[0]
         ref_patch = ref["patch"]
         ref_height, ref_width = ref_patch.size[1], ref_patch.size[0]
         # Add a reference patch example
-        ax_ref = fig.add_axes([0.6, 0.75, 0.15, 0.15])
+        ax_ref = fig.add_axes([0.6, 0.75, 0.15, 0.15], frameon=True)
         ax_ref.imshow(ref_patch)
         ax_ref.set_title("Reference Patch Example", fontsize=10)
         ax_ref.axis('off')
     
     # Anchor points example (thumbnail)
     if len(anchor_points) > 0:
-        ax_anchor = fig.add_axes([0.6, 0.5, 0.15, 0.15])
+        ax_anchor = fig.add_axes([0.6, 0.5, 0.15, 0.15], frameon=True)
         ax_anchor.imshow(original_image)
         # Draw a few sample anchors
         for i, anchor in enumerate(anchor_points[:3]):
@@ -845,21 +859,21 @@ def visualize_detection_workflow(
         ax_anchor.set_title("Anchor Points Example", fontsize=10)
         ax_anchor.axis('off')
     
-    # Direct matching result (thumbnail)
-    ax_direct = fig.add_axes([0.6, 0.25, 0.15, 0.15])
-    ax_direct.imshow(original_image)
-    # Draw main area as would be found by direct matching
+    # Sliding window match result (thumbnail)
+    ax_sliding = fig.add_axes([0.6, 0.25, 0.15, 0.15], frameon=True)
+    ax_sliding.imshow(original_image)
+    # Draw main area as would be found by sliding window
     main_x1, main_y1, main_x2, main_y2 = main_area
     direct_rect = patches.Rectangle(
         (main_x1, main_y1), main_x2 - main_x1, main_y2 - main_y1,
         linewidth=2, edgecolor='magenta', facecolor='magenta', alpha=0.3
     )
-    ax_direct.add_patch(direct_rect)
-    ax_direct.set_title("Direct Matching Result", fontsize=10)
-    ax_direct.axis('off')
+    ax_sliding.add_patch(direct_rect)
+    ax_sliding.set_title("Sliding Window Result", fontsize=10)
+    ax_sliding.axis('off')
     
     # Anchor reconstruction result (thumbnail)
-    ax_recon = fig.add_axes([0.8, 0.25, 0.15, 0.15])
+    ax_recon = fig.add_axes([0.8, 0.25, 0.15, 0.15], frameon=True)
     ax_recon.imshow(original_image)
     # Draw main area as reconstructed from anchors (with slight variation for visualization)
     # Add a small random variation for illustration
@@ -880,15 +894,18 @@ def visualize_detection_workflow(
         "Detection Workflow:\n\n"
         "1. Load the input image\n"
         "2. Load the detection model\n"
-        "3. First try direct matching with main area references\n"
-        "   - Compare current screen with saved reference patches\n"
-        "   - If similarity ≥ 0.8, use the matched main area\n\n"
-        "4. If direct matching fails, use anchor-based reconstruction\n"
+        "3. First try sliding window matching with reference patches\n"
+        "   - Generate candidate regions at multiple scales\n"
+        "   - Compare embeddings with reference patches\n"
+        "   - If similarity ≥ 0.7, use the matched region\n\n"
+        "4. If sliding window matching fails, use anchor-based reconstruction\n"
         "   - Find UI elements matching saved anchor points\n"
         "   - Apply directional constraints from each anchor\n"
         "   - Reconstruct main area using these constraints\n\n"
-        "This two-tier approach provides both speed (direct matching)\n"
-        "and robustness to content changes (anchor reconstruction)."
+        "5. Final fallbacks if all else fails:\n"
+        "   - Use low-confidence sliding window match\n"
+        "   - Scale original main area proportionally\n\n"
+        "This approach provides both speed and robustness to content changes."
     )
     
     ax.text(80, 50, explanation, fontsize=10, va='center',
@@ -970,7 +987,7 @@ def test_anchor_based_detector(use_viewport=False):
                 max_main_area_references=4
             )
             
-            # Train the detector - now uses dynamic detector to find main area
+            # Train the detector - now using train_with_frames method
             logger.info("Training the detector...")
             logger.info("-" * 50)
             logger.info("TRAINING PHASE")
@@ -1065,7 +1082,7 @@ def test_anchor_based_detector(use_viewport=False):
                 logger.info(f"Detecting main area in frame {i}...")
                 detection_result = runtime_detector.detect(model, temp_dir)
                 
-                logger.info(f"  - Success: {detection_result['success']}")
+                logger.info(f"  - Success: {detection_result.get('success', False)}")
                 logger.info(f"  - Method: {detection_result.get('method', 'N/A')}")
                 logger.info(f"  - Confidence: {detection_result.get('confidence', 0):.4f}")
                 logger.info(f"  - Detected main area: {detection_result.get('main_area', 'None')}")
@@ -1108,6 +1125,7 @@ def test_anchor_based_detector(use_viewport=False):
             
             # Log success and list visualization files
             vis_files = list(OUTPUT_DIR.glob(f"_*.png"))
+            
             logger.info(f"Test completed. Created {len(vis_files)} visualization files:")
             for file in vis_files:
                 logger.info(f"  - {file.name}")
