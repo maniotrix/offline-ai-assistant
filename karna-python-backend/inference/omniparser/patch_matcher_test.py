@@ -9,7 +9,7 @@ from omni_helper import get_omniparser_inference_data_from_image_path, OmniParse
 def test_patch_matching_across_themes():
     """
     Test the PatchMatcher class with source filtering by:
-    1. Loading a specific icon patch (38_Up or down.png)
+    1. Loading a specific icon patch (38_Up_or_down.png)
     2. Comparing it against elements in both ChatGPT light and dark theme screenshots
     3. Testing with different source type filters
     """
