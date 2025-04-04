@@ -12,6 +12,7 @@ import logging
 from vertical_patch_matcher import VerticalPatchMatcher
 from vertical_patch_matcher import PatchMatchResult
 from PIL import Image
+import pyautogui
 logger = logging.getLogger(__name__)
 
 class ScreenObjectType(str, Enum):
@@ -224,6 +225,7 @@ class TaskExecutor():
         Returns:
             Optional[PatchMatchResult]: The match result if found, None otherwise
         """
+        logger.info(f"Finding match for target: {target}")
         target_type = target.type
         target_value = target.value
         
@@ -267,14 +269,14 @@ class TaskExecutor():
                 result = self.vertical_patch_matcher.find_identical_element(
                     patch_img, 
                     omniparser_result_model, 
-                    source_types=source_types
+                    # source_types=source_types
                 )
             else:
                 # Use standard matching
                 result = self.vertical_patch_matcher.find_matching_element(
                     patch_img, 
                     omniparser_result_model, 
-                    source_types=source_types
+                    # source_types=source_types
                 )
                 
             # Log the result
@@ -310,11 +312,30 @@ class TaskExecutor():
         parsed_content_result = match.parsed_content_result if match else None
         if parsed_content_result:
             logger.info(f"Parsed content result: {parsed_content_result}")
-            x = parsed_content_result.bbox[0]
-            y = parsed_content_result.bbox[1]
+            normalized_bbox = self.normalize_bbox(parsed_content_result.bbox)
+            x = normalized_bbox[0]
+            y = normalized_bbox[1]
+            print(f"Clicking at: {x}, {y}")
             self.chrome_robot.click(int(x), int(y))
         else:
             logger.error(f"Could not find patch for target: {mouse_step.target}")
+    
+    def normalize_bbox(self, bbox: List[float]) -> List[int]:
+        """
+        Normalize the bbox to the screen size coordinates from viewport coordinates.
+        """
+        # Convert from viewport-relative coordinates to absolute screen coordinates
+        # by adding the viewport's position offset
+        viewport_x = DEFAULT_VIEWPORT["x"]
+        viewport_y = DEFAULT_VIEWPORT["y"]
+        
+        # Calculate absolute screen coordinates
+        absolute_x1 = int(viewport_x + bbox[0])
+        absolute_y1 = int(viewport_y + bbox[1])
+        absolute_x2 = int(viewport_x + bbox[2])
+        absolute_y2 = int(viewport_y + bbox[3])
+        
+        return [absolute_x1, absolute_y1, absolute_x2, absolute_y2]
     
     def open_app_snapped_right(self) -> bool:
         """
@@ -359,6 +380,12 @@ class TaskExecutor():
         Get the omniparser result model.
         """
         image_path = self.capture_viewport_screenshot()
+        logger.info(f"Image path: {image_path}")
+        # save the image to the current directory
+        v_image_path = os.path.join(self.current_directory, "viewport_screenshot.png")
+        v_image = Image.open(image_path)
+        v_image.save(v_image_path)
+        # get the omniparser result model
         return get_omniparser_result_model_from_image_path(image_path, self.omniparser)
 
 
