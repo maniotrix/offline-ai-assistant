@@ -492,28 +492,30 @@ class AnchorBasedMainAreaDetector:
         logger.info(f"Saved {len(serializable_anchors)} anchor points and {len(serializable_references)} main area references")
         return serializable_anchors, serializable_references
     
-    def train(
+    def train_with_frames(
         self,
-        result_model: OmniParserResultModel,
         frames: List[OmniParserResultModel],
-        main_area: List[float],
         save_dir: str = None
     ) -> Dict[str, Any]:
         """
-        Train the detector using extracted patches from frames and save the model.
+        Train the detector using a list of frames and save the model.
+        The main area is automatically detected using the dynamic detector.
         
         Args:
-            result_model: OmniParser result for the current frame
             frames: List of OmniParser results for all training frames
-            main_area: Bounding box of the main content area [x1, y1, x2, y2]
             save_dir: Directory to save model data (if None, no saving is done)
             
         Returns:
             Dictionary with training results
         """
-        logger.info("Training anchor-based main area detector")
+        if not frames:
+            logger.error("No frames provided for training")
+            return {"success": False, "error": "No frames provided for training"}
         
-        # Get the first frame's image path for reference
+        logger.info("Training anchor-based main area detector using frames")
+        
+        # Get the first frame as the reference frame
+        result_model = frames[0]
         image_path = result_model.omniparser_result.original_image_path
         image = Image.open(image_path).convert("RGB")
         
@@ -523,10 +525,43 @@ class AnchorBasedMainAreaDetector:
         
         logger.info(f"Training with image dimensions: {image_width}x{image_height}")
         
-        # 1. Extract patches
+        # Use the dynamic detector to find the main area automatically
+        logger.info("Using dynamic detector to find main content area")
+        
+        # Create results list for the dynamic detector
+        results_list = OmniParserResultModelList(
+            omniparser_result_models=frames,
+            project_uuid="",  # Placeholder value
+            command_uuid=""   # Placeholder value
+        )
+        
+        # Detect main areas
+        detection_result = self.dynamic_detector.detect_main_areas(results_list)
+        
+        # Get the main content area - prefer main_content_area, then vertical_union, then largest_area
+        main_area = None
+        area_source = None
+        
+        if detection_result.get("main_content_area"):
+            main_area = detection_result["main_content_area"]
+            area_source = "main_content_area"
+        elif detection_result.get("vertical_union"):
+            main_area = detection_result["vertical_union"]
+            area_source = "vertical_union"
+        elif detection_result.get("largest_area"):
+            main_area = detection_result["largest_area"]
+            area_source = "largest_area"
+        
+        if main_area is None:
+            logger.error("Dynamic detector failed to find main area")
+            return {"success": False, "error": "Dynamic detector failed to find main area"}
+        
+        logger.info(f"Detected main area from {area_source}: {main_area}")
+        
+        # 1. Extract patches from the reference frame
         self._extract_all_patches(image, result_model)
         
-        # 2. Find stable elements
+        # 2. Find stable elements across all frames
         stable_elements = self._find_stable_elements(frames)
         
         # 3. Identify anchor points
@@ -535,11 +570,6 @@ class AnchorBasedMainAreaDetector:
         )
         
         # 4. Extract main area references from all frames
-        results_list = OmniParserResultModelList(
-            omniparser_result_models=frames,
-            project_uuid="",  # Placeholder value
-            command_uuid=""   # Placeholder value
-        )
         main_area_references = self._extract_main_area_references(
             results_list, main_area
         )
@@ -572,5 +602,30 @@ class AnchorBasedMainAreaDetector:
         return {
             "success": True,
             "anchor_points": anchor_points,
-            "main_area": main_area
+            "main_area": main_area,
+            "area_source": area_source
         }
+
+    def train(
+        self,
+        result_model: OmniParserResultModel,
+        frames: List[OmniParserResultModel],
+        save_dir: str = None
+    ) -> Dict[str, Any]:
+        """
+        Train the detector using extracted patches from frames and save the model.
+        The main area is automatically detected using the dynamic detector.
+        
+        This method is kept for backward compatibility. For new code, use train_with_frames.
+        
+        Args:
+            result_model: OmniParser result for the current frame (ignored, using first frame from frames)
+            frames: List of OmniParser results for all training frames
+            save_dir: Directory to save model data (if None, no saving is done)
+            
+        Returns:
+            Dictionary with training results
+        """
+        # Just delegate to train_with_frames
+        logger.info("Using train_with_frames method (result_model parameter is now ignored)")
+        return self.train_with_frames(frames, save_dir)

@@ -930,20 +930,10 @@ def test_anchor_based_detector(use_viewport=False):
             
         logger.info(f"Successfully loaded {len(test_data.omniparser_result_models)} models from JSON file")
         
-        # Get a sample main area (you would normally get this from user input or another detector)
-        # For this test, we'll use a hardcoded main area covering the central portion of the screen
+        # Get sample model
         sample_model = test_data.omniparser_result_models[0]
         image_path = sample_model.omniparser_result.original_image_path
         img = Image.open(image_path).convert("RGB")
-        img_width, img_height = img.size
-        
-        # Define a sample main area (adjust as needed)
-        main_area = [
-            img_width * 0.2,  # x1 (20% from left)
-            img_height * 0.2,  # y1 (20% from top)
-            img_width * 0.8,   # x2 (20% from right)
-            img_height * 0.8,  # y2 (20% from bottom)
-        ]
         
         # Create a temporary directory for the model
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -953,26 +943,27 @@ def test_anchor_based_detector(use_viewport=False):
                 max_main_area_references=4
             )
             
-            # Train the detector
+            # Train the detector - now uses dynamic detector to find main area
             logger.info("Training the detector...")
-            training_result = detector.train(
-                result_model=sample_model,
+            training_result = detector.train_with_frames(
                 frames=test_data.omniparser_result_models,
-                main_area=main_area,
                 save_dir=temp_dir
             )
             
             # Verify training result
             if not training_result["success"]:
-                logger.error("Training failed.")
+                logger.error(f"Training failed: {training_result.get('error', 'Unknown error')}")
                 return
                 
             logger.info(f"Training successful. Found {len(training_result['anchor_points'])} anchor points.")
+            logger.info(f"Detected main area: {training_result['main_area']} (source: {training_result['area_source']})")
             
             # Load and test the runtime detector
             runtime_detector = AnchorBasedMainAreaDetectorRuntime()
             
-            # Don't run full detection as part of this test, but we'll visualize the trained model
+            # Get the automatically detected main area for visualizations
+            main_area = training_result["main_area"]
+            
             # Create visualizations
             logger.info("Creating visualizations...")
             
@@ -988,7 +979,7 @@ def test_anchor_based_detector(use_viewport=False):
             )
             visualize_main_area_references(main_area_references, main_area, img, timestamp)
             
-            # 2. Direct matching visualization (new)
+            # 2. Direct matching visualization
             visualize_direct_matching(main_area_references, main_area, img, timestamp)
             
             # 3. Anchor points visualization
