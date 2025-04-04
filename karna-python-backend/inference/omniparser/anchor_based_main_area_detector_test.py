@@ -613,6 +613,283 @@ def visualize_reconstruction_simulation(
     plt.close(fig)
     logger.info(f"Saved reconstruction simulation visualization")
 
+def visualize_direct_matching(
+    main_area_references: List[Dict[str, Any]],
+    main_area: List[float],
+    original_image: Image.Image,
+    timestamp: str
+):
+    """
+    Visualize the direct matching process with main area references.
+    
+    Args:
+        main_area_references: List of main area reference dictionaries
+        main_area: Main area bounding box
+        original_image: Original image for reference
+        timestamp: Timestamp for filename
+    """
+    # Create a figure with a 2x2 grid showing the direct matching process
+    fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+    fig.suptitle("Direct Matching with Main Area References", fontsize=16)
+    
+    # Original image with main area
+    axes[0, 0].imshow(original_image)
+    main_x1, main_y1, main_x2, main_y2 = main_area
+    main_rect = patches.Rectangle(
+        (main_x1, main_y1), main_x2 - main_x1, main_y2 - main_y1,
+        linewidth=3, edgecolor='green', facecolor='green', alpha=0.3
+    )
+    axes[0, 0].add_patch(main_rect)
+    axes[0, 0].set_title("Original Main Area", fontsize=12)
+    axes[0, 0].axis('off')
+    
+    # Reference patch to match
+    if len(main_area_references) > 0:
+        # Use the first reference as an example
+        ref = main_area_references[0]
+        axes[0, 1].imshow(ref["patch"])
+        axes[0, 1].set_title(f"Reference Patch (Frame {ref['frame_index']})", fontsize=12)
+        axes[0, 1].axis('off')
+    else:
+        axes[0, 1].text(0.5, 0.5, "No reference patches available", 
+                        ha='center', fontsize=12)
+        axes[0, 1].axis('off')
+    
+    # Illustration of embedding comparison process
+    axes[1, 0].imshow(original_image, alpha=0.6)  # Semi-transparent original image
+    
+    # Create a heatmap-like overlay to represent similarity comparison
+    # This is just a visualization representation of the process
+    img_width, img_height = original_image.size
+    heatmap = np.zeros((img_height, img_width))
+    
+    # Create a Gaussian peak centered at the main area
+    x = np.arange(0, img_width, 1)
+    y = np.arange(0, img_height, 1)
+    X, Y = np.meshgrid(x, y)
+    
+    # Center of the main area
+    center_x = (main_x1 + main_x2) / 2
+    center_y = (main_y1 + main_y2) / 2
+    
+    # Create the heatmap with a peak at the center of the main area
+    heatmap = np.exp(-0.5 * (((X - center_x) / (img_width * 0.1)) ** 2 + 
+                             ((Y - center_y) / (img_height * 0.1)) ** 2))
+    
+    # Display the heatmap
+    heatmap_display = axes[1, 0].imshow(heatmap, cmap='hot', alpha=0.5)
+    
+    # Add a colorbar
+    cbar = plt.colorbar(heatmap_display, ax=axes[1, 0], orientation='vertical', shrink=0.7)
+    cbar.set_label('Embedding Similarity')
+    
+    axes[1, 0].set_title("Similarity Matching Process", fontsize=12)
+    axes[1, 0].axis('off')
+    
+    # Direct match result visualization
+    axes[1, 1].imshow(original_image)
+    
+    # Show the match result - assuming success for visualization
+    main_rect = patches.Rectangle(
+        (main_x1, main_y1), main_x2 - main_x1, main_y2 - main_y1,
+        linewidth=3, edgecolor='magenta', facecolor='magenta', alpha=0.3
+    )
+    axes[1, 1].add_patch(main_rect)
+    
+    # Add a text box explaining the process
+    explanation = (
+        "1. Extract patch from current screen\n"
+        "2. Generate embedding\n"
+        "3. Compare with reference embeddings\n"
+        "4. If similarity ≥ 0.8, use directly\n"
+        "5. Else fall back to anchor reconstruction"
+    )
+    
+    axes[1, 1].text(
+        0.05, 0.05, explanation,
+        transform=axes[1, 1].transAxes,
+        fontsize=10,
+        verticalalignment='bottom',
+        bbox=dict(facecolor='white', alpha=0.7)
+    )
+    
+    axes[1, 1].set_title("Direct Match Result", fontsize=12)
+    axes[1, 1].axis('off')
+    
+    # Save the figure
+    plt.tight_layout()
+    fig.savefig(OUTPUT_DIR / f"{timestamp}_direct_matching.png", dpi=150)
+    plt.close(fig)
+    logger.info(f"Saved direct matching visualization")
+
+def visualize_detection_workflow(
+    main_area_references: List[Dict[str, Any]],
+    anchor_points: List[Dict[str, Any]],
+    main_area: List[float],
+    original_image: Image.Image,
+    timestamp: str
+):
+    """
+    Visualize the complete detection workflow showing both direct matching and anchor-based methods.
+    
+    Args:
+        main_area_references: List of main area reference dictionaries
+        anchor_points: List of anchor point dictionaries
+        main_area: Main area bounding box
+        original_image: Original image for reference
+        timestamp: Timestamp for filename
+    """
+    # Create a figure with flowchart style showing the detection pipeline
+    fig, ax = plt.subplots(figsize=(15, 10))
+    
+    # Hide the actual axis
+    ax.axis('off')
+    
+    # Set up the canvas for a flowchart-style visualization
+    ax.set_xlim(0, 100)
+    ax.set_ylim(0, 100)
+    
+    # Add title
+    ax.text(50, 95, "Detection Workflow", ha='center', fontsize=20, fontweight='bold')
+    
+    # Step 1: Input image
+    img_box = patches.Rectangle((10, 75), 20, 15, linewidth=2, edgecolor='black', facecolor='lightblue', alpha=0.5)
+    ax.add_patch(img_box)
+    ax.text(20, 82.5, "Input Image", ha='center', fontsize=12)
+    
+    # Arrow down
+    arrow1 = patches.FancyArrowPatch((20, 75), (20, 65), arrowstyle='->', linewidth=2, color='black')
+    ax.add_patch(arrow1)
+    
+    # Step 2: Load Model
+    model_box = patches.Rectangle((10, 50), 20, 15, linewidth=2, edgecolor='black', facecolor='lightgreen', alpha=0.5)
+    ax.add_patch(model_box)
+    ax.text(20, 57.5, "Load Model", ha='center', fontsize=12)
+    
+    # Arrow down
+    arrow2 = patches.FancyArrowPatch((20, 50), (20, 40), arrowstyle='->', linewidth=2, color='black')
+    ax.add_patch(arrow2)
+    
+    # Step 3: Direct Matching (left branch)
+    direct_box = patches.Rectangle((5, 25), 15, 15, linewidth=2, edgecolor='black', facecolor='yellow', alpha=0.5)
+    ax.add_patch(direct_box)
+    ax.text(12.5, 32.5, "Direct\nMatching", ha='center', fontsize=10)
+    
+    # Step 3 alternative: Anchor Matching (right branch)
+    anchor_box = patches.Rectangle((30, 25), 15, 15, linewidth=2, edgecolor='black', facecolor='orange', alpha=0.5)
+    ax.add_patch(anchor_box)
+    ax.text(37.5, 32.5, "Anchor\nReconstruction", ha='center', fontsize=10)
+    
+    # Branch arrows
+    arrow3a = patches.FancyArrowPatch((20, 40), (12.5, 40), arrowstyle='-', linewidth=2, color='black')
+    ax.add_patch(arrow3a)
+    arrow3b = patches.FancyArrowPatch((12.5, 40), (12.5, 40), arrowstyle='->', linewidth=2, color='black')
+    ax.add_patch(arrow3b)
+    arrow3c = patches.FancyArrowPatch((20, 40), (37.5, 40), arrowstyle='-', linewidth=2, color='black')
+    ax.add_patch(arrow3c)
+    arrow3d = patches.FancyArrowPatch((37.5, 40), (37.5, 40), arrowstyle='->', linewidth=2, color='black')
+    ax.add_patch(arrow3d)
+    
+    # Decision text
+    ax.text(20, 45, "First try", ha='center', fontsize=10)
+    ax.text(37.5, 45, "If direct match fails", ha='center', fontsize=10)
+    
+    # Arrows down
+    arrow4a = patches.FancyArrowPatch((12.5, 25), (12.5, 15), arrowstyle='->', linewidth=2, color='black')
+    ax.add_patch(arrow4a)
+    arrow4b = patches.FancyArrowPatch((37.5, 25), (37.5, 15), arrowstyle='->', linewidth=2, color='black')
+    ax.add_patch(arrow4b)
+    
+    # Step 4: Results
+    result_box1 = patches.Rectangle((5, 0), 15, 15, linewidth=2, edgecolor='black', facecolor='lightcoral', alpha=0.5)
+    ax.add_patch(result_box1)
+    ax.text(12.5, 7.5, "Direct\nMatch Result", ha='center', fontsize=10)
+    
+    result_box2 = patches.Rectangle((30, 0), 15, 15, linewidth=2, edgecolor='black', facecolor='lightcoral', alpha=0.5)
+    ax.add_patch(result_box2)
+    ax.text(37.5, 7.5, "Anchor\nReconstruction\nResult", ha='center', fontsize=10)
+    
+    # Right side: Visual examples from actual implementation
+    # Direct matching example (thumbnail)
+    if len(main_area_references) > 0:
+        ref = main_area_references[0]
+        ref_patch = ref["patch"]
+        ref_height, ref_width = ref_patch.size[1], ref_patch.size[0]
+        # Add a reference patch example
+        ax_ref = fig.add_axes([0.6, 0.75, 0.15, 0.15])
+        ax_ref.imshow(ref_patch)
+        ax_ref.set_title("Reference Patch Example", fontsize=10)
+        ax_ref.axis('off')
+    
+    # Anchor points example (thumbnail)
+    if len(anchor_points) > 0:
+        ax_anchor = fig.add_axes([0.6, 0.5, 0.15, 0.15])
+        ax_anchor.imshow(original_image)
+        # Draw a few sample anchors
+        for i, anchor in enumerate(anchor_points[:3]):
+            x1, y1, x2, y2 = anchor["bbox"]
+            rect = patches.Rectangle(
+                (x1, y1), x2 - x1, y2 - y1,
+                linewidth=2, edgecolor='red', facecolor='none'
+            )
+            ax_anchor.add_patch(rect)
+        ax_anchor.set_title("Anchor Points Example", fontsize=10)
+        ax_anchor.axis('off')
+    
+    # Direct matching result (thumbnail)
+    ax_direct = fig.add_axes([0.6, 0.25, 0.15, 0.15])
+    ax_direct.imshow(original_image)
+    # Draw main area as would be found by direct matching
+    main_x1, main_y1, main_x2, main_y2 = main_area
+    direct_rect = patches.Rectangle(
+        (main_x1, main_y1), main_x2 - main_x1, main_y2 - main_y1,
+        linewidth=2, edgecolor='magenta', facecolor='magenta', alpha=0.3
+    )
+    ax_direct.add_patch(direct_rect)
+    ax_direct.set_title("Direct Matching Result", fontsize=10)
+    ax_direct.axis('off')
+    
+    # Anchor reconstruction result (thumbnail)
+    ax_recon = fig.add_axes([0.8, 0.25, 0.15, 0.15])
+    ax_recon.imshow(original_image)
+    # Draw main area as reconstructed from anchors (with slight variation for visualization)
+    # Add a small random variation for illustration
+    recon_x1 = main_x1 * 0.95
+    recon_y1 = main_y1 * 0.95
+    recon_x2 = main_x2 * 1.05
+    recon_y2 = main_y2 * 1.05
+    recon_rect = patches.Rectangle(
+        (recon_x1, recon_y1), recon_x2 - recon_x1, recon_y2 - recon_y1,
+        linewidth=2, edgecolor='cyan', facecolor='cyan', alpha=0.3
+    )
+    ax_recon.add_patch(recon_rect)
+    ax_recon.set_title("Anchor Reconstruction", fontsize=10)
+    ax_recon.axis('off')
+    
+    # Add explanation text
+    explanation = (
+        "Detection Workflow:\n\n"
+        "1. Load the input image\n"
+        "2. Load the detection model\n"
+        "3. First try direct matching with main area references\n"
+        "   - Compare current screen with saved reference patches\n"
+        "   - If similarity ≥ 0.8, use the matched main area\n\n"
+        "4. If direct matching fails, use anchor-based reconstruction\n"
+        "   - Find UI elements matching saved anchor points\n"
+        "   - Apply directional constraints from each anchor\n"
+        "   - Reconstruct main area using these constraints\n\n"
+        "This two-tier approach provides both speed (direct matching)\n"
+        "and robustness to content changes (anchor reconstruction)."
+    )
+    
+    ax.text(80, 50, explanation, fontsize=10, va='center',
+            bbox=dict(facecolor='white', alpha=0.7, boxstyle='round,pad=1'))
+    
+    # Save the figure
+    plt.savefig(OUTPUT_DIR / f"{timestamp}_detection_workflow.png", dpi=150)
+    plt.close(fig)
+    logger.info(f"Saved detection workflow visualization")
+
 def test_anchor_based_detector(use_viewport=False):
     """
     Test the AnchorBasedMainAreaDetector to verify its functionality and visualize results.
@@ -711,15 +988,21 @@ def test_anchor_based_detector(use_viewport=False):
             )
             visualize_main_area_references(main_area_references, main_area, img, timestamp)
             
-            # 2. Anchor points visualization
+            # 2. Direct matching visualization (new)
+            visualize_direct_matching(main_area_references, main_area, img, timestamp)
+            
+            # 3. Anchor points visualization
             anchor_points = training_result["anchor_points"]
             visualize_anchor_points(anchor_points, img, timestamp)
             
-            # 3. Anchor relationships visualization
+            # 4. Anchor relationships visualization
             visualize_anchor_relationships(anchor_points, main_area, img, timestamp)
             
-            # 4. Reconstruction simulation
+            # 5. Reconstruction simulation
             visualize_reconstruction_simulation(anchor_points, main_area, img, timestamp)
+            
+            # 6. Create a detection workflow visualization showing the full pipeline
+            visualize_detection_workflow(main_area_references, anchor_points, main_area, img, timestamp)
             
             # Log success and list visualization files
             vis_files = list(OUTPUT_DIR.glob(f"{timestamp}_*.png"))

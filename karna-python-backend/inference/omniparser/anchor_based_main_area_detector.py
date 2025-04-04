@@ -32,7 +32,6 @@ class AnchorPointData(BaseModel):
     vertical_relation: str
     stability_score: float
     patch_path: str
-    embedding_path: str
 
 class MainAreaReferenceData(BaseModel):
     """Data model for main area reference patches to be serialized/deserialized."""
@@ -446,11 +445,9 @@ class AnchorBasedMainAreaDetector:
         os.makedirs(save_dir, exist_ok=True)
         anchors_dir = os.path.join(save_dir, "anchors")
         main_areas_dir = os.path.join(save_dir, "main_areas")
-        embeddings_dir = os.path.join(save_dir, "embeddings")
         
         os.makedirs(anchors_dir, exist_ok=True)
         os.makedirs(main_areas_dir, exist_ok=True)
-        os.makedirs(embeddings_dir, exist_ok=True)
         
         # Save anchor points
         serializable_anchors = []
@@ -459,12 +456,6 @@ class AnchorBasedMainAreaDetector:
             patch_filename = f"anchor_{i}_{anchor['constraint_direction']}.png"
             patch_path = os.path.join(anchors_dir, patch_filename)
             anchor["patch"].save(patch_path)
-            
-            # Save embedding
-            embedding_filename = f"anchor_{i}_{anchor['constraint_direction']}.npy"
-            embedding_path = os.path.join(embeddings_dir, embedding_filename)
-            if anchor["embedding"] is not None:
-                np.save(embedding_path, anchor["embedding"])
             
             # Create serializable anchor data
             anchor_data = AnchorPointData(
@@ -476,8 +467,7 @@ class AnchorBasedMainAreaDetector:
                 horizontal_relation=anchor["horizontal_relation"],
                 vertical_relation=anchor["vertical_relation"],
                 stability_score=anchor["stability_score"],
-                patch_path=os.path.join("anchors", patch_filename),
-                embedding_path=os.path.join("embeddings", embedding_filename)
+                patch_path=os.path.join("anchors", patch_filename)
             )
             
             serializable_anchors.append(anchor_data)

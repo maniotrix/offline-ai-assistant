@@ -83,14 +83,14 @@ class AnchorBasedMainAreaDetectorRuntime:
         anchor_points: List[AnchorPointData]
     ) -> List[Dict[str, Any]]:
         """
-        Load anchor points with their visual embeddings.
+        Load anchor points and generate their visual embeddings at runtime.
         
         Args:
             model_dir: Directory containing the model files
             anchor_points: List of anchor point data
             
         Returns:
-            List of anchor points with loaded patches and embeddings
+            List of anchor points with loaded patches and generated embeddings
         """
         loaded_anchors = []
         
@@ -103,34 +103,28 @@ class AnchorBasedMainAreaDetectorRuntime:
             
             patch = Image.open(patch_path).convert("RGB")
             
-            # Load the embedding if it exists
-            embedding_path = os.path.join(model_dir, anchor.embedding_path)
-            if os.path.exists(embedding_path):
-                embedding = np.load(embedding_path)
-            else:
-                # Generate embedding if file not found
-                logger.warning(f"Embedding file not found: {embedding_path}")
-                try:
-                    embedding = self.embedder.get_embedding(patch)
-                except Exception as e:
-                    logger.error(f"Failed to generate embedding: {e}")
-                    continue
-            
-            # Create loaded anchor with patch and embedding
-            loaded_anchor = {
-                "element_id": anchor.element_id,
-                "element_type": anchor.element_type,
-                "bbox": anchor.bbox,
-                "source": anchor.source,
-                "constraint_direction": anchor.constraint_direction,
-                "horizontal_relation": anchor.horizontal_relation,
-                "vertical_relation": anchor.vertical_relation,
-                "stability_score": anchor.stability_score,
-                "patch": patch,
-                "embedding": embedding
-            }
-            
-            loaded_anchors.append(loaded_anchor)
+            # Generate embedding at runtime
+            try:
+                embedding = self.embedder.get_embedding(patch)
+                
+                # Create loaded anchor with patch and embedding
+                loaded_anchor = {
+                    "element_id": anchor.element_id,
+                    "element_type": anchor.element_type,
+                    "bbox": anchor.bbox,
+                    "source": anchor.source,
+                    "constraint_direction": anchor.constraint_direction,
+                    "horizontal_relation": anchor.horizontal_relation,
+                    "vertical_relation": anchor.vertical_relation,
+                    "stability_score": anchor.stability_score,
+                    "patch": patch,
+                    "embedding": embedding
+                }
+                
+                loaded_anchors.append(loaded_anchor)
+            except Exception as e:
+                logger.error(f"Failed to generate embedding for anchor: {e}")
+                continue
         
         logger.info(f"Loaded {len(loaded_anchors)} anchor points with embeddings")
         return loaded_anchors
