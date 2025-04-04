@@ -922,6 +922,8 @@ def test_anchor_based_detector(use_viewport=False):
         # Load real data from JSON file
         logger.info(f"Loading data from: {JSON_FILE_PATH}")
         screenshot_events = load_screenshot_events(JSON_FILE_PATH, viewport=viewport)
+        
+        # Create OmniParserResultModelList once - we'll reuse this
         test_data = get_omniparser_inference_data(screenshot_events)
         
         if not test_data.omniparser_result_models:
@@ -930,7 +932,7 @@ def test_anchor_based_detector(use_viewport=False):
             
         logger.info(f"Successfully loaded {len(test_data.omniparser_result_models)} models from JSON file")
         
-        # Get sample model
+        # Get sample model for visualizations
         sample_model = test_data.omniparser_result_models[0]
         image_path = sample_model.omniparser_result.original_image_path
         img = Image.open(image_path).convert("RGB")
@@ -946,7 +948,7 @@ def test_anchor_based_detector(use_viewport=False):
             # Train the detector - now uses dynamic detector to find main area
             logger.info("Training the detector...")
             training_result = detector.train_with_frames(
-                frames=test_data.omniparser_result_models,
+                results_list=test_data,
                 save_dir=temp_dir
             )
             
@@ -968,14 +970,9 @@ def test_anchor_based_detector(use_viewport=False):
             logger.info("Creating visualizations...")
             
             # 1. Main area references visualization
-            # Get the main area references from the training result
-            results_list = OmniParserResultModelList(
-                omniparser_result_models=test_data.omniparser_result_models,
-                project_uuid="",  # Placeholder
-                command_uuid=""   # Placeholder
-            )
+            # Extract main area references directly from the training result
             main_area_references = detector._extract_main_area_references(
-                results_list, main_area
+                test_data, main_area
             )
             visualize_main_area_references(main_area_references, main_area, img, timestamp)
             
