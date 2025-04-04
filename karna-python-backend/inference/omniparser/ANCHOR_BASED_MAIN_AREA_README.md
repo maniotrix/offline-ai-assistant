@@ -15,11 +15,11 @@ The implementation follows a decoupled architecture with two main components:
 ## Key Concepts
 
 - **Main Area**: The primary content region on a screen that contains the main UI/content (excluding navigation bars, menus, etc.)
-- **Main Area References**: Visual samples of the main content area from multiple frames used for direct matching
+- **Main Area References**: Visual samples of the main content area from multiple frames used for matching
 - **Anchor Points**: Stable UI elements that maintain consistent positioning relative to the main content area
 - **Constraint Directions**: How anchor points relate spatially to the main area (top, bottom, left, right)
 - **Stability Score**: Metric measuring how stable an element is across frames
-- **Direct Matching**: Primary detection method using visual similarity of main area references
+- **Sliding Window Matching**: Primary detection method using visual similarity with candidate regions
 - **Anchor-based Reconstruction**: Fallback method using spatial constraints from anchor points
 
 ## Training Phase - `AnchorBasedMainAreaDetector`
@@ -65,20 +65,25 @@ Elements are evaluated for stability using:
 detector = AnchorBasedMainAreaDetectorRuntime(
     model_name='resnet50',
     main_area_match_threshold=0.7,
-    anchor_match_threshold=0.8
+    anchor_match_threshold=0.8,
+    sliding_window_steps=5,
+    sliding_window_sizes=[0.4, 0.5, 0.6, 0.7, 0.8]
 )
 ```
 
 ### Detection Algorithm
-The detection process follows a two-tier approach:
+The detection process follows a multi-tier approach:
 
-1. **Direct Matching (Primary Method)**:
-   - Compares each stored main area reference with the current frame using visual embeddings
-   - If a match is found with confidence >= 0.8, its bounding box is returned
+1. **Sliding Window Matching (Primary Method)**:
+   - Generates candidate regions at multiple scales using a sliding window approach
+   - Creates candidate regions ranging from 40-80% of image size with overlapping steps
+   - Compares each region with stored reference patches using visual embeddings
+   - If a match is found with confidence >= 0.7, its bounding box is returned
+   - Refines the match using UI elements if needed
    - Fast and effective when visual content is similar
 
-2. **Anchor-based Reconstruction (Fallback Method)**:
-   - Used when direct matching fails or has low confidence
+2. **Anchor-based Reconstruction (First Fallback)**:
+   - Used when sliding window matching fails or has low confidence
    - Matches anchor points in the current frame using visual similarity
    - Applies both horizontal and vertical constraints from each matched anchor:
      - For horizontal: left/right constraints based on horizontal_relation
@@ -86,11 +91,16 @@ The detection process follows a two-tier approach:
    - Reconstructs the main area using available constraints
    - More resilient to visual changes but requires good anchor distribution
 
-3. **Scaled Original (Last Resort)**:
-   - If both methods fail, scales the original main area to the new dimensions
+3. **Low-Confidence Matching (Second Fallback)**:
+   - If anchor reconstruction fails but a low-confidence sliding window match exists,
+     uses that match as a best-effort solution
+
+4. **Scaled Original (Last Resort)**:
+   - If all methods fail, scales the original main area proportionally to the new image dimensions
+   - Provides a basic fallback when no other method succeeds
 
 ### Confidence Calculation
-- **Direct Matching**: Cosine similarity between embeddings
+- **Sliding Window Matching**: Cosine similarity between embeddings
 - **Anchor Reconstruction**: Combination of anchor count and matching scores
 
 ## Integration and Usage
@@ -153,12 +163,12 @@ The test creates several visualizations to explain how the system works:
 1. **Main Area References**: Shows the original main area and extracted reference patches
 2. **Anchor Points**: Displays all anchor points on the original image and individual patches
 3. **Anchor Relationships**: Illustrates spatial relationships between anchors and the main area
-4. **Direct Matching**: Visualizes the direct matching process with confidence scores
+4. **Sliding Window Matching**: Visualizes the sliding window approach with multiple window sizes
 5. **Reconstruction Simulation**: Shows how the system would reconstruct the main area using only anchor constraints
 6. **Detection Workflow**: Comprehensive workflow diagram explaining the full detection pipeline
 
 ### Understanding the Reconstruction Simulation
-The reconstruction simulation specifically shows what would happen if direct matching failed and the system had to rely only on anchor points. It's divided into four quadrants:
+The reconstruction simulation specifically shows what would happen if sliding window matching failed and the system had to rely only on anchor points. It's divided into four quadrants:
 
 1. **Original Main Area** (top-left): The reference main area detected during training
 2. **Horizontal Constraints** (top-right): Shows horizontal constraints from anchors
@@ -169,8 +179,9 @@ The IoU (Intersection over Union) score shows the overlap between the original a
 
 ## Performance Considerations
 
-- **Direct Matching**: Fast but sensitive to visual changes
-- **Anchor Reconstruction**: More robust but requires good anchor distribution
+- **Sliding Window Matching**: Fast and precise when configured correctly, but can be computationally intensive
+- **Anchor Reconstruction**: More robust to content changes but requires good anchor distribution
+- **Window Sizes**: Smaller sliding window steps yield more precise results but increase processing time
 - **Training Frequency**: The system should be retrained periodically as the UI evolves
 - **Anchor Diversity**: For best results, ensure anchors cover all four directions (top, bottom, left, right)
 
@@ -181,9 +192,12 @@ The IoU (Intersection over Union) score shows the overlap between the original a
 - **Examine Anchor Stability**: Look for high stability scores (ideally > 0.8)
 - **Verify Main Area References**: Ensure references cover diverse states of the UI
 - **Increase Training Frames**: More training frames can improve stability detection
+- **Adjust Sliding Window Parameters**: Try different window sizes and step counts
 
-### Failed Direct Matching
+### Failed Sliding Window Matching
 - **Lower Match Threshold**: Try reducing `main_area_match_threshold`
+- **Add More Window Sizes**: Expand the `sliding_window_sizes` range
+- **Increase Window Steps**: More steps provide finer granularity in matching
 - **Add More References**: Increase `max_main_area_references`
 - **Retrain with Diverse Frames**: Include frames with different states of the UI
 
