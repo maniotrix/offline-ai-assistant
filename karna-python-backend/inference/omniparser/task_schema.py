@@ -215,12 +215,94 @@ class TaskLog():
     def get_all_step_logs(self) -> List[StepLog]:
         return self.task_steps
     
-    def visualize_task_log(self):
+    def print_task_log(self):
         for step_log in self.task_steps:
             print(f"Step id: {step_log.step_id}")
             print(f"  Omni image: {step_log.omni_image}")
             print(f"  Patch image: {step_log.patch_image_path}")
             print(f"  Match result: {step_log.match_result}")
+            
+    def visualize_task_log(self):
+        """
+        Visualize all task steps in a single image showing omni images, patch images and match results.
+        Displays the visualization in a matplotlib window.
+        """
+        if not self.task_steps:
+            logger.warning("No task steps to visualize")
+            return
+            
+        import base64
+        import io
+        import numpy as np
+        import matplotlib.pyplot as plt
+        from matplotlib.figure import Figure
+        from matplotlib.backends.backend_agg import FigureCanvasAgg
+        from PIL import Image, ImageDraw, ImageFont
+        
+        # Determine the number of steps to visualize
+        num_steps = len(self.task_steps)
+        
+        # Create a figure with subplots for each step (2 images per step)
+        fig, axes = plt.subplots(num_steps, 2, figsize=(15, 5 * num_steps))
+        if num_steps == 1:
+            axes = [axes]  # Handle the case of a single step
+            
+        # Set up the figure title
+        fig.suptitle("Task Execution Visualization", fontsize=16)
+        
+        for i, step_log in enumerate(self.task_steps):
+            # Step info text
+            step_info = f"Step {step_log.step_id}"
+            
+            # Process omni image (base64 to PIL Image)
+            try:
+                omni_img_data = base64.b64decode(step_log.omni_image)
+                omni_img = Image.open(io.BytesIO(omni_img_data))
+            except Exception as e:
+                logger.error(f"Error decoding omni image for step {step_log.step_id}: {e}")
+                omni_img = Image.new('RGB', (400, 300), color='gray')
+                draw = ImageDraw.Draw(omni_img)
+                draw.text((10, 10), f"Error loading omni image: {str(e)}", fill="white")
+            
+            # Load patch image
+            try:
+                patch_img = Image.open(step_log.patch_image_path)
+            except Exception as e:
+                logger.error(f"Error loading patch image for step {step_log.step_id}: {e}")
+                patch_img = Image.new('RGB', (200, 150), color='gray')
+                draw = ImageDraw.Draw(patch_img)
+                draw.text((10, 10), f"Error loading patch image: {str(e)}", fill="white")
+            
+            # Display the images
+            axes[i][0].imshow(np.array(omni_img))
+            axes[i][0].set_title(f"{step_info} - Omni Image")
+            axes[i][0].axis('off')
+            
+            axes[i][1].imshow(np.array(patch_img))
+            axes[i][1].set_title(f"{step_info} - Patch Image")
+            axes[i][1].axis('off')
+            
+            # Add match result info as text below the images
+            if step_log.match_result and step_log.match_result.match_found:
+                match_info = (
+                    f"Match found: ID={step_log.match_result.matched_element_id}, "
+                    f"Score={step_log.match_result.similarity_score:.4f}"
+                )
+                if hasattr(step_log.match_result, 'parsed_content_result') and step_log.match_result.parsed_content_result:
+                    bbox = step_log.match_result.parsed_content_result.bbox
+                    match_info += f"\nBBox: {[round(b, 2) for b in bbox]}"
+            else:
+                match_info = "No match found"
+                
+            # Add text below the patch image
+            axes[i][1].text(0, 1.05, match_info, transform=axes[i][1].transAxes, 
+                           fontsize=10, verticalalignment='bottom')
+        
+        # Adjust layout
+        plt.tight_layout(rect=[0, 0, 1, 0.96])  # Leave space for suptitle
+        
+        # Display the plot
+        plt.show()
     
 class TaskExecutor():
     task_planner: TaskPlanner
