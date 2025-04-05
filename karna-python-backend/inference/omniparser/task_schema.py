@@ -344,44 +344,9 @@ class TaskLog():
                     # Add the patch to the omni image axes
                     ax_main.add_patch(rect)
                     
-                    # Calculate center point for arrow connection (but don't display a dot)
+                    # Calculate center point (for reference only)
                     center_x = rect_x + rect_width/2
                     center_y = rect_y + rect_height/2
-                    
-                    # Add a dotted line connecting the patch to the match location
-                    # Draw another small copy of the patch near the match for visual reference
-                    inset_size = 0.15  # Size of the inset as a fraction of the main axes
-                    inset_ax = fig.add_axes([
-                        0.75,  # x position
-                        0.75,  # y position
-                        inset_size, # width
-                        inset_size * (patch_array.shape[0] / patch_array.shape[1])  # height with proper aspect ratio
-                    ], 
-                    zorder=3)  # Ensure it's on top
-                    inset_ax.imshow(patch_array)
-                    inset_ax.axis('off')
-                    
-                    # Draw an arrow from the inset to the match location
-                    arrow_props = dict(
-                        arrowstyle="fancy,head_length=0.4,head_width=0.4,tail_width=0.2",
-                        connectionstyle="arc3,rad=0.3",  # Changed from negative to positive value
-                        color='red',
-                        alpha=0.7,
-                        linewidth=2
-                    )
-                    
-                    # Get transformation to figure coordinates
-                    fig_coords_main = ax_main.transData.transform((center_x, center_y))
-                    fig_coords_inset = inset_ax.transAxes.transform((0.5, 0.5))
-                    fig_to_display = fig.transFigure.inverted()
-                    main_display_coords = fig_to_display.transform(fig_coords_main)
-                    inset_display_coords = fig_to_display.transform(fig_coords_inset)
-                    
-                    # Draw the arrow in figure coordinates
-                    fig.patches.append(patches.FancyArrowPatch(
-                        inset_display_coords, main_display_coords,
-                        transform=fig.transFigure, **arrow_props
-                    ))
             else:
                 match_info.append("❌ No match found")
             
