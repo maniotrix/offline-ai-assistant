@@ -540,6 +540,10 @@ class TaskExecutor():
             # Add a small delay between steps for stability
             time.sleep(0.2)
     
+    def click_tween():
+        pass
+    
+    
     def execute_mouse_step(self, mouse_step: MouseStep) -> bool:
         """
         Execute a mouse step.
@@ -552,7 +556,8 @@ class TaskExecutor():
             if mouse_step.attention == Attention.CENTER:
                 logger.info("Clicking at the center of the screen")
                 self.chrome_robot.click(self.viewport["x"] + self.viewport["width"] // 2, 
-                                        self.viewport["y"] + self.viewport["height"] // 2)
+                                        self.viewport["y"] + self.viewport["height"] // 2,
+                                        clicks=1, duration=0.1, interval=0.1)
             else:
                 logger.error(f"Invalid attention: {mouse_step.attention}")
                 return False
