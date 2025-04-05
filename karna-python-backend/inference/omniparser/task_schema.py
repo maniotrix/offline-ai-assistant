@@ -13,7 +13,9 @@ from vertical_patch_matcher import VerticalPatchMatcher
 from vertical_patch_matcher import PatchMatchResult
 from PIL import Image
 import time
+import pyperclip
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 from clipboard_utils import *
 
 class ScreenObjectType(str, Enum):
@@ -62,6 +64,7 @@ class StepWithTarget(Step):
     
 class MouseStep(StepWithTarget):
     action_type: ActionType = ActionType.MOUSE_ACTION
+    keyboard_shortcut: Optional[str] = None
     
 class WaitStep(StepWithTarget):
     action_type: ActionType = ActionType.WAIT
@@ -314,11 +317,31 @@ class TaskExecutor():
             return None
     
     def execute_task(self):
-        # execute the task
+        """
+        Execute all steps in the task sequentially.
+        """
         for step in self.task_planner.task_schema.steps:
+            logger.info(f"Executing step {step.step_id}: {step.description}")
+            
             if isinstance(step, MouseStep):
+                logger.info(f"Executing mouse step {step.step_id}: {step.description}")
                 self.execute_mouse_step(step)
-                break
+            elif isinstance(step, KeyboardActionStep):
+                logger.info(f"Executing keyboard step {step.step_id}: {step.description}")
+                should_end = self.execute_keyboard_step(step)
+                if should_end:
+                    logger.info("Task execution ended by 'end' action")
+                    break
+            elif isinstance(step, WaitStep):
+                logger.info(f"Executing wait step {step.step_id}: {step.description}")
+                success = self.execute_wait_step(step)
+                if not success:
+                    logger.warning(f"Wait step {step.step_id} failed - continuing execution")
+            else:
+                logger.warning(f"Unknown step type: {type(step)}")
+                
+            # Add a small delay between steps for stability
+            time.sleep(2)
     
     def execute_mouse_step(self, mouse_step: MouseStep):
         """
@@ -334,6 +357,11 @@ class TaskExecutor():
             else:
                 logger.error(f"Invalid attention: {mouse_step.attention}")
             return
+        
+        if mouse_step.keyboard_shortcut:
+            self.chrome_robot.press_key(mouse_step.keyboard_shortcut)
+            return
+        
         # get the omniparser result model
         omniparser_result_model = self.get_omniparser_result_model()
         # get the match for the target
@@ -342,20 +370,32 @@ class TaskExecutor():
         parsed_content_result = match.parsed_content_result if match else None
         if parsed_content_result:
             logger.info(f"Parsed content result: {parsed_content_result}")
-            normalized_bbox = self.normalize_bbox(parsed_content_result.bbox)
-            x = normalized_bbox[0]
-            y = normalized_bbox[1]
-            print(f"Clicking at: {x}, {y}")
-            self.chrome_robot.click(int(x), int(y))
+            centre_x, centre_y = self.get_centre_of_bbox(parsed_content_result.bbox)
+            print(f"Clicking at: {centre_x}, {centre_y}")
+            self.chrome_robot.click(centre_x, centre_y)
         else:
             logger.error(f"Could not find patch for target: {mouse_step.target}")
+    
     def execute_keyboard_step(self, keyboard_step: KeyboardActionStep):
         """
         Execute a keyboard step.
         Args:
             keyboard_step: KeyboardActionStep
         """
-        pass
+        action = keyboard_step.action.lower()
+        
+        if action == "paste":
+            logger.info("Executing paste action")
+            self.chrome_robot.paste()
+        elif action == "end":
+            logger.info("Executing end action - ending task execution")
+            self.chrome_robot.press_end()
+            return True  # Signal to stop task execution
+        else:
+            # Handle other keyboard actions as needed
+            logger.info(f"Executing keyboard action: {action}")
+            
+        return False  # Continue task execution
     
     def execute_wait_step(self, wait_step: WaitStep):
         """
@@ -365,21 +405,35 @@ class TaskExecutor():
         """
         default_time_interval = 2.0
         default_timeout = 30.0
-        # get the omniparser result model
-        omniparser_result_model = self.get_omniparser_result_model()
-        # get the match for the target
-        match : Optional[PatchMatchResult] = self.find_match_for_target(wait_step.target, omniparser_result_model)
-        # execute the mouse step
-        parsed_content_result = match.parsed_content_result if match else None
-        if parsed_content_result:
-            logger.info(f"Parsed content result: {parsed_content_result}")
-            normalized_bbox = self.normalize_bbox(parsed_content_result.bbox)
-            x = normalized_bbox[0]
-            y = normalized_bbox[1]
-            print(f"Found the target at: {x}, {y}")
-        else:
-            logger.error(f"Could not find patch for target: {wait_step.target}")
+        start_time = time.time()
+        
+        while True:
+            # Check if timeout has been reached
+            elapsed_time = time.time() - start_time
+            if elapsed_time > default_timeout:
+                logger.error(f"Timeout reached ({default_timeout}s) while waiting for target: {wait_step.target}")
+                return False
+                
+            # Get a fresh omniparser result model for each attempt
+            omniparser_result_model = self.get_omniparser_result_model()
             
+            # Try to find the match for the target
+            match = self.find_match_for_target(wait_step.target, omniparser_result_model)
+            parsed_content_result = match.parsed_content_result if match else None
+            
+            if parsed_content_result:
+                logger.info(f"Found target after {elapsed_time:.2f}s: {parsed_content_result}")
+                normalized_bbox = self.normalize_bbox(parsed_content_result.bbox)
+                x = normalized_bbox[0]
+                y = normalized_bbox[1]
+                print(f"Found the target at: {x}, {y}")
+                return True
+            else:
+                logger.info(f"Target not found, waiting {default_time_interval}s before trying again ({elapsed_time:.2f}s elapsed)")
+                time.sleep(default_time_interval)
+                
+            # Continue the loop to try again
+    
     def normalize_bbox(self, bbox: List[float]) -> List[int]:
         """
         Normalize the bbox to the screen size coordinates from viewport coordinates.
@@ -396,6 +450,15 @@ class TaskExecutor():
         absolute_y2 = int(viewport_y + bbox[3])
         
         return [absolute_x1, absolute_y1, absolute_x2, absolute_y2]
+    
+    def get_centre_of_bbox(self, bbox: List[float]) -> List[int]:
+        """
+        Get the centre of the bbox.
+        """
+        normalized_bbox = self.normalize_bbox(bbox)
+        centre_x = normalized_bbox[0] + normalized_bbox[2] / 2
+        centre_y = normalized_bbox[1] + normalized_bbox[3] / 2
+        return [int(centre_x), int(centre_y)]
     
     def open_app_snapped_right(self) -> bool:
         """
@@ -448,4 +511,13 @@ class TaskExecutor():
         # get the omniparser result model
         return get_omniparser_result_model_from_image_path(image_path, self.omniparser)
 
-
+    def get_clipboard_text(self) -> str:
+        """
+        Gets the current text from clipboard.
+        
+        Returns:
+            str: The text content from clipboard
+        """
+        clipboard_text = get_text_from_clipboard()
+        logger.info(f"Got text from clipboard: {clipboard_text[:50]}{'...' if len(clipboard_text) > 50 else ''}")
+        return clipboard_text

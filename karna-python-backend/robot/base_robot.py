@@ -368,6 +368,11 @@ class Robot:
     def press_delete(self) -> None:
         """Press the Delete key."""
         self.press_key('delete')
+        
+    def press_end(self) -> None:
+        """Press the End key."""
+        self.press_key('end')
+        
     
     def press_arrow_key(self, direction: str) -> None:
         """

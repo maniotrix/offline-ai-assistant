@@ -30,13 +30,26 @@ def send_text_to_clipboard(text: str):
     except Exception as e:
         print(f"Error copying text to clipboard: {e}")
         
-def paste_text_from_clipboard(text: str):
+def paste_text_from_clipboard(text: str | None = None):
     try:
         pyperclip.paste()
         print("Text pasted from clipboard")
     except Exception as e:
         print(f"Error pasting text from clipboard: {e}")
 
+def get_text_from_clipboard() -> str:
+    """
+    Gets text from clipboard using pyperclip.
+    
+    Returns:
+        str: Text content of clipboard
+    """
+    try:
+        print("Getting text from clipboard")
+        return pyperclip.paste()
+    except Exception as e:
+        print(f"Error getting text from clipboard: {e}")
+        return ""
 # Example usage:
 if __name__ == '__main__':
     dir_path = os.path.dirname(os.path.abspath(__file__))
