@@ -225,7 +225,7 @@ class TaskLog():
     def visualize_task_log(self):
         """
         Visualize all task steps in a single image showing omni images, patch images and match results.
-        Displays the visualization in a matplotlib window.
+        Displays the visualization in a matplotlib window with bounding boxes drawn around matches.
         """
         if not self.task_steps:
             logger.warning("No task steps to visualize")
@@ -235,6 +235,7 @@ class TaskLog():
         import io
         import numpy as np
         import matplotlib.pyplot as plt
+        import matplotlib.patches as patches
         from matplotlib.figure import Figure
         from matplotlib.backends.backend_agg import FigureCanvasAgg
         from PIL import Image, ImageDraw, ImageFont
@@ -244,11 +245,13 @@ class TaskLog():
         
         # Create a figure with subplots for each step (2 images per step)
         fig, axes = plt.subplots(num_steps, 2, figsize=(15, 5 * num_steps))
+        
+        # Ensure axes is always a 2D array, even with a single step
         if num_steps == 1:
-            axes = [axes]  # Handle the case of a single step
+            axes = np.array([axes])
             
         # Set up the figure title
-        fig.suptitle("Task Execution Visualization", fontsize=16)
+        fig.suptitle(f"Task Execution Visualization ({num_steps} steps)", fontsize=16)
         
         for i, step_log in enumerate(self.task_steps):
             # Step info text
@@ -258,44 +261,69 @@ class TaskLog():
             try:
                 omni_img_data = base64.b64decode(step_log.omni_image)
                 omni_img = Image.open(io.BytesIO(omni_img_data))
+                omni_array = np.array(omni_img)
             except Exception as e:
                 logger.error(f"Error decoding omni image for step {step_log.step_id}: {e}")
                 omni_img = Image.new('RGB', (400, 300), color='gray')
                 draw = ImageDraw.Draw(omni_img)
                 draw.text((10, 10), f"Error loading omni image: {str(e)}", fill="white")
+                omni_array = np.array(omni_img)
             
             # Load patch image
             try:
                 patch_img = Image.open(step_log.patch_image_path)
+                patch_array = np.array(patch_img)
             except Exception as e:
                 logger.error(f"Error loading patch image for step {step_log.step_id}: {e}")
                 patch_img = Image.new('RGB', (200, 150), color='gray')
                 draw = ImageDraw.Draw(patch_img)
                 draw.text((10, 10), f"Error loading patch image: {str(e)}", fill="white")
+                patch_array = np.array(patch_img)
             
             # Display the images
-            axes[i][0].imshow(np.array(omni_img))
-            axes[i][0].set_title(f"{step_info} - Omni Image")
-            axes[i][0].axis('off')
+            axes[i, 0].imshow(omni_array)
+            axes[i, 0].set_title(f"{step_info} - Omni Image")
+            axes[i, 0].axis('off')
             
-            axes[i][1].imshow(np.array(patch_img))
-            axes[i][1].set_title(f"{step_info} - Patch Image")
-            axes[i][1].axis('off')
+            axes[i, 1].imshow(patch_array)
+            axes[i, 1].set_title(f"{step_info} - Patch Image")
+            axes[i, 1].axis('off')
             
-            # Add match result info as text below the images
+            # Add match result info as text and draw bbox if match was found
             if step_log.match_result and step_log.match_result.match_found:
                 match_info = (
                     f"Match found: ID={step_log.match_result.matched_element_id}, "
                     f"Score={step_log.match_result.similarity_score:.4f}"
                 )
-                if hasattr(step_log.match_result, 'parsed_content_result') and step_log.match_result.parsed_content_result:
+                
+                # If the match result has parsed content with a bbox, draw it
+                if (hasattr(step_log.match_result, 'parsed_content_result') and 
+                    step_log.match_result.parsed_content_result and 
+                    hasattr(step_log.match_result.parsed_content_result, 'bbox')):
+                    
                     bbox = step_log.match_result.parsed_content_result.bbox
                     match_info += f"\nBBox: {[round(b, 2) for b in bbox]}"
+                    
+                    # Draw rectangle on the omni image
+                    # Convert bbox [x1, y1, x2, y2] to [x, y, width, height]
+                    rect_x = bbox[0]
+                    rect_y = bbox[1]
+                    rect_width = bbox[2] - bbox[0]
+                    rect_height = bbox[3] - bbox[1]
+                    
+                    # Create a Rectangle patch with a distinct color and linewidth
+                    rect = patches.Rectangle(
+                        (rect_x, rect_y), rect_width, rect_height, 
+                        linewidth=3, edgecolor='red', facecolor='none'
+                    )
+                    
+                    # Add the patch to the omni image axes
+                    axes[i, 0].add_patch(rect)
             else:
                 match_info = "No match found"
                 
             # Add text below the patch image
-            axes[i][1].text(0, 1.05, match_info, transform=axes[i][1].transAxes, 
+            axes[i, 1].text(0, 1.05, match_info, transform=axes[i, 1].transAxes, 
                            fontsize=10, verticalalignment='bottom')
         
         # Adjust layout
@@ -542,6 +570,15 @@ class TaskExecutor():
                 x = normalized_bbox[0]
                 y = normalized_bbox[1]
                 print(f"Found the target at: {x}, {y}")
+                # add the step log
+                if wait_step.target.value:
+                    step_log = StepLog(
+                        step_id=wait_step.step_id,
+                        omni_image=omniparser_result_model.omniparser_result.dino_labled_img,
+                        patch_image_path = os.path.join(self.current_directory, wait_step.target.value),
+                        match_result=match
+                    )
+                    self.task_log.add_step_log(step_log)
                 return True
             else:
                 logger.info(f"Target not found, waiting {default_time_interval}s before trying again ({elapsed_time:.2f}s elapsed)")
