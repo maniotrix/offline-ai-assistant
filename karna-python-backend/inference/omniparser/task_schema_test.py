@@ -96,6 +96,8 @@ def test_task_schema():
     karna_print(Colors.BOLD + Colors.YELLOW + "\n• Type " + Colors.CYAN + "'exit'" + Colors.YELLOW + " or " + Colors.CYAN + "'quit'" + Colors.YELLOW + " to end the conversation" + Colors.ENDC)
     
     question_count = 0
+    use_as_vlm = True
+    show_tasks_viz = False
     directory_path = os.path.join(current_dir, "test_chatgpt_upload_dir")
     
     while True:
@@ -112,14 +114,14 @@ def test_task_schema():
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         with suppress_output():
-            # if question_count == 1:
-            #     # only for the first question, we will upload the files to chatgpt
-            #     task_executor.set_clipboard(user_question, directory_path)
-            #     karna_print(Colors.BOLD + Colors.UNDERLINE + f"User question: {user_question} and directory path: {directory_path}" + Colors.ENDC)
-            # else:
-            #     # for all other questions, we will just send the question to chatgpt
-            #     task_executor.set_clipboard(user_question)
-            task_executor.set_clipboard(user_question)    
+            if question_count == 1 and use_as_vlm:
+                # only for the first question, we will upload the files to chatgpt
+                task_executor.set_clipboard(user_question, directory_path)
+                karna_print(Colors.BOLD + Colors.UNDERLINE + f"User question: {user_question} and directory path: {directory_path}" + Colors.ENDC)
+            else:
+                # for all other questions, we will just send the question to chatgpt
+                task_executor.set_clipboard(user_question)
+            # task_executor.set_clipboard(user_question)    
             
 
         karna_print(Colors.CYAN + "\nAsking and Waiting for ChatGPT..." + Colors.ENDC)
@@ -149,7 +151,7 @@ def test_task_schema():
         
         karna_print(Colors.BOLD + Colors.BLUE + "─────────────────────────────────────────────────────────────" + Colors.ENDC)
         task_executor.chrome_robot.press_alt_key("tab")
-        if question_count == 1:
+        if question_count == 1 and show_tasks_viz:
             task_executor.task_log.visualize_task_log()
             break
         #task_executor.task_log.visualize_task_log()
