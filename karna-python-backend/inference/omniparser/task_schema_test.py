@@ -41,14 +41,24 @@ def test_task_schema():
     print("Steps with target:", len(task_schema.get_steps_with_target()))
     
     task_executor = TaskExecutor(task_planner)
-    task_executor.send_text_to_clipboard("Who am I?")
     # task_executor.prepare_for_task()
-    time.sleep(2)
-    print("Executing task...")
-    task_executor.execute_task()
     
-    result = task_executor.get_clipboard_text()
-    print(f"Clipboard text: {result}")
-    task_executor.task_log.visualize_task_log()
+    # Question loop
+    print("\n===== Question Loop =====")
+    print("Type 'exit' or 'quit' to end the conversation")
+    
+    while True:
+        user_question = input("\nEnter your question: ")
+        
+        if user_question.lower() in ["exit", "quit"]:
+            print("Exiting question loop...")
+            break
+        task_executor.send_text_to_clipboard(user_question)
+        print("Executing task...")
+        task_executor.execute_task()
+        
+        result = task_executor.get_clipboard_text()
+        print(f"Clipboard text: {result}")
+        task_executor.task_log.visualize_task_log()
 
 test_task_schema()

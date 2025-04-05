@@ -464,7 +464,10 @@ class TaskExecutor():
             print("--------------------------------")
             if isinstance(step, MouseStep):
                 logger.info(f"Executing mouse step {step.step_id}: {step.description}")
-                self.execute_mouse_step(step)
+                success = self.execute_mouse_step(step)
+                if not success:
+                    logger.warning(f"Mouse step {step.step_id} failed - stopping execution")
+                    return
             elif isinstance(step, KeyboardActionStep):
                 logger.info(f"Executing keyboard step {step.step_id}: {step.description}")
                 self.execute_keyboard_step(step)
@@ -472,14 +475,15 @@ class TaskExecutor():
                 logger.info(f"Executing wait step {step.step_id}: {step.description}")
                 success = self.execute_wait_step(step)
                 if not success:
-                    logger.warning(f"Wait step {step.step_id} failed - continuing execution")
+                    logger.warning(f"Wait step {step.step_id} failed - stopping execution")
+                    return
             else:
                 logger.warning(f"Unknown step type: {type(step)}")
                 
             # Add a small delay between steps for stability
-            time.sleep(2)
+            time.sleep(0.5)
     
-    def execute_mouse_step(self, mouse_step: MouseStep):
+    def execute_mouse_step(self, mouse_step: MouseStep) -> bool:
         """
         Execute a mouse step.
         Args:
@@ -494,11 +498,12 @@ class TaskExecutor():
                                         self.viewport["y"] + self.viewport["height"] // 2)
             else:
                 logger.error(f"Invalid attention: {mouse_step.attention}")
-            return
+                return False
+            return True
         
         if mouse_step.keyboard_shortcut:
             self.chrome_robot.press_key(mouse_step.keyboard_shortcut)
-            return
+            return True
         
         # get the omniparser result model
         omniparser_result_model = self.get_omniparser_result_model()
@@ -522,6 +527,8 @@ class TaskExecutor():
                 self.task_log.add_step_log(step_log)
         else:
             logger.error(f"Could not find patch for target: {mouse_step.target}")
+            return False
+        return True
     
     def execute_keyboard_step(self, keyboard_step: KeyboardActionStep):
         """
