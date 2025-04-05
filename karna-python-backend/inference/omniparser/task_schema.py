@@ -222,6 +222,9 @@ class TaskLog():
             print(f"  Patch image: {step_log.patch_image_path}")
             print(f"  Match result: {step_log.match_result}")
             
+    def reset_task_log(self):
+        self.task_steps = []
+            
     def visualize_task_log(self):
         """
         Visualize all task steps in a single image showing omni images, patch images and match results.
@@ -502,6 +505,8 @@ class TaskExecutor():
             return True
         
         if mouse_step.keyboard_shortcut:
+            # WARNING: This is a hack to press the keyboard shortcut
+            # its not device independent and will not work on all devices
             self.chrome_robot.press_key(mouse_step.keyboard_shortcut)
             return True
         
