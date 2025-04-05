@@ -46,6 +46,7 @@ KEY CONCEPTS:
 • Center Point: The focal point of the attention field (calculated from corner + dimensions/2)
 • Confidence Score: How certain the controller is about this attention area (0-1 scale)
 • Movement Direction: The inferred direction based on user's click patterns (UP/DOWN/LEFT/RIGHT)
+• Semantic Location: Where the attention is located relative to the viewport (e.g., "top-left", "center")
 
 INTERPRETING CONSOLE OUTPUT:
 -------------------------
@@ -63,6 +64,7 @@ For each mouse click event, you'll see:
   • Dimensions: width × height pixels
   • Center Point: (center_x, center_y)
   • Confidence Score: 0.XX / 1.00
+  • Semantic Location: position within viewport (e.g., top-left, center-right)
   Details about where the system believes user attention is currently focused
 
 🔮 PREDICTED NEXT ATTENTION:
@@ -71,6 +73,7 @@ For each mouse click event, you'll see:
   • Dimensions: width × height pixels
   • Center Point: (center_x, center_y)
   • Prediction Confidence: 0.XX / 1.00
+  • Semantic Location: predicted position within viewport
   The system's prediction about where attention will move next
 
 🗺️ CUMULATIVE COVERAGE:
@@ -95,6 +98,12 @@ CONFIDENCE SCORES:
 • 0.70-1.00: High confidence (multiple consistent clicks)
 • 0.40-0.70: Medium confidence (limited click history)
 • <0.40: Low confidence (cold start or inconsistent clicks)
+
+SEMANTIC LOCATIONS:
+---------------
+• "top", "bottom", "left", "right", "center" - Basic positions
+• Combined positions like "top-left", "bottom-center"
+• Multiple regions when attention field spans boundaries
 
 The combination of detailed console output and saved visualization images provides
 a complete picture of how the attention tracking system works in real-world scenarios.
@@ -215,6 +224,7 @@ def print_attention_info(event_num: int, event: ScreenshotEvent,
         center_x, center_y = current_field.center
         print(f"  • Center Point: ({center_x}, {center_y})")
         print(f"  • Confidence Score: {current_field.confidence:.2f} / 1.00")
+        print(f"  • Semantic Location: {current_field.get_semantic_location_str()}")
     else:
         print("  • Not available")
 
@@ -227,6 +237,7 @@ def print_attention_info(event_num: int, event: ScreenshotEvent,
         next_center_x, next_center_y = next_field.center
         print(f"  • Center Point: ({next_center_x}, {next_center_y})")
         print(f"  • Prediction Confidence: {next_field.confidence:.2f} / 1.00")
+        print(f"  • Semantic Location: {next_field.get_semantic_location_str()}")
     else:
         print("  • Not available yet") # E.g., need more clicks or no direction inferred
 
@@ -357,7 +368,8 @@ def visualize_attention_fields(events: List[ScreenshotEvent]) -> None:
             # Add title and legend
             event_time = event.timestamp.strftime('%Y-%m-%d %H:%M:%S')
             direction_info = f", Dir: {current_field.direction}" if current_field and current_field.direction else ""
-            plt.title(f"Attention Field after Click {i+1}/{len(events)} ({event_time}){direction_info}", fontsize=14)
+            location_info = f", Loc: {current_field.get_semantic_location_str()}" if current_field else ""
+            plt.title(f"Attention Field after Click {i+1}/{len(events)} ({event_time}){direction_info}{location_info}", fontsize=14)
             plt.legend(loc='upper right', fontsize=10)
             plt.axis('off') # Hide axes ticks/labels
 
@@ -366,7 +378,8 @@ def visualize_attention_fields(events: List[ScreenshotEvent]) -> None:
                 attention_info = [
                     f"Current Click: ({event.mouse_x}, {event.mouse_y})",
                     f"Attention Field: ({current_field.x}, {current_field.y}, w={current_field.width}, h={current_field.height})",
-                    f"Confidence: {current_field.confidence:.2f}"
+                    f"Confidence: {current_field.confidence:.2f}",
+                    f"Location: {current_field.get_semantic_location_str()}"
                 ]
                 if current_field.direction:
                     attention_info.append(f"Direction: {current_field.direction}")
@@ -374,7 +387,8 @@ def visualize_attention_fields(events: List[ScreenshotEvent]) -> None:
                 if next_field:
                     attention_info.extend([
                         f"Next Field: ({next_field.x}, {next_field.y}, w={next_field.width}, h={next_field.height})",
-                        f"Next Confidence: {next_field.confidence:.2f}"
+                        f"Next Confidence: {next_field.confidence:.2f}",
+                        f"Next Location: {next_field.get_semantic_location_str()}"
                     ])
                 if cumulative_bbox:
                     cx, cy, cw, ch = cumulative_bbox

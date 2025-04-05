@@ -1,5 +1,5 @@
 import logging
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Optional, Set
 from dataclasses import dataclass
 import numpy as np
 import math
@@ -7,6 +7,7 @@ import json
 import os
 from datetime import datetime
 from pydantic import BaseModel
+from enum import Enum, auto
 from services.screen_capture_service import ScreenshotEvent
 from inference.omniparser.util.omniparser import OmniparserResult
 from inference.omniparser.omni_helper import OmniParserResultModel
@@ -21,6 +22,18 @@ renderBBox = {
     "height": 919
 }
 
+# Enum for viewport position classification
+class ViewportPosition(Enum):
+    TOP = "top"
+    BOTTOM = "bottom"
+    LEFT = "left"
+    RIGHT = "right"
+    CENTER = "center"
+    TOP_LEFT = "top_left"
+    TOP_RIGHT = "top_right"
+    BOTTOM_LEFT = "bottom_left"
+    BOTTOM_RIGHT = "bottom_right"
+
 @dataclass
 class AttentionField:
     """Represents a visual attention field with a bounding box"""
@@ -30,6 +43,11 @@ class AttentionField:
     height: int  # Height of the attention field
     confidence: float = 1.0  # Confidence score for this attention field
     direction: Optional[str] = None  # Movement direction: 'up', 'down', 'left', 'right'
+    semantic_location: Set[ViewportPosition] = None  # Semantic location relative to viewport (hybrid approach)
+    
+    def __post_init__(self):
+        if self.semantic_location is None:
+            self.semantic_location = set()
     
     @property
     def center(self) -> Tuple[int, int]:
@@ -50,6 +68,103 @@ class AttentionField:
         """Check if the attention field contains a point"""
         return (self.x <= x <= self.x + self.width and
                 self.y <= y <= self.y + self.height)
+
+    def set_semantic_location(self, viewport: 'AttentionField', overlap_threshold: float = 0.2) -> None:
+        """
+        Set the semantic location of this attention field relative to the viewport using a hybrid approach.
+        First determines primary location based on center point, then adds additional locations based on overlap.
+        
+        Args:
+            viewport: The viewport AttentionField to compare against
+            overlap_threshold: Minimum overlap ratio to consider for secondary classification (0.0-1.0)
+        """
+        self.semantic_location = set()
+        
+        # Get centers
+        cx, cy = self.center
+        vx1, vy1, vx2, vy2 = viewport.xyxy
+        vw, vh = viewport.width, viewport.height
+        v_cx, v_cy = viewport.center
+        
+        # 1. Primary classification based on center point
+        # Horizontal classification (left, center, right)
+        h_third = vw / 3
+        v_third = vh / 3
+        
+        # Calculate regions
+        left_region = vx1 + h_third
+        right_region = vx2 - h_third
+        top_region = vy1 + v_third
+        bottom_region = vy2 - v_third
+        
+        # Primary horizontal classification
+        if cx < left_region:
+            self.semantic_location.add(ViewportPosition.LEFT)
+        elif cx > right_region:
+            self.semantic_location.add(ViewportPosition.RIGHT)
+        else:
+            self.semantic_location.add(ViewportPosition.CENTER)
+            
+        # Primary vertical classification
+        if cy < top_region:
+            self.semantic_location.add(ViewportPosition.TOP)
+        elif cy > bottom_region:
+            self.semantic_location.add(ViewportPosition.BOTTOM)
+        else:
+            # Only add CENTER once (may have been added in horizontal classification)
+            if ViewportPosition.CENTER not in self.semantic_location:
+                self.semantic_location.add(ViewportPosition.CENTER)
+        
+        # Create corner classifications based on combined horizontal and vertical
+        if ViewportPosition.TOP in self.semantic_location:
+            if ViewportPosition.LEFT in self.semantic_location:
+                self.semantic_location.add(ViewportPosition.TOP_LEFT)
+            elif ViewportPosition.RIGHT in self.semantic_location:
+                self.semantic_location.add(ViewportPosition.TOP_RIGHT)
+                
+        if ViewportPosition.BOTTOM in self.semantic_location:
+            if ViewportPosition.LEFT in self.semantic_location:
+                self.semantic_location.add(ViewportPosition.BOTTOM_LEFT)
+            elif ViewportPosition.RIGHT in self.semantic_location:
+                self.semantic_location.add(ViewportPosition.BOTTOM_RIGHT)
+        
+        # 2. Secondary classification based on significant overlap
+        # Calculate attention field boundaries
+        ax1, ay1, ax2, ay2 = self.xyxy
+        
+        # Check for significant extension into adjacent regions
+        # Horizontal extensions
+        left_extent = max(0, left_region - ax1) / self.width
+        right_extent = max(0, ax2 - right_region) / self.width
+        
+        # Vertical extensions
+        top_extent = max(0, top_region - ay1) / self.height
+        bottom_extent = max(0, ay2 - bottom_region) / self.height
+        
+        # Add secondary classifications based on overlap threshold
+        if left_extent > overlap_threshold and ViewportPosition.LEFT not in self.semantic_location:
+            self.semantic_location.add(ViewportPosition.LEFT)
+            
+        if right_extent > overlap_threshold and ViewportPosition.RIGHT not in self.semantic_location:
+            self.semantic_location.add(ViewportPosition.RIGHT)
+            
+        if top_extent > overlap_threshold and ViewportPosition.TOP not in self.semantic_location:
+            self.semantic_location.add(ViewportPosition.TOP)
+            
+        if bottom_extent > overlap_threshold and ViewportPosition.BOTTOM not in self.semantic_location:
+            self.semantic_location.add(ViewportPosition.BOTTOM)
+    
+    def get_semantic_location_str(self) -> str:
+        """Get a string representation of the semantic location"""
+        if not self.semantic_location:
+            return "undefined"
+            
+        # Filter out corner positions for cleaner output
+        corner_positions = {ViewportPosition.TOP_LEFT, ViewportPosition.TOP_RIGHT, 
+                           ViewportPosition.BOTTOM_LEFT, ViewportPosition.BOTTOM_RIGHT}
+        positions = [pos.value for pos in self.semantic_location if pos not in corner_positions]
+        
+        return "-".join(sorted(positions))
 
 # Pydantic model for configuration
 class AttentionConfig(BaseModel):
@@ -592,10 +707,14 @@ class AttentionFieldController:
                 confidence=confidence,
                 direction=direction
             )
+            
+            # Set semantic location relative to viewport
+            self.current_attention_field.set_semantic_location(self.viewport)
 
             logger.info(f"Updated attention field: {self.current_attention_field.bbox}, "
                       f"center: {self.current_attention_field.center}, "
-                      f"direction: {direction}, confidence: {confidence:.1f}")
+                      f"direction: {direction}, confidence: {confidence:.1f}, "
+                      f"semantic location: {self.current_attention_field.get_semantic_location_str()}")
     
     def get_current_attention_field(self) -> AttentionField:
         """
@@ -674,7 +793,11 @@ class AttentionFieldController:
             direction=direction
         )
         
-        logger.info(f"Predicted next attention field: {next_field.bbox}, direction: {direction}, confidence: 0.7")
+        # Set semantic location for the predicted field
+        next_field.set_semantic_location(self.viewport)
+        
+        logger.info(f"Predicted next attention field: {next_field.bbox}, direction: {direction}, "
+                  f"confidence: 0.7, semantic location: {next_field.get_semantic_location_str()}")
         return next_field
     
     def get_attention_context(self) -> Dict:
@@ -690,16 +813,22 @@ class AttentionFieldController:
         next_field = self.predict_next_attention_field()
         cumulative_bbox = self.cumulative_coverage_bbox
         
+        # Set semantic location for next field if it exists
+        if next_field:
+            next_field.set_semantic_location(self.viewport)
+        
         context = {
             "current_attention": {
                 "bbox": current.bbox,
                 "confidence": current.confidence,
-                "direction": current.direction
+                "direction": current.direction,
+                "semantic_location": current.get_semantic_location_str()
             },
             "predicted_next_attention": {
                 "bbox": next_field.bbox if next_field else None,
                 "confidence": next_field.confidence if next_field else 0.0,
-                "direction": next_field.direction if next_field else None
+                "direction": next_field.direction if next_field else None,
+                "semantic_location": next_field.get_semantic_location_str() if next_field else None
             },
             "cumulative_coverage": {
                 "bbox": cumulative_bbox # Will be None if not initialized
