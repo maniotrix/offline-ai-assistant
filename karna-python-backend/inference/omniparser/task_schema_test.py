@@ -96,7 +96,7 @@ def test_task_schema():
     karna_print(Colors.BOLD + Colors.YELLOW + "\n• Type " + Colors.CYAN + "'exit'" + Colors.YELLOW + " or " + Colors.CYAN + "'quit'" + Colors.YELLOW + " to end the conversation" + Colors.ENDC)
     
     question_count = 0
-    use_as_vlm = True
+    use_as_vlm = False
     show_tasks_viz = False
     directory_path = os.path.join(current_dir, "test_chatgpt_upload_dir")
     
