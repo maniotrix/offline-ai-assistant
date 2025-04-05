@@ -41,7 +41,7 @@ def test_task_schema():
     print("Steps with target:", len(task_schema.get_steps_with_target()))
     
     task_executor = TaskExecutor(task_planner)
-    task_executor.send_text_to_clipboard("Describe ChatGpt in 500 words")
+    task_executor.send_text_to_clipboard("Who am I?")
     # task_executor.prepare_for_task()
     time.sleep(2)
     print("Executing task...")

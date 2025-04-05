@@ -455,8 +455,10 @@ class TaskExecutor():
             #     logger.info("Ending task execution")
             #     return
             
-            if(i != 6):
-                continue
+            # if(i != 6):
+            #     continue
+            # if(i is not None and i not in [6]):
+            #     continue
             print("--------------------------------")
             print(f"EXECUTING STEP: {i}")
             print("--------------------------------")
@@ -508,7 +510,7 @@ class TaskExecutor():
             logger.info(f"Parsed content result: {parsed_content_result}")
             centre_x, centre_y = self.get_centre_of_bbox(parsed_content_result.bbox)
             print(f"Clicking at: {centre_x}, {centre_y}")
-            self.chrome_robot.click(centre_x, centre_y, clicks=2)
+            self.chrome_robot.click(centre_x, centre_y, clicks=2, duration=0.1, interval=0.1)
             # add the step log
             if mouse_step.target.value:
                 step_log = StepLog(
