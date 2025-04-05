@@ -481,7 +481,7 @@ class TaskExecutor():
                 logger.warning(f"Unknown step type: {type(step)}")
                 
             # Add a small delay between steps for stability
-            time.sleep(0.5)
+            time.sleep(0.2)
     
     def execute_mouse_step(self, mouse_step: MouseStep) -> bool:
         """
@@ -556,7 +556,7 @@ class TaskExecutor():
         Args:
             wait_step: WaitStep
         """
-        default_time_interval = 2.0
+        default_time_interval = 0.5
         default_timeout = 30.0
         start_time = time.time()
         
@@ -671,7 +671,9 @@ class TaskExecutor():
         v_image = Image.open(image_path)
         v_image.save(v_image_path)
         # get the omniparser result model
-        return get_omniparser_result_model_from_image_path(image_path, self.omniparser)
+        result = get_omniparser_result_model_from_image_path(image_path, self.omniparser, local_semantics=False)
+        #result = get_omniparser_result_model_from_image_path(v_image_path, self.omniparser)
+        return result
 
     def get_clipboard_text(self) -> str:
         """
