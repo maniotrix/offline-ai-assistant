@@ -13,7 +13,7 @@ class VerticalPatchMatcher(PatchMatcher):
     Useful for matching UI elements where a bottom-to-top search order is preferred.
     # TODO: Need to revist the vertical pan , current algo scan whole image, and then decides the best match.
     #       However, if a match is found >= similarity_threshold, search is stopped.
-    #       so if multiple matches are found, the topmost match will be returned, if all are below similarity_threshold.
+    #       so if multiple matches are found, maybe the topmost match will be returned, if all are below similarity_threshold.
     """
     
     def __init__(
