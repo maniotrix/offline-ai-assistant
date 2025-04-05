@@ -17,6 +17,7 @@ import pyperclip
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 from clipboard_utils import *
+from dataclasses import dataclass
 
 class ScreenObjectType(str, Enum):
     """
@@ -192,6 +193,35 @@ class TaskPlanner():
     def __init__(self, task_schema: Task):
         self.task_schema = task_schema
 
+@dataclass
+class StepLog():
+    step_id: int
+    omni_image: str # base64 encoded image
+    patch_image_path: str
+    match_result: PatchMatchResult
+    
+class TaskLog():
+    task_steps: List[StepLog]
+    
+    def __init__(self):
+        self.task_steps = []
+        
+    def add_step_log(self, step_log: StepLog):
+        self.task_steps.append(step_log)
+        
+    def get_step_log(self, step_id: int) -> StepLog:
+        return self.task_steps[step_id]
+    
+    def get_all_step_logs(self) -> List[StepLog]:
+        return self.task_steps
+    
+    def visualize_task_log(self):
+        for step_log in self.task_steps:
+            print(f"Step id: {step_log.step_id}")
+            print(f"  Omni image: {step_log.omni_image}")
+            print(f"  Patch image: {step_log.patch_image_path}")
+            print(f"  Match result: {step_log.match_result}")
+    
 class TaskExecutor():
     task_planner: TaskPlanner
     chrome_robot: ChromeRobot
@@ -201,7 +231,8 @@ class TaskExecutor():
     vertical_patch_matcher: VerticalPatchMatcher
     viewport: Dict[str, int]
     current_directory: str
-    
+    task_log: TaskLog
+
     def __init__(self, task_planner: TaskPlanner, viewport: Dict[str, int] = DEFAULT_VIEWPORT):
         self.task_planner = task_planner
         self.chrome_robot = ChromeRobot()
@@ -211,7 +242,8 @@ class TaskExecutor():
         self.vertical_patch_matcher = VerticalPatchMatcher()
         self.current_directory = os.path.dirname(os.path.abspath(__file__))
         self.viewport = viewport
-        
+        self.task_log = TaskLog()
+
     def set_viewport(self, viewport: Dict[str, int]):
         self.viewport = viewport
         
@@ -366,6 +398,15 @@ class TaskExecutor():
             centre_x, centre_y = self.get_centre_of_bbox(parsed_content_result.bbox)
             print(f"Clicking at: {centre_x}, {centre_y}")
             self.chrome_robot.click(centre_x, centre_y, clicks=2)
+            # add the step log
+            if mouse_step.target.value:
+                step_log = StepLog(
+                    step_id=mouse_step.step_id,
+                    omni_image=omniparser_result_model.omniparser_result.dino_labled_img,
+                    patch_image_path = os.path.join(self.current_directory, mouse_step.target.value),
+                    match_result=match
+                )
+                self.task_log.add_step_log(step_log)
         else:
             logger.error(f"Could not find patch for target: {mouse_step.target}")
     

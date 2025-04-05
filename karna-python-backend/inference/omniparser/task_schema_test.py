@@ -49,5 +49,6 @@ def test_task_schema():
     
     result = task_executor.get_clipboard_text()
     print(f"Clipboard text: {result}")
+    task_executor.task_log.visualize_task_log()
 
 test_task_schema()
