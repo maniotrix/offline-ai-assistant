@@ -3,6 +3,8 @@ import os
 import pyperclip
 
 def copy_files_with_powershell(file_paths):
+    # WARNING: You can copy multiple files to the clipboard with this function, but
+    # it will only paste the first file on the clipboard.
     # Ensure file_paths are absolute
     abs_paths = [os.path.abspath(path) for path in file_paths]
     # Build the full path to the PowerShell script

@@ -334,7 +334,25 @@ class TaskLog():
         
         # Display the plot
         plt.show()
+
+class Clipboard():
+    text: str
+    directory_path: str | None
     
+    def __init__(self):
+        self.text = ""
+        self.directory_path = None
+        
+    def set_text(self, text: str):
+        self.text = text
+        
+    def set_directory(self, directory_path: str):
+        self.directory_path = directory_path
+        
+    def set_all(self, text: str, directory_path: str | None = None):
+        self.text = text
+        self.directory_path = directory_path
+
 class TaskExecutor():
     task_planner: TaskPlanner
     chrome_robot: ChromeRobot
@@ -345,6 +363,7 @@ class TaskExecutor():
     viewport: Dict[str, int]
     current_directory: str
     task_log: TaskLog
+    clipboard: Clipboard
 
     def __init__(self, task_planner: TaskPlanner, viewport: Dict[str, int] = DEFAULT_VIEWPORT):
         self.task_planner = task_planner
@@ -356,6 +375,10 @@ class TaskExecutor():
         self.current_directory = os.path.dirname(os.path.abspath(__file__))
         self.viewport = viewport
         self.task_log = TaskLog()
+        self.clipboard = Clipboard()
+        
+    def set_clipboard(self, text: str, directory_path: str | None = None):
+        self.clipboard.set_all(text, directory_path)
 
     def set_viewport(self, viewport: Dict[str, int]):
         self.viewport = viewport
@@ -366,13 +389,44 @@ class TaskExecutor():
         """
         send_text_to_clipboard(text)
         
-    def send_image_to_clipboard(self, image_path: str):
+    def send_text_to_clipboard_and_paste(self, text: str):
+        """
+        Send text to clipboard and paste it.
+        """
+        send_text_to_clipboard(text)
+        time.sleep(1)
+        self.chrome_robot.paste()
+        
+    
+    def send_image_to_clipboard_and_paste(self, image_path: str):
         """
         Send image to clipboard.
         """
         copy_files_with_powershell([image_path])
         time.sleep(1)
         self.chrome_robot.paste()
+        time.sleep(1)
+        
+    def process_clipboard(self):
+        self.send_directory_to_clipboard_and_paste(self.clipboard.text, self.clipboard.directory_path)
+        
+    def send_directory_to_clipboard_and_paste(self, text: str, directory_path: str | None = None):
+        file_paths: List[str] | None = None
+        if directory_path is not None:
+            file_paths = []
+            for file_path in os.listdir(directory_path):
+                file_paths.append(os.path.join(directory_path, file_path))
+        self.process_all_for_clipboard(text, file_paths)
+            
+    def process_all_for_clipboard(self, text: str, file_paths: List[str] | None = None):
+        """
+        Process all steps for clipboard.
+        """
+        if file_paths is not None:
+            for file_path in file_paths:
+                self.send_image_to_clipboard_and_paste(file_path)
+        if text is not None:
+            self.send_text_to_clipboard(text)
     
     def prepare_for_task(self):
         """
@@ -545,7 +599,7 @@ class TaskExecutor():
         
         if action == "paste":
             logger.info("Executing paste action")
-            self.chrome_robot.paste()
+            self.process_clipboard()
         elif action == "end":
             logger.info("Executing end action")
             self.chrome_robot.press_end()

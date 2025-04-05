@@ -87,7 +87,7 @@ def test_task_schema():
     # Only display the main interface, skip all the technical details
     with suppress_output():
         task_executor = TaskExecutor(task_planner)
-    task_executor.prepare_for_task()
+    # task_executor.prepare_for_task()
     
     # Question loop interface
     karna_print("\n" + Colors.BOLD + Colors.HEADER + "╔═══════════════════════════════════════════════════════════╗" + Colors.ENDC)
@@ -96,6 +96,7 @@ def test_task_schema():
     karna_print(Colors.BOLD + Colors.YELLOW + "\n• Type " + Colors.CYAN + "'exit'" + Colors.YELLOW + " or " + Colors.CYAN + "'quit'" + Colors.YELLOW + " to end the conversation" + Colors.ENDC)
     
     question_count = 0
+    directory_path = os.path.join(current_dir, "test_chatgpt_upload_dir")
     
     while True:
         task_executor.task_log.reset_task_log()
@@ -111,7 +112,9 @@ def test_task_schema():
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         with suppress_output():
-            task_executor.send_text_to_clipboard(user_question)
+            #task_executor.set_clipboard(user_question, directory_path)
+            task_executor.set_clipboard(user_question)
+
         karna_print(Colors.CYAN + "\nAsking ChatGPT..." + Colors.ENDC)
         
         # Record start time
