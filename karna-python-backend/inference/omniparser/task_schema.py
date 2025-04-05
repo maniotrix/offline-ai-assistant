@@ -232,8 +232,9 @@ class TaskLog():
             
     def visualize_task_log(self):
         """
-        Visualize all task steps in a single image showing omni images, patch images and match results.
-        Displays the visualization in a matplotlib window with bounding boxes drawn around matches.
+        Visualize task steps by creating individual plots for each step log.
+        Each plot shows the omni image (screen capture), patch image (template),
+        and match information with bounding box visualization.
         """
         if not self.task_steps:
             logger.warning("No task steps to visualize")
@@ -245,25 +246,36 @@ class TaskLog():
         import matplotlib.pyplot as plt
         import matplotlib.patches as patches
         from matplotlib.figure import Figure
-        from matplotlib.backends.backend_agg import FigureCanvasAgg
+        from matplotlib.gridspec import GridSpec
         from PIL import Image, ImageDraw, ImageFont
         
-        # Determine the number of steps to visualize
-        num_steps = len(self.task_steps)
+        # Create a directory for saving individual plots if needed
+        # import os
+        # plot_dir = os.path.join(self.current_directory, "step_visualizations")
+        # os.makedirs(plot_dir, exist_ok=True)
         
-        # Create a figure with subplots for each step (2 images per step)
-        fig, axes = plt.subplots(num_steps, 2, figsize=(15, 5 * num_steps))
+        # Set up the overall figure style
+        plt.style.use('seaborn-v0_8-whitegrid')
         
-        # Ensure axes is always a 2D array, even with a single step
-        if num_steps == 1:
-            axes = np.array([axes])
+        # Create and display a separate figure for each step
+        for step_log in self.task_steps:
+            # Create a new figure with a specific layout using GridSpec
+            fig = plt.figure(figsize=(15, 10))
+            gs = GridSpec(3, 3, figure=fig, height_ratios=[6, 1, 3])
             
-        # Set up the figure title
-        fig.suptitle(f"Task Execution Visualization ({num_steps} steps)", fontsize=16)
-        
-        for i, step_log in enumerate(self.task_steps):
-            # Step info text
-            step_info = f"Step {step_log.step_id}"
+            # Add overall title for this step
+            fig.suptitle(f"Step {step_log.step_id} Visualization", 
+                        fontsize=18, fontweight='bold', y=0.98)
+            
+            # Main omni image panel - spans the entire width
+            ax_main = fig.add_subplot(gs[0, :])
+            
+            # Patch image panel - placed in bottom left
+            ax_patch = fig.add_subplot(gs[2, 0])
+            
+            # Match info panel - placed in bottom center and right
+            ax_info = fig.add_subplot(gs[2, 1:])
+            ax_info.axis('off')  # Hide axis for text display
             
             # Process omni image (base64 to PIL Image)
             try:
@@ -272,7 +284,7 @@ class TaskLog():
                 omni_array = np.array(omni_img)
             except Exception as e:
                 logger.error(f"Error decoding omni image for step {step_log.step_id}: {e}")
-                omni_img = Image.new('RGB', (400, 300), color='gray')
+                omni_img = Image.new('RGB', (800, 600), color='gray')
                 draw = ImageDraw.Draw(omni_img)
                 draw.text((10, 10), f"Error loading omni image: {str(e)}", fill="white")
                 omni_array = np.array(omni_img)
@@ -288,21 +300,25 @@ class TaskLog():
                 draw.text((10, 10), f"Error loading patch image: {str(e)}", fill="white")
                 patch_array = np.array(patch_img)
             
-            # Display the images
-            axes[i, 0].imshow(omni_array)
-            axes[i, 0].set_title(f"{step_info} - Omni Image")
-            axes[i, 0].axis('off')
+            # Display the omni image
+            ax_main.imshow(omni_array)
+            ax_main.set_title("Screen Capture", fontsize=14, fontweight='bold')
+            ax_main.axis('off')
             
-            axes[i, 1].imshow(patch_array)
-            axes[i, 1].set_title(f"{step_info} - Patch Image")
-            axes[i, 1].axis('off')
+            # Display the patch image
+            ax_patch.imshow(patch_array)
+            ax_patch.set_title("Target Template", fontsize=12, fontweight='bold')
+            ax_patch.axis('off')
             
-            # Add match result info as text and draw bbox if match was found
+            # Prepare match information display
+            match_info = []
+            match_found = False
+            
             if step_log.match_result and step_log.match_result.match_found:
-                match_info = (
-                    f"Match found: ID={step_log.match_result.matched_element_id}, "
-                    f"Score={step_log.match_result.similarity_score:.4f}"
-                )
+                match_found = True
+                match_info.append(f"✓ Match found")
+                match_info.append(f"Element ID: {step_log.match_result.matched_element_id}")
+                match_info.append(f"Similarity Score: {step_log.match_result.similarity_score:.4f}")
                 
                 # If the match result has parsed content with a bbox, draw it
                 if (hasattr(step_log.match_result, 'parsed_content_result') and 
@@ -310,35 +326,96 @@ class TaskLog():
                     hasattr(step_log.match_result.parsed_content_result, 'bbox')):
                     
                     bbox = step_log.match_result.parsed_content_result.bbox
-                    match_info += f"\nBBox: {[round(b, 2) for b in bbox]}"
+                    match_info.append(f"Bounding Box: [{int(bbox[0])}, {int(bbox[1])}, {int(bbox[2])}, {int(bbox[3])}]")
                     
                     # Draw rectangle on the omni image
-                    # Convert bbox [x1, y1, x2, y2] to [x, y, width, height]
                     rect_x = bbox[0]
                     rect_y = bbox[1]
                     rect_width = bbox[2] - bbox[0]
                     rect_height = bbox[3] - bbox[1]
                     
-                    # Create a Rectangle patch with a distinct color and linewidth
+                    # Create a Rectangle patch with better visibility
                     rect = patches.Rectangle(
                         (rect_x, rect_y), rect_width, rect_height, 
-                        linewidth=3, edgecolor='red', facecolor='none'
+                        linewidth=2, edgecolor='red', facecolor='none', 
+                        linestyle='-', alpha=0.8
                     )
                     
                     # Add the patch to the omni image axes
-                    axes[i, 0].add_patch(rect)
+                    ax_main.add_patch(rect)
+                    
+                    # Calculate center point for arrow connection (but don't display a dot)
+                    center_x = rect_x + rect_width/2
+                    center_y = rect_y + rect_height/2
+                    
+                    # Add a dotted line connecting the patch to the match location
+                    # Draw another small copy of the patch near the match for visual reference
+                    inset_size = 0.15  # Size of the inset as a fraction of the main axes
+                    inset_ax = fig.add_axes([
+                        0.75,  # x position
+                        0.75,  # y position
+                        inset_size, # width
+                        inset_size * (patch_array.shape[0] / patch_array.shape[1])  # height with proper aspect ratio
+                    ], 
+                    zorder=3)  # Ensure it's on top
+                    inset_ax.imshow(patch_array)
+                    inset_ax.axis('off')
+                    
+                    # Draw an arrow from the inset to the match location
+                    arrow_props = dict(
+                        arrowstyle="fancy,head_length=0.4,head_width=0.4,tail_width=0.2",
+                        connectionstyle="arc3,rad=0.3",  # Changed from negative to positive value
+                        color='red',
+                        alpha=0.7,
+                        linewidth=2
+                    )
+                    
+                    # Get transformation to figure coordinates
+                    fig_coords_main = ax_main.transData.transform((center_x, center_y))
+                    fig_coords_inset = inset_ax.transAxes.transform((0.5, 0.5))
+                    fig_to_display = fig.transFigure.inverted()
+                    main_display_coords = fig_to_display.transform(fig_coords_main)
+                    inset_display_coords = fig_to_display.transform(fig_coords_inset)
+                    
+                    # Draw the arrow in figure coordinates
+                    fig.patches.append(patches.FancyArrowPatch(
+                        inset_display_coords, main_display_coords,
+                        transform=fig.transFigure, **arrow_props
+                    ))
             else:
-                match_info = "No match found"
-                
-            # Add text below the patch image
-            axes[i, 1].text(0, 1.05, match_info, transform=axes[i, 1].transAxes, 
-                           fontsize=10, verticalalignment='bottom')
+                match_info.append("❌ No match found")
+            
+            # Display match information in a box
+            info_box = '\n'.join(match_info)
+            props = dict(boxstyle='round,pad=1', facecolor='white' if match_found else '#ffcccc',
+                         alpha=0.8, edgecolor='#888888')
+            ax_info.text(0.5, 0.5, info_box, fontsize=12,
+                         ha='center', va='center',
+                         bbox=props,
+                         transform=ax_info.transAxes)
+            
+            ax_info.set_title("Match Information", fontsize=12, fontweight='bold')
+            
+            # Add a small summary below the patch
+            ax_summary = fig.add_subplot(gs[1, :])
+            ax_summary.axis('off')
+            summary_text = f"Step {step_log.step_id}: {'Match found' if match_found else 'No match found'}"
+            ax_summary.text(0.5, 0.5, summary_text, 
+                            ha='center', va='center', fontsize=12, 
+                            fontweight='bold', color='green' if match_found else 'red',
+                            transform=ax_summary.transAxes)
+            
+            # Adjust layout
+            plt.tight_layout(rect=[0, 0, 1, 0.95])  # Leave space for suptitle
+            
+            # Optional: Save the figure
+            # fig.savefig(os.path.join(plot_dir, f"step_{step_log.step_id}.png"), dpi=150, bbox_inches='tight')
+            
+            # Display plot for this step
+            plt.show()
         
-        # Adjust layout
-        plt.tight_layout(rect=[0, 0, 1, 0.96])  # Leave space for suptitle
-        
-        # Display the plot
-        plt.show()
+        # Summary message
+        print(f"Visualized {len(self.task_steps)} step logs")
 
 class Clipboard():
     text: str
