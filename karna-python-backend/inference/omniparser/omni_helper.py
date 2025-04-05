@@ -194,9 +194,13 @@ def get_omniparser_result_model_from_image_path(image_path: str,
                                                 project_uuid: str = "-1",
                                                 command_uuid: str = "-1",
                                                 timestamp: datetime = datetime.now(),
-                                                description: str = "Omniparser result"
+                                                description: str = "Omniparser result",
+                                                local_semantics: bool = True
                                                 ) -> OmniParserResultModel:
-    omniparser_result = omniparser.parse_image_path(image_path)
+    if local_semantics:
+        omniparser_result = omniparser.parse_image_path(image_path)
+    else:
+        omniparser_result = omniparser.parse_image_path_without_local_semantics(image_path)
     return get_omniparser_result_model(omniparser_result, 
                                         event_id=event_id, 
                                         project_uuid=project_uuid, 
