@@ -280,31 +280,18 @@ class TaskExecutor():
             
         # Select appropriate matching method based on target type
         # Convert ScreenObjectType enum to string value for source_types
-        source_types = [str(target_type)]  # This converts the enum to its string value
-        use_identical_match = False  # Flag for using identical matching
-        
-        # For certain target types, we might want exact matches
-        if target_type == ScreenObjectType.BOX_YOLO_CONTENT_YOLO:
-            use_identical_match = True
         
         # Perform matching
         try:
-            if use_identical_match:
-                # Use higher threshold for exact matches
-                result = self.vertical_patch_matcher.find_identical_element(
-                    patch_img, 
-                    omniparser_result_model, 
-                    # source_types=source_types
-                )
-            else:
-                # Use standard matching
-                result = self.vertical_patch_matcher.find_matching_element(
-                    patch_img, 
-                    omniparser_result_model, 
-                    # source_types=source_types
-                )
+            # Use standard matching
+            result = self.vertical_patch_matcher.find_matching_element(
+                patch_img, 
+                omniparser_result_model, 
+                # source_types=source_types
+            )
                 
             # Log the result
+            # print(f"Patch match result: {result}")
             if result and result.match_found:
                 logger.info(f"Found match for {target_type} with score {result.similarity_score:.4f} (ID: {result.matched_element_id})")
             else:
@@ -320,18 +307,22 @@ class TaskExecutor():
         """
         Execute all steps in the task sequentially.
         """
-        for step in self.task_planner.task_schema.steps:
-            logger.info(f"Executing step {step.step_id}: {step.description}")
+        for i, step in enumerate(self.task_planner.task_schema.steps):
+            # if i > 2:
+            #     logger.info("Ending task execution")
+            #     return
             
+            # if(i<6):
+            #     continue
+            print("--------------------------------")
+            print(f"EXECUTING STEP: {i}")
+            print("--------------------------------")
             if isinstance(step, MouseStep):
                 logger.info(f"Executing mouse step {step.step_id}: {step.description}")
                 self.execute_mouse_step(step)
             elif isinstance(step, KeyboardActionStep):
                 logger.info(f"Executing keyboard step {step.step_id}: {step.description}")
-                should_end = self.execute_keyboard_step(step)
-                if should_end:
-                    logger.info("Task execution ended by 'end' action")
-                    break
+                self.execute_keyboard_step(step)
             elif isinstance(step, WaitStep):
                 logger.info(f"Executing wait step {step.step_id}: {step.description}")
                 success = self.execute_wait_step(step)
@@ -353,6 +344,7 @@ class TaskExecutor():
             logger.info("Target type is NONE, no patch matching required")
             # click at the center of the screen
             if mouse_step.attention == Attention.CENTER:
+                logger.info("Clicking at the center of the screen")
                 self.chrome_robot.click(self.viewport["x"] + self.viewport["width"] // 2, self.viewport["y"] + self.viewport["height"] // 2)
             else:
                 logger.error(f"Invalid attention: {mouse_step.attention}")
@@ -388,9 +380,8 @@ class TaskExecutor():
             logger.info("Executing paste action")
             self.chrome_robot.paste()
         elif action == "end":
-            logger.info("Executing end action - ending task execution")
+            logger.info("Executing end action")
             self.chrome_robot.press_end()
-            return True  # Signal to stop task execution
         else:
             # Handle other keyboard actions as needed
             logger.info(f"Executing keyboard action: {action}")
@@ -456,8 +447,8 @@ class TaskExecutor():
         Get the centre of the bbox.
         """
         normalized_bbox = self.normalize_bbox(bbox)
-        centre_x = normalized_bbox[0] + normalized_bbox[2] / 2
-        centre_y = normalized_bbox[1] + normalized_bbox[3] / 2
+        centre_x = (normalized_bbox[0] + normalized_bbox[2]) / 2
+        centre_y = (normalized_bbox[1] + normalized_bbox[3]) / 2
         return [int(centre_x), int(centre_y)]
     
     def open_app_snapped_right(self) -> bool:

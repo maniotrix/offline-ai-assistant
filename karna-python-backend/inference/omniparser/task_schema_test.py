@@ -6,6 +6,12 @@ sys.path.append('C:/Users/Prince/Documents/GitHub/Proejct-Karna/offline-ai-assis
 from inference.omniparser.task_schema import load_task_schema_from_json, TaskPlanner, MouseStep, WaitStep, KeyboardActionStep, TaskExecutor
 
 import logging
+# Configure logging to show messages on console
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler()]
+)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
