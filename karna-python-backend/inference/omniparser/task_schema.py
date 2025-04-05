@@ -393,7 +393,7 @@ class TaskExecutor():
         """
         Send text to clipboard and paste it.
         """
-        send_text_to_clipboard(text)
+        self.send_text_to_clipboard(text)
         time.sleep(1)
         self.chrome_robot.paste()
         
@@ -426,7 +426,7 @@ class TaskExecutor():
             for file_path in file_paths:
                 self.send_image_to_clipboard_and_paste(file_path)
         if text is not None:
-            self.send_text_to_clipboard(text)
+            self.send_text_to_clipboard_and_paste(text)
     
     def prepare_for_task(self):
         """

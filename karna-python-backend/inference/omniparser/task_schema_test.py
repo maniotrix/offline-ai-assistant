@@ -141,6 +141,7 @@ def test_task_schema():
         karna_print(f"{result}")
         
         karna_print(Colors.BOLD + Colors.BLUE + "─────────────────────────────────────────────────────────────" + Colors.ENDC)
+        task_executor.chrome_robot.press_alt_key("tab")
         #task_executor.task_log.visualize_task_log()
 
 if __name__ == "__main__":
