@@ -405,7 +405,7 @@ class TaskExecutor():
         copy_files_with_powershell([image_path])
         time.sleep(1)
         self.chrome_robot.paste()
-        time.sleep(1)
+        time.sleep(2)
         
     def process_clipboard(self):
         self.send_directory_to_clipboard_and_paste(self.clipboard.text, self.clipboard.directory_path)

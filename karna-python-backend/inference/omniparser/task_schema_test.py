@@ -112,8 +112,13 @@ def test_task_schema():
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         with suppress_output():
-            #task_executor.set_clipboard(user_question, directory_path)
-            task_executor.set_clipboard(user_question)
+            if question_count == 1:
+                # only for the first question, we will upload the files to chatgpt
+                task_executor.set_clipboard(user_question, directory_path)
+                karna_print(Colors.BOLD + Colors.UNDERLINE + f"User question: {user_question} and directory path: {directory_path}" + Colors.ENDC)
+            else:
+                # for all other questions, we will just send the question to chatgpt
+                task_executor.set_clipboard(user_question)
 
         karna_print(Colors.CYAN + "\nAsking ChatGPT..." + Colors.ENDC)
         
