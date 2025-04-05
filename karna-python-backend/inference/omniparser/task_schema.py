@@ -18,6 +18,11 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 from clipboard_utils import *
 from dataclasses import dataclass
+import random
+import math
+import numpy as np
+from functools import lru_cache
+import pyautogui
 
 class ScreenObjectType(str, Enum):
     """
@@ -540,10 +545,6 @@ class TaskExecutor():
             # Add a small delay between steps for stability
             time.sleep(0.2)
     
-    def click_tween():
-        pass
-    
-    
     def execute_mouse_step(self, mouse_step: MouseStep) -> bool:
         """
         Execute a mouse step.
@@ -555,9 +556,9 @@ class TaskExecutor():
             # click at the center of the screen
             if mouse_step.attention == Attention.CENTER:
                 logger.info("Clicking at the center of the screen")
-                self.chrome_robot.click(self.viewport["x"] + self.viewport["width"] // 2, 
-                                        self.viewport["y"] + self.viewport["height"] // 2,
-                                        clicks=1, duration=0.1, interval=0.1)
+                x = self.viewport["x"] + self.viewport["width"] // 2
+                y = self.viewport["y"] + self.viewport["height"] // 2
+                self.human_like_click(x, y, clicks=1)
             else:
                 logger.error(f"Invalid attention: {mouse_step.attention}")
                 return False
@@ -579,7 +580,7 @@ class TaskExecutor():
             logger.info(f"Parsed content result: {parsed_content_result}")
             centre_x, centre_y = self.get_centre_of_bbox(parsed_content_result.bbox)
             print(f"Clicking at: {centre_x}, {centre_y}")
-            self.chrome_robot.click(centre_x, centre_y, clicks=2, duration=0.1, interval=0.1)
+            self.human_like_click(centre_x, centre_y, clicks=2)
             # add the step log
             if mouse_step.target.value:
                 step_log = StepLog(
@@ -621,7 +622,7 @@ class TaskExecutor():
             wait_step: WaitStep
         """
         default_time_interval = 0.5
-        default_timeout = 30.0
+        default_timeout = 120.0
         start_time = time.time()
         
         while True:
@@ -749,3 +750,65 @@ class TaskExecutor():
         clipboard_text = get_text_from_clipboard()
         logger.info(f"Got text from clipboard: {clipboard_text[:50]}{'...' if len(clipboard_text) > 50 else ''}")
         return clipboard_text
+
+    def human_like_click(self, x: int, y: int, clicks: int = 1, interval: float = 0.1) -> None:
+        """
+        Perform a human-like mouse click using pyautogui directly with our custom tween.
+        
+        Args:
+            x: X-coordinate to click
+            y: Y-coordinate to click
+            clicks: Number of clicks
+            interval: Interval between clicks
+        """
+        try:
+            # Move to position with human-like movement
+            pyautogui.moveTo(x, y, duration=0.15, tween=human_like_tween)
+            time.sleep(0.05)  # Small pause after reaching target
+            
+            # Perform the click(s)
+            pyautogui.click(clicks=clicks, interval=interval)
+            logger.info(f"Human-like click at ({x}, {y})")
+        except Exception as e:
+            logger.error(f"Failed to perform human-like click: {str(e)}")
+            raise
+
+# Human-like tween function for mouse movements
+def human_like_tween(t):
+    """
+    A human-like tween function for mouse movements.
+    
+    Args:
+        t: A value between 0.0 and 1.0 representing the progress of the motion.
+        
+    Returns:
+        A modified value between 0.0 and 1.0 that creates human-like motion.
+    """
+    # Base easeInOutQuad curve for natural acceleration/deceleration
+    if t < 0.5:
+        base = 2 * t * t  # Accelerate in first half
+    else:
+        base = -1 + (4 - 2 * t) * t  # Decelerate in second half
+    
+    # Add micro-adjustments (small random jitter)
+    jitter_strength = 0.03  # How strong the micro-adjustments are
+    jitter = random.uniform(-jitter_strength, jitter_strength) * math.sin(t * math.pi * random.uniform(5, 8))
+    
+    # Add occasional hesitation (slight pauses)
+    hesitation_chance = 0.15  # Probability of hesitation
+    hesitation_strength = 0.04  # How strong the hesitation effect is
+    if random.random() < hesitation_chance:
+        # Create a slight pause effect by pulling the curve back a tiny bit
+        hesitation = -hesitation_strength * math.sin(t * math.pi)
+    else:
+        hesitation = 0
+        
+    # Occasional overshoot and correction near the target
+    overshoot = 0
+    if t > 0.85 and random.random() < 0.2:  # 20% chance of overshooting near the end
+        overshoot = 0.05 * math.sin((t - 0.85) * 5 * math.pi)
+    
+    # Combine all effects, ensuring the result stays in the 0.0-1.0 range
+    result = max(0.0, min(1.0, base + jitter + hesitation + overshoot))
+    
+    return result
