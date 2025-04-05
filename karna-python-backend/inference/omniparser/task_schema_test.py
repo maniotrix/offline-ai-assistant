@@ -112,14 +112,14 @@ def test_task_schema():
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         with suppress_output():
-            if question_count == 1:
-                # only for the first question, we will upload the files to chatgpt
-                task_executor.set_clipboard(user_question, directory_path)
-                karna_print(Colors.BOLD + Colors.UNDERLINE + f"User question: {user_question} and directory path: {directory_path}" + Colors.ENDC)
-            else:
-                # for all other questions, we will just send the question to chatgpt
-                task_executor.set_clipboard(user_question)
-            # task_executor.set_clipboard(user_question)    
+            # if question_count == 1:
+            #     # only for the first question, we will upload the files to chatgpt
+            #     task_executor.set_clipboard(user_question, directory_path)
+            #     karna_print(Colors.BOLD + Colors.UNDERLINE + f"User question: {user_question} and directory path: {directory_path}" + Colors.ENDC)
+            # else:
+            #     # for all other questions, we will just send the question to chatgpt
+            #     task_executor.set_clipboard(user_question)
+            task_executor.set_clipboard(user_question)    
             
 
         karna_print(Colors.CYAN + "\nAsking and Waiting for ChatGPT..." + Colors.ENDC)
@@ -149,6 +149,9 @@ def test_task_schema():
         
         karna_print(Colors.BOLD + Colors.BLUE + "─────────────────────────────────────────────────────────────" + Colors.ENDC)
         task_executor.chrome_robot.press_alt_key("tab")
+        if question_count == 1:
+            task_executor.task_log.visualize_task_log()
+            break
         #task_executor.task_log.visualize_task_log()
 
 if __name__ == "__main__":
