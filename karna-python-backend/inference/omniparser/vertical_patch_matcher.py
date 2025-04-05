@@ -11,6 +11,9 @@ class VerticalPatchMatcher(PatchMatcher):
     A specialized PatchMatcher for UI screens that searches for matches 
     by scanning vertically from the bottom of the screen to the top.
     Useful for matching UI elements where a bottom-to-top search order is preferred.
+    # TODO: Need to revist the vertical pan , current algo scan whole image, and then decides the best match.
+    #       However, if a match is found >= similarity_threshold, search is stopped.
+    #       so if multiple matches are found, the topmost match will be returned, if all are below similarity_threshold.
     """
     
     def __init__(
