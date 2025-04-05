@@ -120,7 +120,7 @@ def test_task_schema():
                 # for all other questions, we will just send the question to chatgpt
                 task_executor.set_clipboard(user_question)
 
-        karna_print(Colors.CYAN + "\nAsking ChatGPT..." + Colors.ENDC)
+        karna_print(Colors.CYAN + "\nAsking and Waiting for ChatGPT..." + Colors.ENDC)
         
         # Record start time
         start_time = time.time()
