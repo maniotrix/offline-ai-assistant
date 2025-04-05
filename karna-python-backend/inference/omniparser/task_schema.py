@@ -345,7 +345,8 @@ class TaskExecutor():
             # click at the center of the screen
             if mouse_step.attention == Attention.CENTER:
                 logger.info("Clicking at the center of the screen")
-                self.chrome_robot.click(self.viewport["x"] + self.viewport["width"] // 2, self.viewport["y"] + self.viewport["height"] // 2)
+                self.chrome_robot.click(self.viewport["x"] + self.viewport["width"] // 2, 
+                                        self.viewport["y"] + self.viewport["height"] // 2)
             else:
                 logger.error(f"Invalid attention: {mouse_step.attention}")
             return
@@ -364,7 +365,7 @@ class TaskExecutor():
             logger.info(f"Parsed content result: {parsed_content_result}")
             centre_x, centre_y = self.get_centre_of_bbox(parsed_content_result.bbox)
             print(f"Clicking at: {centre_x}, {centre_y}")
-            self.chrome_robot.click(centre_x, centre_y)
+            self.chrome_robot.click(centre_x, centre_y, clicks=2)
         else:
             logger.error(f"Could not find patch for target: {mouse_step.target}")
     
