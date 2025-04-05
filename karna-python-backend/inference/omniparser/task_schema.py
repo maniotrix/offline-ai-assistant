@@ -381,14 +381,14 @@ class TaskExecutor():
         else:
             logger.info("Chrome robot ready")
         
-    def find_match_for_target(self, target: Target, omniparser_result_model: OmniParserResultModel) -> Optional[PatchMatchResult]:
+    def find_match_for_target(self, target: Target, omniparser_result_model: OmniParserResultModel, custom_threshold: float | None = None) -> Optional[PatchMatchResult]:
         """
         Find the patch for the target.
         
         Args:
             target: Target containing the type and value
             omniparser_result_model: OmniParserResultModel containing parsed elements
-            
+            custom_threshold: Custom threshold for the match
         Returns:
             Optional[PatchMatchResult]: The match result if found, None otherwise
         """
@@ -430,6 +430,7 @@ class TaskExecutor():
                 patch_img, 
                 omniparser_result_model, 
                 # source_types=source_types
+                custom_threshold=custom_threshold
             )
                 
             # Log the result
@@ -454,8 +455,8 @@ class TaskExecutor():
             #     logger.info("Ending task execution")
             #     return
             
-            # if(i<6):
-            #     continue
+            if(i != 6):
+                continue
             print("--------------------------------")
             print(f"EXECUTING STEP: {i}")
             print("--------------------------------")
@@ -561,7 +562,7 @@ class TaskExecutor():
             omniparser_result_model = self.get_omniparser_result_model()
             
             # Try to find the match for the target
-            match = self.find_match_for_target(wait_step.target, omniparser_result_model)
+            match = self.find_match_for_target(wait_step.target, omniparser_result_model, custom_threshold=0.92)
             parsed_content_result = match.parsed_content_result if match else None
             
             if parsed_content_result:
