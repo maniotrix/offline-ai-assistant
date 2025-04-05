@@ -12,8 +12,9 @@ import logging
 from vertical_patch_matcher import VerticalPatchMatcher
 from vertical_patch_matcher import PatchMatchResult
 from PIL import Image
-import pyautogui
+import time
 logger = logging.getLogger(__name__)
+from clipboard_utils import *
 
 class ScreenObjectType(str, Enum):
     """
@@ -210,6 +211,20 @@ class TaskExecutor():
         
     def set_viewport(self, viewport: Dict[str, int]):
         self.viewport = viewport
+        
+    def send_text_to_clipboard(self, text: str):
+        """
+        Send text to clipboard.
+        """
+        send_text_to_clipboard(text)
+        
+    def send_image_to_clipboard(self, image_path: str):
+        """
+        Send image to clipboard.
+        """
+        copy_files_with_powershell([image_path])
+        time.sleep(1)
+        self.chrome_robot.paste()
     
     def prepare_for_task(self):
         """
@@ -311,6 +326,14 @@ class TaskExecutor():
         Args:
             mouse_step: MouseStep
         """
+        if mouse_step.target.type == ScreenObjectType.NONE:
+            logger.info("Target type is NONE, no patch matching required")
+            # click at the center of the screen
+            if mouse_step.attention == Attention.CENTER:
+                self.chrome_robot.click(self.viewport["x"] + self.viewport["width"] // 2, self.viewport["y"] + self.viewport["height"] // 2)
+            else:
+                logger.error(f"Invalid attention: {mouse_step.attention}")
+            return
         # get the omniparser result model
         omniparser_result_model = self.get_omniparser_result_model()
         # get the match for the target
@@ -326,7 +349,37 @@ class TaskExecutor():
             self.chrome_robot.click(int(x), int(y))
         else:
             logger.error(f"Could not find patch for target: {mouse_step.target}")
+    def execute_keyboard_step(self, keyboard_step: KeyboardActionStep):
+        """
+        Execute a keyboard step.
+        Args:
+            keyboard_step: KeyboardActionStep
+        """
+        pass
     
+    def execute_wait_step(self, wait_step: WaitStep):
+        """
+        Execute a wait step.
+        Args:
+            wait_step: WaitStep
+        """
+        default_time_interval = 2.0
+        default_timeout = 30.0
+        # get the omniparser result model
+        omniparser_result_model = self.get_omniparser_result_model()
+        # get the match for the target
+        match : Optional[PatchMatchResult] = self.find_match_for_target(wait_step.target, omniparser_result_model)
+        # execute the mouse step
+        parsed_content_result = match.parsed_content_result if match else None
+        if parsed_content_result:
+            logger.info(f"Parsed content result: {parsed_content_result}")
+            normalized_bbox = self.normalize_bbox(parsed_content_result.bbox)
+            x = normalized_bbox[0]
+            y = normalized_bbox[1]
+            print(f"Found the target at: {x}, {y}")
+        else:
+            logger.error(f"Could not find patch for target: {wait_step.target}")
+            
     def normalize_bbox(self, bbox: List[float]) -> List[int]:
         """
         Normalize the bbox to the screen size coordinates from viewport coordinates.

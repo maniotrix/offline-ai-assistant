@@ -5,6 +5,10 @@ import sys
 sys.path.append('C:/Users/Prince/Documents/GitHub/Proejct-Karna/offline-ai-assistant/karna-python-backend')
 from inference.omniparser.task_schema import load_task_schema_from_json, TaskPlanner, MouseStep, WaitStep, KeyboardActionStep, TaskExecutor
 
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
 def test_task_schema(): 
     # load the task schema from the json file
     current_dir = os.path.dirname(os.path.abspath(__file__))
