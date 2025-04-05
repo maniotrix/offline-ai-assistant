@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 from enum import Enum
 from robot.chrome_robot import ChromeRobot
@@ -195,7 +195,10 @@ class TaskExecutor():
     omniparser_results_list: List[OmniParserResultModel]
     chrome_robot_ready: bool
     vertical_patch_matcher: VerticalPatchMatcher
-    def __init__(self, task_planner: TaskPlanner):
+    viewport: Dict[str, int]
+    current_directory: str
+    
+    def __init__(self, task_planner: TaskPlanner, viewport: Dict[str, int] = DEFAULT_VIEWPORT):
         self.task_planner = task_planner
         self.chrome_robot = ChromeRobot()
         self.omniparser = Omniparser()
@@ -203,6 +206,10 @@ class TaskExecutor():
         self.chrome_robot_ready = False
         self.vertical_patch_matcher = VerticalPatchMatcher()
         self.current_directory = os.path.dirname(os.path.abspath(__file__))
+        self.viewport = viewport
+        
+    def set_viewport(self, viewport: Dict[str, int]):
+        self.viewport = viewport
     
     def prepare_for_task(self):
         """
@@ -326,8 +333,8 @@ class TaskExecutor():
         """
         # Convert from viewport-relative coordinates to absolute screen coordinates
         # by adding the viewport's position offset
-        viewport_x = DEFAULT_VIEWPORT["x"]
-        viewport_y = DEFAULT_VIEWPORT["y"]
+        viewport_x = self.viewport["x"]
+        viewport_y = self.viewport["y"]
         
         # Calculate absolute screen coordinates
         absolute_x1 = int(viewport_x + bbox[0])
@@ -347,7 +354,7 @@ class TaskExecutor():
     def capture_viewport_screenshot(self) -> str:
         """
         Takes a full screen screenshot using chrome_robot, crops it according to 
-        DEFAULT_VIEWPORT, saves in a temp directory, and returns the absolute path.
+        self.viewport, saves in a temp directory, and returns the absolute path.
         
         Returns:
             str: Absolute path to the cropped screenshot file
@@ -361,12 +368,12 @@ class TaskExecutor():
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         screenshot_path = os.path.join(temp_dir, f"viewport_screenshot_{timestamp}.png")
         
-        # Create a Region object from DEFAULT_VIEWPORT for cropping
+        # Create a Region object from self.viewport for cropping
         viewport_region = Region(
-            x=DEFAULT_VIEWPORT["x"],
-            y=DEFAULT_VIEWPORT["y"],
-            width=DEFAULT_VIEWPORT["width"],
-            height=DEFAULT_VIEWPORT["height"]
+            x=self.viewport["x"],
+            y=self.viewport["y"],
+            width=self.viewport["width"],
+            height=self.viewport["height"]
         )
         
         # Take and save cropped screenshot
