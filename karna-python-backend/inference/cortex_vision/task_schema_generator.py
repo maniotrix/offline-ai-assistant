@@ -74,6 +74,15 @@ class TaskSchemaGenerator:
         """
         self.output_dir = output_dir
         self.patches_dir: Optional[str] = None
+        
+        # Delete the output directory if it already exists
+        if self.output_dir and os.path.exists(self.output_dir):
+            try:
+                import shutil
+                shutil.rmtree(self.output_dir)
+                logger.info(f"Deleted existing output directory: {self.output_dir}")
+            except Exception as e:
+                logger.warning(f"Failed to delete existing output directory: {e}")
     
     def _ensure_output_directory(self, training_json_path: str) -> str:
         """
@@ -95,6 +104,16 @@ class TaskSchemaGenerator:
         
         # Create full path
         output_path = os.path.abspath(output_dir)
+        
+        # Delete the directory if it exists (just to make sure)
+        if os.path.exists(output_path):
+            try:
+                import shutil
+                shutil.rmtree(output_path)
+                logger.info(f"Deleted existing output directory: {output_path}")
+            except Exception as e:
+                logger.warning(f"Failed to delete existing output directory: {e}")
+        
         os.makedirs(output_path, exist_ok=True)
         
         # Create patches subdirectory
@@ -175,6 +194,7 @@ class TaskSchemaGenerator:
             patch: The image patch to save
             element_id: The ID of the element
             element_type: The type of the element (for filename)
+            element_content: The content text of the element (for filename)
             
         Returns:
             str: The path to the saved patch image
@@ -182,8 +202,13 @@ class TaskSchemaGenerator:
         if not self.patches_dir:
             raise ValueError("Patches directory not initialized. Call _ensure_output_directory first.")
             
+        # Clean element content for filename - replace special characters and ensure no double dots
+        clean_content = element_content.replace(" ", "_").replace(".", "")
+        if not clean_content:
+            clean_content = "no_content"
+            
         # Create a filename based on element type and ID
-        filename = f"{element_id}_{element_type}_{element_content}.png"
+        filename = f"{element_id}_{element_type}_{clean_content}.png"
         filepath = os.path.join(self.patches_dir, filename)
         
         # Save the image

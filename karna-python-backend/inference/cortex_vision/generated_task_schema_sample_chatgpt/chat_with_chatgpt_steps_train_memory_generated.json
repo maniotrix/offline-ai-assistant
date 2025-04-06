@@ -32,7 +32,7 @@
             "attention": "bottom",
             "target": {
                 "type": "box_yolo_content_yolo",
-                "value": "38_icon_Up_or_down..png"
+                "value": "38_icon_Up_or_down.png"
             },
             "keyboard_shortcut": "enter"
         },
@@ -44,7 +44,7 @@
             "attention": "bottom",
             "target": {
                 "type": "box_yolo_content_yolo",
-                "value": "38_icon_Up_or_down..png"
+                "value": "38_icon_Up_or_down.png"
             }
         },
         {
