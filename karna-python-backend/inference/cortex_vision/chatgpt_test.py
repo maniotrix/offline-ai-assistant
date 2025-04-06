@@ -11,7 +11,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 sys.path.append('C:/Users/Prince/Documents/GitHub/Proejct-Karna/offline-ai-assistant/karna-python-backend')
-from inference.omniparser.task_schema import load_task_schema_from_json, TaskPlanner, MouseStep, WaitStep, KeyboardActionStep, TaskExecutor
+from inference.cortex_vision.task_schema import load_task_schema_from_json, TaskPlanner, MouseStep, WaitStep, KeyboardActionStep, TaskExecutor
 
 import logging
 
@@ -78,17 +78,35 @@ def test_task_schema():
     # load the task schema from the json file
     current_dir = os.path.dirname(os.path.abspath(__file__))
     
+    memory_dir = os.path.join(current_dir, "generated_task_schema_sample_chatgpt")
+    
+    # get json file from memory_dir ending with _memory_generated.json
+    memory_json_file = [f for f in os.listdir(memory_dir) if f.endswith('_memory_generated.json')][0]
+    
+    patches_dir = os.path.join(memory_dir, "patches")
+    # print(patches_dir)
+    
+    # validate json file and patches directory exists
+    if not os.path.exists(os.path.join(memory_dir, memory_json_file)):
+        raise FileNotFoundError(f"JSON file {memory_json_file} not found in {memory_dir}")
+    if not os.path.exists(patches_dir):
+        raise FileNotFoundError(f"Patches directory {patches_dir} not found in {memory_dir}")
+    
     karna_print("Loading chat with chatgpt task schema...")
     # Suppress output during initialization
     with suppress_output():
-        task_schema = load_task_schema_from_json(os.path.join(current_dir, "chat_with_chatgpt.json"))
-        task_planner = TaskPlanner(task_schema)
+        # print("Loading task schema...")
+        task_schema = load_task_schema_from_json(os.path.join(memory_dir, memory_json_file))
+        # print("Creating task planner...")
+        task_planner = TaskPlanner(task_schema, patches_dir)
     
     # Only display the main interface, skip all the technical details
     with suppress_output():
+        #print("Creating task executor...")
         task_executor = TaskExecutor(task_planner)
-    # task_executor.prepare_for_task()
-    
+        # task_executor.prepare_for_task()
+        
+    # print(task_executor.task_planner.task_schema)
     # Question loop interface
     karna_print("\n" + Colors.BOLD + Colors.HEADER + "╔═══════════════════════════════════════════════════════════╗" + Colors.ENDC)
     karna_print(Colors.BOLD + Colors.HEADER + "║                   KARNA CHATGPT INTERFACE                   ║" + Colors.ENDC)
@@ -97,6 +115,8 @@ def test_task_schema():
     
     question_count = 0
     use_as_vlm = False
+    
+    # with viz enabled, the task log will be visualized and program will exit after the first question
     show_tasks_viz = False
     directory_path = os.path.join(current_dir, "test_chatgpt_upload_dir")
     

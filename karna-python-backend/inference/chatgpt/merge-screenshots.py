@@ -5,7 +5,7 @@ from PIL import Image, ImageDraw
 
 import os
 
-from inference.omniparser.omni_helper import annotate_omniparser_result_model
+from inference.cortex_vision.omni_helper import annotate_omniparser_result_model
 
       
 def merge_images(image_files, output_dir, output_filename):

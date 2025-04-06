@@ -6,15 +6,15 @@ from typing import List, Union, Tuple
 import numpy as np
 import pandas as pd
 import torch
-from util.omniparser import OmniparserResult, Omniparser
+from inference.omniparser.util.omniparser import OmniparserResult, Omniparser
 from services.screen_capture_service import ScreenshotEvent
 import logging
 import os
 import json
 from PIL import Image
 import supervision as sv
-from util.utils import annotate, box_convert
-from util.box_annotator import BoxAnnotator
+from inference.omniparser.util.utils import annotate, box_convert
+from inference.omniparser.util.box_annotator import BoxAnnotator
 logger = logging.getLogger(__name__)
 import re
 

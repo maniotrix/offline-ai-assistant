@@ -15,7 +15,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(os.path.dirname(current_dir)))
 
 from services.screen_capture_service import ScreenshotEvent
-from inference.omniparser.attention_controller import AttentionFieldController, AttentionField
+from inference.cortex_vision.attention_controller import AttentionFieldController, AttentionField
 
 # Configure logging
 logging.basicConfig(level=logging.INFO,

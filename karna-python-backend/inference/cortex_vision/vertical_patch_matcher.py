@@ -2,8 +2,8 @@ import os
 import numpy as np
 from PIL import Image
 from typing import Optional, List, Set
-from inference.omniparser.patch_matcher import PatchMatcher, PatchMatchResult, KNOWN_SOURCE_TYPES
-from inference.omniparser.omni_helper import OmniParserResultModel
+from inference.cortex_vision.patch_matcher import PatchMatcher, PatchMatchResult, KNOWN_SOURCE_TYPES
+from inference.cortex_vision.omni_helper import OmniParserResultModel
 
 
 class VerticalPatchMatcher(PatchMatcher):

@@ -6,11 +6,11 @@ import tempfile
 import os
 from datetime import datetime
 from robot.base_robot import Region
-from util.omniparser import OmniparserResult, Omniparser
-from inference.omniparser.omni_helper import get_omniparser_result_model_from_image_path, OmniParserResultModel
+from inference.omniparser.util.omniparser import OmniparserResult, Omniparser
+from inference.cortex_vision.omni_helper import get_omniparser_result_model_from_image_path, OmniParserResultModel
 import logging
-from vertical_patch_matcher import VerticalPatchMatcher
-from vertical_patch_matcher import PatchMatchResult
+from inference.cortex_vision.vertical_patch_matcher import VerticalPatchMatcher
+from inference.cortex_vision.vertical_patch_matcher import PatchMatchResult
 from PIL import Image
 import time
 import pyperclip
@@ -51,7 +51,7 @@ class Target(BaseModel):
 
 class Step(BaseModel):
     """_summary_
-    Schema for chat_with_chatgpt.json file
+    Schema for steps defined in the task schema json file file
     Args:
         BaseModel (_type_): _description_
     """
@@ -195,8 +195,10 @@ DEFAULT_VIEWPORT = {
 }
 class TaskPlanner():
     task_schema: Task
-    def __init__(self, task_schema: Task):
+    patches_dir: str
+    def __init__(self, task_schema: Task, patches_dir: str):
         self.task_schema = task_schema
+        self.patches_dir = patches_dir
 
 @dataclass
 class StepLog():
@@ -509,7 +511,7 @@ class TaskExecutor():
             return None
         
         # Construct full patch path
-        patch_path = os.path.join(self.current_directory, target_value)
+        patch_path = os.path.join(self.task_planner.patches_dir, target_value)
         
         # Check if patch file exists
         if not os.path.exists(patch_path):
@@ -628,7 +630,7 @@ class TaskExecutor():
                 step_log = StepLog(
                     step_id=mouse_step.step_id,
                     omni_image=omniparser_result_model.omniparser_result.dino_labled_img,
-                    patch_image_path = os.path.join(self.current_directory, mouse_step.target.value),
+                    patch_image_path = os.path.join(self.task_planner.patches_dir, mouse_step.target.value),
                     match_result=match
                 )
                 self.task_log.add_step_log(step_log)
@@ -692,7 +694,7 @@ class TaskExecutor():
                     step_log = StepLog(
                         step_id=wait_step.step_id,
                         omni_image=omniparser_result_model.omniparser_result.dino_labled_img,
-                        patch_image_path = os.path.join(self.current_directory, wait_step.target.value),
+                        patch_image_path = os.path.join(self.task_planner.patches_dir, wait_step.target.value),
                         match_result=match
                     )
                     self.task_log.add_step_log(step_log)

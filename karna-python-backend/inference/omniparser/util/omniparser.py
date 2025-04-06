@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Any
-from util.utils import get_som_labeled_img, get_caption_model_processor, get_yolo_model, check_ocr_box
+from inference.omniparser.util.utils import get_som_labeled_img, get_caption_model_processor, get_yolo_model, check_ocr_box
 import torch
 from PIL import Image
 import io
