@@ -14,6 +14,28 @@ The `chatgpt_test.py` module provides a powerful testing framework and command-l
 - **Task Visualization**: Ability to visualize task execution steps with `show_tasks_viz`
 - **Auto-Switching**: Automatically switches application focus after each response
 
+## Scope Note: Selective Use of Vision Components - A Pragmatic Approach
+
+It's important to understand that while Karna's `cortex_vision` module offers a rich suite of components designed to mimic human visual processing, this specific `chatgpt_test.py` example deliberately employs a focused subset. This is **not** skipping necessary work, but rather applying **appropriate, pragmatic scoping** for the task at hand.
+
+**1. Task-Specific Minimalism:**
+*   The core task—automating the ChatGPT web UI—follows a relatively linear and predictable sequence: find input -> paste -> click send -> wait -> find copy -> click copy -> read clipboard.
+*   This specific flow primarily requires robust element localization and reliable action execution, not necessarily a deep, dynamic understanding of the entire visual scene at every moment.
+
+**2. Sufficient Components Utilized:**
+*   **`TaskExecutor` / `TaskSchema`:** Essential for defining the interaction sequence and orchestrating browser actions.
+*   **`VerticalPatchMatcher` (used internally by `TaskExecutor`):** This is the key vision component leveraged here. It provides visually robust localization of critical UI elements (input field, buttons) using pre-defined image patches. This handles minor UI shifts better than brittle selectors and represents the core philosophy of visually grounded interaction.
+
+**3. Justified Omission of Advanced Components (for *this* test):**
+*   **`AttentionController`:** Dynamically modeling visual attention is overkill for finding a few specific, known elements in a relatively static layout. The `TaskSchema` itself provides enough attentional guidance (e.g., target location hints) for the `VerticalPatchMatcher`.
+*   **`DynamicAreaDetector` / `ImageDiffCreator`:** While potentially useful for confirming response generation, simpler methods like `WaitStep` combined with patch matching for the 'Copy' button are sufficient and computationally cheaper for this script's goal.
+*   **`Clustering`, other advanced detectors:** Unnecessary for locating the specific, predefined UI controls needed for this interaction.
+
+**4. Performance Considerations:**
+*   Integrating the full suite of vision components (attention, change detection) into every step would introduce significant computational overhead, slowing down this specific automation task unnecessarily.
+
+**In Conclusion:** This script effectively demonstrates the core value proposition—automating UI interactions using `TaskSchema` and visually robust element finding (`VerticalPatchMatcher`)—without the performance cost or complexity of deploying the *entire* `cortex_vision` suite. The more advanced components remain available for integration into tasks that genuinely require their sophisticated capabilities, such as navigating highly dynamic interfaces or performing deeper scene analysis.
+
 ## Using Generated Task Schema
 
 The module uses the task schema files created by the `TaskSchemaGenerator`:
