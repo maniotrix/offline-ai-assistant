@@ -1,5 +1,7 @@
 # Karna: Vision-Based UI Automation Framework
 
+> **⚠️ EXPERIMENTAL ALERT:** This system is in early development and experimental phase. Components, implementations, and APIs may change significantly. Performance, accuracy, and reliability are being actively refined. Use for research and exploration purposes only.
+
 This README combines two modules of the Karna system:
 
 1. **[Karna Cortex Vision Module](cortex_vision.md)** – A biomimetic, modular system inspired by human vision for general UI automation.
