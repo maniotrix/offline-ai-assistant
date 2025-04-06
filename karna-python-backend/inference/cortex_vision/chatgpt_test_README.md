@@ -215,6 +215,8 @@ The system works through several key innovations:
 
 - **Browser Dependencies**: Requires Chrome browser with specific configuration
 - **Visual Changes**: UI updates to ChatGPT may require regenerating the task schema with TaskSchemaGenerator
+- **Theme Sensitivity:** The visual recognition relies on patch matching. Accuracy may decrease significantly if the task schema was generated (trained) on one UI theme (e.g., light mode) and executed on a different theme (e.g., dark mode). For best results, regenerate the task schema using screenshots from the target theme if issues occur. Tested and chatted perefectly for more than 1 hour on light theme without any issues.
+- **Error Handling:** The script assumes a smooth interaction flow. It does not currently handle unexpected interruptions like CAPTCHA checks (e.g., "Cloudflare verify you are human"), network errors prompting a retry, or other conversational UI pop-ups/errors that might appear on the ChatGPT website. Such events will likely cause the automation to fail. Future versions aim to incorporate more robust error handling and performance optimizations.
 - **Performance Overhead**: Vision-based detection is more resource-intensive than traditional web automation
 - **Platform Specificity**: Some operations (particularly file clipboard operations) are Windows-specific
 
