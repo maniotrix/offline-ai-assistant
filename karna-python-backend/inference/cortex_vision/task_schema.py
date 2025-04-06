@@ -51,7 +51,7 @@ class Target(BaseModel):
 
 class Step(BaseModel):
     """_summary_
-    Schema for chat_with_chatgpt.json file
+    Schema for steps defined in the task schema json file file
     Args:
         BaseModel (_type_): _description_
     """
