@@ -111,7 +111,7 @@ class TaskSchemaGenerator:
             return json.load(f)
     
     def extract_patch_from_coordinates(self, 
-                                      event: Dict[str, Any],
+                                      event: ScreenshotEvent,
                                       omni_result: OmniParserResultModel) -> Tuple[Optional[ParsedContentResult], Optional[Image.Image]]:
         """
         Extract a patch for the UI element containing the mouse coordinates from a screenshot event.
@@ -124,11 +124,11 @@ class TaskSchemaGenerator:
             Tuple of (ParsedContentResult, Image) if found, (None, None) otherwise
         """
         # Get mouse coordinates
-        x = event.get('mouse_x')
-        y = event.get('mouse_y')
+        x = event.mouse_x
+        y = event.mouse_y
         
         if x is None or y is None:
-            logger.warning(f"Event {event.get('event_id')} has no mouse coordinates")
+            logger.warning(f"Event {event.event_id} has no mouse coordinates")
             return None, None
         
         # Find containing element - use the first element whose bounding box contains the coordinates
@@ -193,7 +193,7 @@ class TaskSchemaGenerator:
         return filepath
     
     def process_non_wait_step(self, step_data: Dict[str, Any], 
-                             screenshot_event: Dict[str, Any],
+                             screenshot_event: ScreenshotEvent,
                              omni_result: OmniParserResultModel) -> Step:
         """
         Process a non-wait step by matching it with a screenshot event.
@@ -224,7 +224,7 @@ class TaskSchemaGenerator:
         keyboard_shortcut = step_data.get("keyboard_shortcut")
         
         # Check for mouse events
-        if screenshot_event.get('mouse_x') is not None and screenshot_event.get('mouse_y') is not None:
+        if hasattr(screenshot_event, 'mouse_x') and hasattr(screenshot_event, 'mouse_y') and screenshot_event.mouse_x is not None and screenshot_event.mouse_y is not None:
             action_type = ActionType.MOUSE_ACTION
             action = "click"
             
@@ -250,9 +250,9 @@ class TaskSchemaGenerator:
                 target = Target(type=ScreenObjectType.NONE)
                 
         # Check for keyboard events
-        elif screenshot_event.get('key_char') is not None or screenshot_event.get('key_code') is not None:
+        elif hasattr(screenshot_event, 'key_char') and screenshot_event.key_char is not None or hasattr(screenshot_event, 'key_code') and screenshot_event.key_code is not None:
             action_type = ActionType.KEYBOARD_ACTION
-            key = screenshot_event.get('key_char') or screenshot_event.get('key_code', '')
+            key = getattr(screenshot_event, 'key_char', None) or getattr(screenshot_event, 'key_code', '')
             
             # Determine action based on key
             if key.lower() in ['end', 'pagedown']:
@@ -442,7 +442,7 @@ class TaskSchemaGenerator:
         # Determine output file path
         if not output_file:
             training_name = os.path.splitext(os.path.basename(training_json_path))[0]
-            output_file = os.path.join(output_dir, f"{training_name}_generated.json")
+            output_file = os.path.join(output_dir, f"{training_name}_memory_generated.json")
         
         # Save task schema
         with open(output_file, 'w') as f:
