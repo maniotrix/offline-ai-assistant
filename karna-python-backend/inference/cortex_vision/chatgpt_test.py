@@ -17,24 +17,24 @@ import logging
 
 # Configure logging to suppress all logs except critical errors
 logging.basicConfig(
-    level=logging.CRITICAL,  # Only show critical errors
+    level=logging.INFO,  # Only show critical errors
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
 )
 
-# Disable all loggers from imported modules
-for name in logging.root.manager.loggerDict:
-    logging.getLogger(name).setLevel(logging.CRITICAL)
-    logging.getLogger(name).propagate = False
+# # Disable all loggers from imported modules
+# for name in logging.root.manager.loggerDict:
+#     logging.getLogger(name).setLevel(logging.CRITICAL)
+#     logging.getLogger(name).propagate = False
 
-# Suppress more specific loggers that might be created later
-logging.getLogger("transformers").setLevel(logging.CRITICAL)
-logging.getLogger("timm").setLevel(logging.CRITICAL)
-logging.getLogger("PIL").setLevel(logging.CRITICAL)
-logging.getLogger("urllib3").setLevel(logging.CRITICAL)
+# # Suppress more specific loggers that might be created later
+# logging.getLogger("transformers").setLevel(logging.CRITICAL)
+# logging.getLogger("timm").setLevel(logging.CRITICAL)
+# logging.getLogger("PIL").setLevel(logging.CRITICAL)
+# logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 
 # Only enable our own logger if needed
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.CRITICAL)
+logger.setLevel(logging.INFO)
 
 from clipboard_utils import paste_text_from_clipboard
 
@@ -59,36 +59,55 @@ def karna_print(*args, **kwargs):
     original_print(*args, **kwargs)
 
 # Context manager to suppress stdout/stderr temporarily
-@contextlib.contextmanager
-def suppress_output():
-    # Save the original stdout/stderr
-    old_stdout = sys.stdout
-    old_stderr = sys.stderr
-    # Use StringIO to capture output
-    sys.stdout = io.StringIO()
-    sys.stderr = io.StringIO()
-    try:
-        yield
-    finally:
-        # Restore stdout/stderr
-        sys.stdout = old_stdout
-        sys.stderr = old_stderr
+# @contextlib.contextmanager
+# def suppress_output():
+#     # Save the original stdout/stderr
+#     old_stdout = sys.stdout
+#     old_stderr = sys.stderr
+#     # Use StringIO to capture output
+#     sys.stdout = io.StringIO()
+#     sys.stderr = io.StringIO()
+#     try:
+#         yield
+#     finally:
+#         # Restore stdout/stderr
+#         sys.stdout = old_stdout
+#         sys.stderr = old_stderr
 
 def test_task_schema(): 
     # load the task schema from the json file
     current_dir = os.path.dirname(os.path.abspath(__file__))
     
+    memory_dir = os.path.join(current_dir, "generated_task_schema_sample_chatgpt")
+    
+    # get json file from memory_dir ending with _memory_generated.json
+    memory_json_file = [f for f in os.listdir(memory_dir) if f.endswith('_memory_generated.json')][0]
+    
+    patches_dir = os.path.join(memory_dir, "patches")
+    print(patches_dir)
+    
+    # validate json file and patches directory exists
+    if not os.path.exists(os.path.join(memory_dir, memory_json_file)):
+        raise FileNotFoundError(f"JSON file {memory_json_file} not found in {memory_dir}")
+    if not os.path.exists(patches_dir):
+        raise FileNotFoundError(f"Patches directory {patches_dir} not found in {memory_dir}")
+    
     karna_print("Loading chat with chatgpt task schema...")
     # Suppress output during initialization
-    with suppress_output():
-        task_schema = load_task_schema_from_json(os.path.join(current_dir, "chat_with_chatgpt.json"))
-        task_planner = TaskPlanner(task_schema)
+    #with suppress_output():
+    print("Loading task schema...")
+    #task_schema = load_task_schema_from_json(os.path.join(current_dir, "chat_with_chatgpt.json"))
+    task_schema = load_task_schema_from_json(os.path.join(memory_dir, memory_json_file))
+    print("Creating task planner...")
+    task_planner = TaskPlanner(task_schema, patches_dir)
     
     # Only display the main interface, skip all the technical details
-    with suppress_output():
-        task_executor = TaskExecutor(task_planner)
+    #with suppress_output():
+    print("Creating task executor...")
+    task_executor = TaskExecutor(task_planner)
     # task_executor.prepare_for_task()
     
+    print(task_executor.task_planner.task_schema)
     # Question loop interface
     karna_print("\n" + Colors.BOLD + Colors.HEADER + "╔═══════════════════════════════════════════════════════════╗" + Colors.ENDC)
     karna_print(Colors.BOLD + Colors.HEADER + "║                   KARNA CHATGPT INTERFACE                   ║" + Colors.ENDC)
@@ -113,15 +132,15 @@ def test_task_schema():
         question_count += 1
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        with suppress_output():
-            if question_count == 1 and use_as_vlm:
-                # only for the first question, we will upload the files to chatgpt
-                task_executor.set_clipboard(user_question, directory_path)
-                karna_print(Colors.BOLD + Colors.UNDERLINE + f"User question: {user_question} and directory path: {directory_path}" + Colors.ENDC)
-            else:
-                # for all other questions, we will just send the question to chatgpt
-                task_executor.set_clipboard(user_question)
-            # task_executor.set_clipboard(user_question)    
+        #with suppress_output():
+        if question_count == 1 and use_as_vlm:
+            # only for the first question, we will upload the files to chatgpt
+            task_executor.set_clipboard(user_question, directory_path)
+            karna_print(Colors.BOLD + Colors.UNDERLINE + f"User question: {user_question} and directory path: {directory_path}" + Colors.ENDC)
+        else:
+            # for all other questions, we will just send the question to chatgpt
+            task_executor.set_clipboard(user_question)
+        # task_executor.set_clipboard(user_question)    
             
 
         karna_print(Colors.CYAN + "\nAsking and Waiting for ChatGPT..." + Colors.ENDC)
@@ -130,14 +149,14 @@ def test_task_schema():
         start_time = time.time()
         
         # Suppress any print statements during task execution
-        with suppress_output():
-            task_executor.execute_task()
+        #with suppress_output():
+        task_executor.execute_task()
         
         # Calculate elapsed time
         elapsed_time = time.time() - start_time
         
-        with suppress_output():
-            result = task_executor.get_clipboard_text()
+        #with suppress_output():
+        result = task_executor.get_clipboard_text()
         
         karna_print("\n" + Colors.BOLD + Colors.BLUE + "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓" + Colors.ENDC)
         karna_print(Colors.BOLD + Colors.BLUE + "┃ " + Colors.YELLOW + f"CONVERSATION #{question_count} - {timestamp}" + Colors.BLUE + " ┃" + Colors.ENDC)
