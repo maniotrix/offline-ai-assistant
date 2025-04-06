@@ -49,7 +49,7 @@
         },
         {
             "step_id": 5,
-            "description": "Click on the latest chatgpt response",
+            "description": "Click at the center of the screen",
             "action_type": "mouse_action",
             "action": "click",
             "attention": "center",
