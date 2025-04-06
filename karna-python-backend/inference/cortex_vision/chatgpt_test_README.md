@@ -11,6 +11,32 @@ The `chatgpt_test.py` module provides a powerful testing framework and command-l
 - **Automated Browser Control**: Uses computer vision to locate and interact with UI elements
 - **Response Capturing**: Automatically extracts ChatGPT's responses to the clipboard
 - **Performance Measurement**: Tracks and displays response time metrics
+- **Task Visualization**: Ability to visualize task execution steps with `show_tasks_viz`
+- **Auto-Switching**: Automatically switches application focus after each response
+
+## Using Generated Task Schema
+
+The module uses the task schema files created by the `TaskSchemaGenerator`:
+
+1. **Loading Generated Schema**:
+   - Automatically finds and loads JSON files ending with `_memory_generated.json` from the memory directory
+   - Uses the corresponding patches directory for UI element matching
+   - Integrates with the schema structure produced by the `TaskSchemaGenerator`
+
+2. **Directory Structure**:
+   ```
+   generated_task_schema_sample_chatgpt/
+   ├── chat_with_chatgpt_steps_train_memory_generated.json
+   └── patches/
+       ├── patch_step1.png
+       ├── patch_step3.png
+       └── ...
+   ```
+
+3. **Schema to Execution Pipeline**:
+   ```
+   TaskSchemaGenerator → Generated JSON + Patches → TaskPlanner → TaskExecutor → Browser Automation
+   ```
 
 ## Technical Implementation
 
@@ -18,47 +44,109 @@ The `chatgpt_test.py` module provides a powerful testing framework and command-l
 
 The implementation consists of several interconnected components:
 
-1. **Task Definition**: The `chat_with_chatgpt.json` file defines the UI automation steps
+1. **Task Definition**: Generated from training JSON files using `TaskSchemaGenerator`
 2. **Task Executor**: The `TaskExecutor` class from `task_schema.py` handles browser automation
 3. **Computer Vision**: Uses `VerticalPatchMatcher` and `Omniparser` to locate UI elements
 4. **Clipboard Integration**: Uses `clipboard_utils.py` for data transfer between application and ChatGPT
+5. **Output Control**: Advanced output suppression using context managers and stream redirection
 
 ### Process Flow
 
 1. **Initialization**:
-   - Loads the task schema from `chat_with_chatgpt.json`
-   - Creates a TaskPlanner and TaskExecutor
+   - Loads the generated task schema from `*_memory_generated.json`
+   - Creates a TaskPlanner with the patches directory path
    - Suppresses verbose logging output
    - Configures the CLI interface
 
 2. **Conversation Loop**:
    - User enters a question or prompt through the command-line
    - Text is transferred to the clipboard
-   - (Optional) Images from a specified directory can be included
+   - (Optional) Images from a specified directory can be included with VLM mode
 
 3. **Web Automation Steps**:
-   - Step 1: Click on ChatGPT input box (locates using image matching)
-   - Step 2: Paste the user's question (from clipboard)
-   - Step 3: Send the message (clicks enter or submit button)
-   - Step 4: Wait for ChatGPT to respond (detects UI changes)
-   - Step 5: Click at center of screen (to ensure focus)
-   - Step 6: Scroll to end (to see complete response)
-   - Step 7: Click copy button (to extract the response)
+   - Executes each step defined in the task schema
+   - Uses visual pattern matching to locate UI elements
+   - Performs clicks, pastes, and waits as defined in the schema
+   - Captures the response through clipboard operations
 
 4. **Response Processing**:
-   - Captures response from clipboard
-   - Displays formatted output in the terminal
-   - Records timing information
+   - Captures response from clipboard using `get_clipboard_text()`
+   - Displays formatted output in the terminal with ANSI color formatting
+   - Records and displays timing information
+   - Automatically switches application focus back using Alt+Tab
    - Prepares for next interaction
 
 ### Technical Details
+
+#### VLM Mode Configuration
+
+The system provides a dedicated VLM (Vision-Language Model) mode:
+
+```python
+# Enable VLM mode
+use_as_vlm = True
+directory_path = os.path.join(current_dir, "test_chatgpt_upload_dir")
+
+# First question will upload both text and images
+if question_count == 1 and use_as_vlm:
+    task_executor.set_clipboard(user_question, directory_path)
+```
+
+- **Single-Shot Use**: By default, VLM operations work for the first question only
+- **Directory Control**: Images are loaded from a configurable directory path
+- **Automatic Upload**: Images are automatically transferred to ChatGPT with the first query
+
+#### Task Visualization
+
+The system can visualize task execution for debugging and demonstration:
+
+```python
+# Enable task visualization
+show_tasks_viz = True
+
+# After first question, visualize the task execution
+if question_count == 1 and show_tasks_viz:
+    task_executor.task_log.visualize_task_log()
+    break
+```
+
+- **Visual Analysis**: Creates a visual representation of each step execution
+- **Development Aid**: Helps understand and debug task execution flow
+- **Session Limiting**: Can automatically exit after first query for demonstration purposes
+
+#### Output Suppression System
+
+The module implements a comprehensive output control system:
+
+```python
+# Context manager for output suppression
+@contextlib.contextmanager
+def suppress_output():
+    old_stdout = sys.stdout
+    old_stderr = sys.stderr
+    sys.stdout = io.StringIO()
+    sys.stderr = io.StringIO()
+    try:
+        yield
+    finally:
+        sys.stdout = old_stdout
+        sys.stderr = old_stderr
+
+# Selective use in code
+with suppress_output():
+    task_executor.execute_task()
+```
+
+- **Granular Control**: Suppresses output only for specific operations
+- **Stream Capture**: Uses StringIO to capture and discard unwanted output
+- **Clean Interface**: Maintains a professional CLI experience without technical noise
 
 #### Computer Vision Integration
 
 The system uses a sophisticated computer vision pipeline to identify UI elements:
 
 - **Pattern Matching**: Image-based pattern matching to locate buttons and input fields
-- **Element Identification**: Uses reference images (`10_AAsk_anything.png`, `38_Up_or_down.png`, `44_Copy.png`) to identify interactive elements
+- **Element Identification**: Uses patch images from the generated task schema
 - **Attention Mechanisms**: Implements screen area focus strategies (top, bottom, center) for more efficient element detection
 
 #### Clipboard Management
@@ -66,16 +154,8 @@ The system uses a sophisticated computer vision pipeline to identify UI elements
 The system uses clipboard as the primary data transfer mechanism:
 
 - **Text Transfer**: Uses `pyperclip` for cross-platform clipboard text operations
-- **File Transfer**: Uses PowerShell scripts (`copy_files_to_clipboard.ps1`) for clipboard file operations on Windows
+- **File Transfer**: Uses PowerShell scripts for clipboard file operations on Windows
 - **Response Extraction**: Captures ChatGPT's response by programmatically clicking the "copy" button and reading clipboard contents
-
-#### Output Suppression
-
-The module implements sophisticated output control mechanisms:
-
-- **Context Manager**: Uses a custom `suppress_output` context manager to temporarily redirect stdout/stderr
-- **ANSI Formatting**: Implements colorized terminal output for better user experience
-- **Selective Logging**: Suppresses all but critical log messages to maintain a clean interface
 
 ## Practical Applications
 
@@ -95,7 +175,7 @@ This framework can be extended to:
 - **Batch Processing**: Automate multiple queries with different images
 - **Data Collection**: Create datasets of AI responses to specific inputs
 - **Multimodal Applications**: Build applications that leverage ChatGPT's vision capabilities
-- **Testing Framework**: Compare responses across different inputs or versions
+- **Testing Framework**: Compare responses across different versions
 
 ## Technical Insights
 
@@ -107,11 +187,12 @@ The system works through several key innovations:
 2. **Visual Element Recognition**: Instead of relying on CSS selectors or XPaths which can change, the system recognizes UI elements visually
 3. **Human-Like Interaction**: The mouse movements and interactions simulate human behavior to prevent detection as automation
 4. **Error Resilience**: The wait steps ensure the system adapts to variable network conditions and response times
+5. **App Switching**: Automatically returns focus to the terminal after interaction via Alt+Tab
 
 ### Limitations and Considerations
 
 - **Browser Dependencies**: Requires Chrome browser with specific configuration
-- **Visual Changes**: UI updates to ChatGPT may require updating the reference images
+- **Visual Changes**: UI updates to ChatGPT may require regenerating the task schema with TaskSchemaGenerator
 - **Performance Overhead**: Vision-based detection is more resource-intensive than traditional web automation
 - **Platform Specificity**: Some operations (particularly file clipboard operations) are Windows-specific
 
@@ -120,7 +201,7 @@ The system works through several key innovations:
 Running the script provides an interactive interface:
 
 ```
-$ python task_schema_test.py
+$ python chatgpt_test.py
 
 ╔═══════════════════════════════════════════════════════════╗
 ║                   KARNA CHATGPT INTERFACE                  ║
@@ -150,9 +231,36 @@ The capital of France is Paris.
 
 To use ChatGPT as a Vision-Language Model:
 
-1. Set `use_as_vlm = True` at line 79
-2. Set `directory_path` to point to your images folder
-3. The first question will upload both your text and images
+1. Edit these variables in the code:
+   ```python
+   use_as_vlm = True  # Enable VLM mode
+   show_tasks_viz = True  # Enable task visualization (optional)
+   directory_path = "path/to/your/images"  # Set your image directory
+   ```
+
+2. The first question will upload both your text and images
+3. Subsequent questions will only use text unless you modify the code
+4. Set `show_tasks_viz = False` to continue conversation after the first query
+
+## Configuration Options
+
+The following configuration options can be adjusted in the code:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `use_as_vlm` | `True` | Enables image upload for first question |
+| `show_tasks_viz` | `True` | Visualizes task execution and exits after first question |
+| `directory_path` | `test_chatgpt_upload_dir` | Directory containing images to upload |
+| `memory_dir` | `generated_task_schema_sample_chatgpt` | Directory for task schema files |
+
+## Creating Your Own Task Schema
+
+To create your own task schema for automating ChatGPT or other web interfaces:
+
+1. Use `TaskSchemaGenerator` to create a task schema from training JSON and screenshot events
+2. Store the generated files in a directory structure as described above
+3. Update the `memory_dir` path in the code to point to your generated schema
+4. Run the script to use your custom automation
 
 ## Conclusion
 
