@@ -15,7 +15,7 @@ from config.paths import workspace_dir
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from services.screen_capture_service import ScreenshotEvent
-from inference.omniparser.attention_controller_extended import AttentionFieldController
+from inference.cortex_vision.attention_controller_extended import AttentionFieldController
 
 """
 Extended Attention Controller Test

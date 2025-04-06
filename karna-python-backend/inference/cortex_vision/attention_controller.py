@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from enum import Enum, auto
 from services.screen_capture_service import ScreenshotEvent
 from inference.omniparser.util.omniparser import OmniparserResult
-from inference.omniparser.omni_helper import OmniParserResultModel
+from inference.cortex_vision.omni_helper import OmniParserResultModel
 
 logger = logging.getLogger(__name__)
 

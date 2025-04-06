@@ -5,7 +5,7 @@ import numpy as np
 from datetime import datetime, timedelta
 from services.screen_capture_service import ScreenshotEvent
 from inference.omniparser.util.omniparser import OmniparserResult
-from inference.omniparser.omni_helper import OmniParserResultModel
+from inference.cortex_vision.omni_helper import OmniParserResultModel
 import json
 import math
 

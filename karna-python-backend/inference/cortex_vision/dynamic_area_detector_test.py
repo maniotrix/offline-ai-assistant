@@ -15,10 +15,10 @@ import json
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(os.path.dirname(current_dir)))
 
-from inference.omniparser.dynamic_area_detector import DynamicAreaDetector
-from inference.omniparser.image_comparison import ResNetImageEmbedder
-from inference.omniparser.image_diff_creator import ImageDiffCreator
-from inference.omniparser.omni_helper import (
+from inference.cortex_vision.dynamic_area_detector import DynamicAreaDetector
+from inference.cortex_vision.image_comparison import ResNetImageEmbedder
+from inference.cortex_vision.image_diff_creator import ImageDiffCreator
+from inference.cortex_vision.omni_helper import (
     OmniParserResultModelList,
     get_omniparser_inference_data, 
     get_omniparser_inference_data_from_json

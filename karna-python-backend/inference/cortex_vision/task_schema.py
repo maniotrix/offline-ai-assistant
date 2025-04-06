@@ -6,11 +6,11 @@ import tempfile
 import os
 from datetime import datetime
 from robot.base_robot import Region
-from util.omniparser import OmniparserResult, Omniparser
-from inference.omniparser.omni_helper import get_omniparser_result_model_from_image_path, OmniParserResultModel
+from inference.omniparser.util.omniparser import OmniparserResult, Omniparser
+from inference.cortex_vision.omni_helper import get_omniparser_result_model_from_image_path, OmniParserResultModel
 import logging
-from vertical_patch_matcher import VerticalPatchMatcher
-from vertical_patch_matcher import PatchMatchResult
+from inference.cortex_vision.vertical_patch_matcher import VerticalPatchMatcher
+from inference.cortex_vision.vertical_patch_matcher import PatchMatchResult
 from PIL import Image
 import time
 import pyperclip

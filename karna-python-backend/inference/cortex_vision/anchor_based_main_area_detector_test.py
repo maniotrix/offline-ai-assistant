@@ -17,14 +17,14 @@ import argparse
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(os.path.dirname(current_dir)))
 
-from inference.omniparser.anchor_based_main_area_detector import AnchorBasedMainAreaDetector
-from inference.omniparser.anchor_based_main_area_detector_runtime import AnchorBasedMainAreaDetectorRuntime
-from inference.omniparser.dynamic_area_detector_test import (
+from inference.cortex_vision.anchor_based_main_area_detector import AnchorBasedMainAreaDetector
+from inference.cortex_vision.anchor_based_main_area_detector_runtime import AnchorBasedMainAreaDetectorRuntime
+from inference.cortex_vision.dynamic_area_detector_test import (
     load_screenshot_events,
     DEFAULT_DATA_DIR,
     JSON_FILE_PATH
 )
-from inference.omniparser.omni_helper import (
+from inference.cortex_vision.omni_helper import (
     OmniParserResultModelList,
     get_omniparser_inference_data
 )

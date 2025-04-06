@@ -1,8 +1,8 @@
 from typing import List, Dict, Any, Tuple, Optional
 from dataclasses import dataclass
-from omniparser.omni_helper import ParsedContentResult
-from omniparser.util.omniparser import OmniparserResult
-from omniparser.clustering_models import ClusterModelHeirarchy, get_crop_area_from_bbox_type, CropArea
+from inference.cortex_vision.omni_helper import ParsedContentResult
+from inference.omniparser.util.omniparser import OmniparserResult
+from inference.cortex_vision.clustering_models import ClusterModelHeirarchy, get_crop_area_from_bbox_type, CropArea
 from logging import getLogger
 import numpy as np
 from sklearn.cluster import DBSCAN
@@ -472,7 +472,7 @@ class ClusterDBSCANWorker(ClusterWorker):
 def test_cluster_dbscan_worker(save_visualization=False):
     # get omniparser result from image path
     import os
-    from omniparser.omni_helper import get_omniparser_inference_data_from_image_path
+    from inference.cortex_vision.omni_helper import get_omniparser_inference_data_from_image_path
     # get current directory
     current_dir = os.path.dirname(os.path.abspath(__file__))
     image_path = os.path.join(current_dir, "cluster_test.png")
