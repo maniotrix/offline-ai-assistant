@@ -2,8 +2,8 @@
 
 This README combines two modules of the Karna system:
 
-1. **Karna Cortex Vision Module** – A biomimetic, modular system inspired by human vision for general UI automation.
-2. **ChatGPT Web Interface Automation** – A practical implementation of Karna’s core vision stack for automating the ChatGPT interface.
+1. **[Karna Cortex Vision Module](cortex_vision.md)** – A biomimetic, modular system inspired by human vision for general UI automation.
+2. **[ChatGPT Web Interface Automation](chatgpt_test_README.md)** – A practical implementation of Karna’s core vision stack for automating the ChatGPT interface.
 
 ---
 
