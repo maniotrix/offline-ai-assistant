@@ -1,23 +1,25 @@
-# 📌 YOLO Bounding Box Editor – Frontend
+# 📌 Karna React Frontend
 
-This project provides an **interactive bounding box editor** for **YOLO-generated annotations**. The editor allows users to **view, edit, add, and remove bounding boxes on images** while supporting **class selection and zooming/panning**.
+A modern React application for the Project Karna Offline AI Assistant. This frontend provides interactive image annotation features, screen capture capabilities, and real-time communication with the backend.
 
 ---
 
 ## 🚀 Tech Stack
 
-The project is built using modern **React and TypeScript** with **state management and interactive UI**.
+The project is built using modern web technologies for optimal performance and user experience.
 
 | Technology      | Purpose                                      |
 |--------------- |--------------------------------------------- |
 | **React**      | Core UI framework                           |
 | **TypeScript** | Type safety for maintainability             |
 | **Vite**       | Fast development server                     |
-| **Zustand**    | Global state management for bounding boxes & UI |
+| **Zustand**    | Global state management                     |
 | **React-Konva** | Canvas rendering for bounding box manipulation |
 | **Material-UI (MUI)** | UI components and theming |
 | **Tailwind CSS** | Responsive styling |
 | **React-Draggable** | Movable toolbar |
+| **Socket.IO** | Real-time communication with backend |
+| **React Router** | Application routing |
 | **ESLint & Prettier** | Code quality and formatting |
 
 ---
@@ -25,58 +27,68 @@ The project is built using modern **React and TypeScript** with **state manageme
 ## 📂 Project Structure
 
 ```
-bbox-editor/
+karna-react-frontend/
 ├── public/
-│   └── vite.svg                 # Default Vite logo
 ├── src/
-│   ├── components/
-│   │   ├── CanvasEditor/
-│   │   │   ├── CanvasEditor.tsx # Main canvas rendering with Konva
-│   │   │   └── CanvasEditor.css # Styling for canvas area
-│   │   ├── ClassSelector/
-│   │   │   └── ClassSelector.tsx # Sidebar for selecting bounding box classes
-│   │   ├── Toolbar/
-│   │   │   └── Toolbar.tsx       # Floating toolbar for Save/Cancel
-│   ├── hooks/
-│   │   └── useCanvasInit.ts      # Handles canvas setup
-│   ├── stores/
-│   │   └── annotationStore.ts    # Zustand store for managing bounding boxes
-│   ├── types/
-│   │   └── types.ts              # TypeScript interfaces for bounding boxes
 │   ├── api/
-│   │   └── api.ts                # API calls for fetching and saving data
-│   │   └── websocket.ts          # WebSocket service for real-time communication
-│   ├── App.tsx                   # Main application container
-│   ├── main.tsx                  # React entry point
-│   ├── index.css                  # Global styles (Tailwind)
+│   │   ├── websocket/
+│   │   ├── api.ts                 # API client for HTTP requests
+│   │   ├── constants.ts           # API constants and endpoints
+│   │   └── websocket.ts           # WebSocket service implementation
+│   ├── components/
+│   │   ├── Editor/
+│   │   │   ├── BboxEditor.tsx     # Main bounding box editor component
+│   │   │   ├── CanvasEditor/      # Canvas rendering with Konva
+│   │   │   ├── ClassSelector/     # Sidebar for selecting bounding box classes
+│   │   │   ├── Header/            # Editor header components
+│   │   │   └── Toolbar/           # Floating toolbar for editor actions
+│   │   └── Home/
+│   │       ├── Homepage.tsx       # Main homepage component
+│   │       ├── Homepage.css       # Homepage styling
+│   │       ├── ScreenCaptureButton.tsx  # Button for capturing screen
+│   │       └── ScreenCaptureSlideshow.tsx  # Component for displaying captured screens
+│   ├── generated/                 # Generated code (e.g., protobuf)
+│   ├── stores/
+│   │   ├── commandStore.ts        # Store for command management
+│   │   ├── screenCaptureStore.ts  # Store for screen capture state
+│   │   ├── statusStore.ts         # Store for application status
+│   │   └── visionDetectStore.ts   # Store for vision detection results
+│   ├── types/                     # TypeScript interfaces and type definitions
+│   ├── utils/                     # Utility functions
+│   ├── App.tsx                    # Main application container
+│   ├── main.tsx                   # React entry point
+│   └── index.css                  # Global styles (Tailwind)
 ├── .gitignore                     # Files to ignore in version control
-├── package.json                    # Project dependencies and scripts
-├── tsconfig.json                    # TypeScript configuration
-├── vite.config.ts                   # Vite configuration for local server
+├── package.json                   # Project dependencies and scripts
+├── tsconfig.json                  # TypeScript configuration
+├── vite.config.ts                 # Vite configuration for local server
+└── tailwind.config.js             # Tailwind CSS configuration
 ```
 
 ---
 
 ## 🛠️ Features
 
-### ✅ Bounding Box Editing
-- View, resize, move, and delete bounding boxes.
-- Add new bounding boxes by drawing on the image.
+### ✅ Bounding Box Editor
+- View, resize, move, and delete bounding boxes on images
+- Add new bounding boxes by drawing on the image
+- Class selection with color coding
+- Zoom & pan functionality
 
-### ✅ Class Selection Panel
-- **Collapsible sidebar** for class selection.
-- Users can select **one or multiple classes**.
-- "All Classes" toggle to show/hide all classes.
+### ✅ Screen Capture
+- Capture and process screens for AI analysis
+- Visual display of captured screens with slideshow functionality
+- Real-time feedback on captured screens
 
-### ✅ Zoom & Pan
-- **Konva-based image rendering** supports zooming and panning.
+### ✅ WebSocket Integration
+- Real-time communication with backend systems
+- Status updates and command execution
+- RPC-style message handling
 
-### ✅ Floating Toolbar
-- **Draggable toolbar** for Save/Cancel actions.
-
-### ✅ Mobile-Friendly
-- **Responsive UI with Material-UI & Tailwind**.
-- **Touch gestures for zoom/pan** support.
+### ✅ Responsive Design
+- Mobile-friendly interface
+- Adaptive layouts for different screen sizes
+- Touch gesture support
 
 ---
 
@@ -84,8 +96,8 @@ bbox-editor/
 
 ### 1️⃣ Clone the Repository
 ```sh
-git clone https://github.com/your-repo/bbox-editor.git
-cd bbox-editor
+git clone https://github.com/your-repo/offline-ai-assistant.git
+cd offline-ai-assistant/karna-react-frontend
 ```
 
 ### 2️⃣ Install Dependencies
@@ -99,58 +111,24 @@ npm run dev
 ```
 - The app runs at **`http://localhost:5173/`** by default.
 
-### 4️⃣ Run the Backend (if needed)
-Make sure your **Flask backend** is running at **`http://localhost:5000`**.
+### 4️⃣ Build for Production
+```sh
+npm run build
+```
+- The production build will be in the `dist` directory.
 
 ---
 
-## 🛠️ Development Guidelines
-
-### 🖊️ Coding Style
-- Use **ESLint and Prettier** for consistent formatting.
-- Follow **Material-UI & Tailwind best practices**.
-- Keep **components modular**.
-
-### 📂 File Naming Conventions
-- Components: `PascalCase.tsx` (e.g., `CanvasEditor.tsx`).
-- Hooks: `camelCase.ts` (e.g., `useCanvasInit.ts`).
-- Zustand Stores: `camelCase.ts` (e.g., `annotationStore.ts`).
-
----
-
-# Karna React Frontend - WebSocket Implementation
-
-## Overview
-The frontend implements a WebSocket client using Socket.IO to establish real-time communication with the backend. The implementation is encapsulated in the `WebSocketService` class.
-
-## Architecture
+## 📡 WebSocket Implementation
 
 ### WebSocket Service
 Located in `src/api/websocket.ts`, the WebSocketService provides:
-- Connection management
+- Connection management with automatic reconnection
 - RPC-style message handling
 - Status subscription
 - Error handling
 
-## Implementation Details
-
-### Service Structure
-```typescript
-class WebSocketService {
-    private socket: Socket | null;
-    private messageHandlers: Map<string, (data: any) => void>;
-    private rpcCallbacks: Map<string, (response: RPCResponse) => void>;
-}
-```
-
-### Key Features
-
-#### Connection Management
-- Automatic reconnection with configurable attempts
-- Connection state monitoring
-- Clean disconnection handling
-
-#### Message Types
+### Message Types
 ```typescript
 interface RPCResponse {
     type: 'command_response' | 'status_update' | 'error';
@@ -163,65 +141,52 @@ interface RPCRequest {
 }
 ```
 
-#### Status Subscription
+### Usage in Components
 ```typescript
+import { websocketService } from '../api/websocket';
+
+// Connect when component mounts
+useEffect(() => {
+    websocketService.connect();
+    return () => websocketService.disconnect();
+}, []);
+
+// Send commands
+await websocketService.sendCommand("your_command", params);
+
 // Subscribe to status updates
 websocketService.onStatusUpdate((status) => {
     // Handle status update
 });
-
-// Request current status
-await websocketService.requestStatus();
 ```
 
-#### Command Execution
-```typescript
-// Send a command
-await websocketService.sendCommand("your command here");
+---
 
-// Listen for command responses
-websocketService.onCommandResponse((response) => {
-    // Handle command response
-});
-```
+## 🖊️ Development Guidelines
 
-## Usage in Components
+### Coding Style
+- Use ESLint and Prettier for consistent formatting
+- Follow Material-UI & Tailwind best practices
+- Keep components modular and focused
 
-### Basic Setup
-```typescript
-import { websocketService } from '../api/websocket';
+### State Management
+- Use Zustand for global state
+- Keep stores organized by domain (e.g., screenCaptureStore, statusStore)
+- Minimize prop drilling through proper store design
 
-useEffect(() => {
-    // Connect when component mounts
-    websocketService.connect();
+### Component Structure
+- Place components in logical folders by feature
+- Use TypeScript interfaces for props and state
+- Implement error boundaries where appropriate
 
-    return () => {
-        // Cleanup on unmount
-        websocketService.disconnect();
-    };
-}, []);
-```
-
-### Error Handling
-- All WebSocket operations are Promise-based
-- Errors are properly typed and propagated
-- Connection errors trigger automatic reconnection
-
-## Integration with Backend
-- Connects to backend WebSocket endpoint at `ws://localhost:8000/ws`
-- Uses Socket.IO for reliable bi-directional communication
-- Implements the same message protocol as defined in the backend
-
-## Best Practices
-1. Use the singleton WebSocketService instance
-2. Always handle connection errors
-3. Clean up subscriptions on component unmount
-4. Use TypeScript for type safety
-5. Implement error boundaries for WebSocket-related errors
+---
 
 ## 🎯 Future Enhancements
-- ✅ **Undo/Redo support**.
-- ✅ **Better keyboard shortcuts**.
-- ✅ **Performance optimization for large datasets**.
+- Full keyboard shortcuts support
+- Additional annotation tools
+- Performance optimization for large datasets
+- Enhanced real-time collaboration features
 
-🚀 **Now you're all set to use the Bounding Box Editor!** Let me know if you need **further improvements**. 🎉🔥
+---
+
+🚀 **Now you're ready to work with the Karna React Frontend!** 🎉
