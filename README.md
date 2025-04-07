@@ -1,4 +1,11 @@
-# Project Karna: Offline AI Assistant
+# 🧠 Project Karna: Offline AI Assistant
+
+> ⚠️ **Development Status**  
+> This project is **under active and heavy development**.  
+> We have open-sourced it for **transparency, exploration, and early feedback** — **not for collaboration or production use** (yet).  
+>  
+> 🛠️ **Experienced developers** are welcome to explore, clone, and run it **at their own risk** during this experimental phase.
+
 
 An intelligent, vision-based offline AI assistant capable of understanding and automating tasks on a user's computer through screen capture and analysis.
 
