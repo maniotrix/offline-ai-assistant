@@ -1,17 +1,19 @@
 # 🧠 Project Karna: Offline AI Assistant
 
 > ⚠️ **Development Status**  
-> This project is **under active and heavy development**.  
-> We have open-sourced it for **transparency, exploration, and early feedback** — **not for collaboration or production use** (yet).  
->  
-> 🛠️ **Experienced developers** are welcome to explore, clone, and run it **at their own risk** during this experimental phase.
+> This project is under **active development** and is currently in an **experimental phase**.  
+> It is open-sourced for **transparency, exploration, and early feedback** — not yet intended for production use.  
+>
+> 🧠 Experienced developers are welcome to clone, explore, and run at their own risk.
 
-
-An intelligent, vision-based offline AI assistant capable of understanding and automating tasks on a user's computer through screen capture and analysis.
+An intelligent, human-in-the-loop ,vision-based offline AI assistant capable of understanding and automating tasks on a user's computer through screen capture and analysis.
 
 ## 🚀 Project Overview
 
 Project Karna is an offline AI assistant that automates tasks on your computer by analyzing screen contents and executing actions. The system captures screenshots, processes visual information, understands context, and performs actions on your behalf.
+
+#### Read More:
+* **[Karna Vision-Based UI Agent: Current Capabilities and Next Steps](karna_cortex_current_status.md)** 
 
 ### Core Features
 
@@ -23,8 +25,7 @@ Project Karna is an offline AI assistant that automates tasks on your computer b
 
 ## 🛠️ Repository Structure
 
-> ⚡ This project is part of an experiment in AI-assisted engineering — most of the code was generated using tools like GitHub Copilot and Cursor, while the architectural logic, strategy, and reasoning were entirely human-led.
-
+> ⚡️ This project was built with significant help from AI coding agents like GitHub Copilot and Cursor. All system logic and design was directed by a human architect.
 
 ```
 offline-ai-assistant/
@@ -68,7 +69,7 @@ offline-ai-assistant/
 └── requirements.txt             # Python dependencies
 ```
 
-## 🧩 Architecture
+## 🧹 Architecture
 
 The system follows a modular architecture for flexibility and maintainability:
 
@@ -205,3 +206,4 @@ We gratefully acknowledge the use of **GitHub Copilot**, **Cursor**, and other c
 > As the core developer, my primary role has been system design, high-level strategy, prompt engineering, architectural direction, and defining protocols and automation rules.
 
 This project serves as a demonstration of how a human–AI development loop can rapidly build complex, modular, and intelligent systems.
+
