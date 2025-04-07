@@ -203,7 +203,12 @@ It is free to use, study, and modify under the terms of the license.
 
 See the full license text in the [LICENSE](./LICENSE) file.
 
-> This software is provided “as-is”, without any warranty or guarantee of any kind.
+> 🧩 This project includes components from [Microsoft OmniParser](https://github.com/microsoft/OmniParser),  
+> licensed under [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/).  
+> Please refer to their repository for detailed license terms and additional component-specific licensing (e.g., AGPL models).
+
+This software is provided “as-is”, without any warranty or guarantee of any kind.
+
 
 
 ## 🤖 AI-Assisted Development Acknowledgment
