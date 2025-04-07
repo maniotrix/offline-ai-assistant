@@ -1,4 +1,4 @@
-# Karna Vision-Based UI Agent: Current Capabilities and Limitations
+# Karna Vision-Based UI Agent: Current Capabilities and Next Steps
 
 >##### 🔗 **Must Read Related Readme Files**
 >1. **[ChatGPT Web Interface Automation](chatgpt_test_README.md)** – A practical implementation of Karna’s core vision stack for automating the ChatGPT interface.
