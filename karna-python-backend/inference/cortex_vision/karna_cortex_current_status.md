@@ -10,6 +10,7 @@
 ---
 ## ✅ What We Currently Achieve (Factually)
 
+
 ### 🔍 **1. CNN-Based Visual Detection**
 - **YOLO-style object detection** (labelled `box_yolo_content_yolo`) for interactive UI components like `icons` or `icon + text`.
 - **ResNet embeddings** for patch similarity, enabling:
@@ -54,6 +55,12 @@ Because we:
 However:
 > ⚠️ **We are not immune.**  
 Unpredictable behaviors (CAPTCHAs, overlays, loading screens) **can and do break us**.
+
+---
+
+### 📊 **Want to see it in action?**  
+> Check out our step-by-step visualizations in  
+> **[Execution Trace Visual Log](execution_visual_log.md)** — screenshots and match outputs from real test runs.
 
 ---
 
@@ -138,22 +145,26 @@ We affirm:
 ## 📂 Related `cortex_vision` Module Components README Files
 
 ### 👁️ Attention and Focus
-3. **[ATTENTION_CONTROLLER_README.md](ATTENTION_CONTROLLER_README.md)** – Simulates human visual attention and focus  
-4. **[ATTENTION_CONTROLLER_EXTENDED_README.md](ATTENTION_CONTROLLER_EXTENDED_README.md)** – Extended attention control features  
+* **[ATTENTION_CONTROLLER_README.md](ATTENTION_CONTROLLER_README.md)** – Simulates human visual attention and focus  
+* **[ATTENTION_CONTROLLER_EXTENDED_README.md](ATTENTION_CONTROLLER_EXTENDED_README.md)** – Extended attention control features  
 
 ### 🔄 Dynamic Area Detection
-5. **[README_DYNAMIC_AREA_DETECTOR.md](README_DYNAMIC_AREA_DETECTOR.md)** – Base dynamic area detection  
-6. **[README_UI_DYNAMIC_AREA_DETECTOR.md](README_UI_DYNAMIC_AREA_DETECTOR.md)** – UI-optimized dynamic area detection  
-7. **[ANCHOR_BASED_MAIN_AREA_README.md](ANCHOR_BASED_MAIN_AREA_README.md)** – Anchor-based main area detection  
+* **[README_DYNAMIC_AREA_DETECTOR.md](README_DYNAMIC_AREA_DETECTOR.md)** – Base dynamic area detection  
+* **[README_UI_DYNAMIC_AREA_DETECTOR.md](README_UI_DYNAMIC_AREA_DETECTOR.md)** – UI-optimized dynamic area detection  
+* **[ANCHOR_BASED_MAIN_AREA_README.md](ANCHOR_BASED_MAIN_AREA_README.md)** – Anchor-based main area detection  
 
 ### 🧩 Content Analysis
-8. **[README_content_detector.md](README_content_detector.md)** – Content-based segmentation system  
-9. **[README_image_similarity.md](README_image_similarity.md)** – Image/icon comparison using ResNet embeddings  
-10. **[README_IMAGE_DIFF_CREATOR.md](README_IMAGE_DIFF_CREATOR.md)** – Image difference detection  
+* **[README_content_detector.md](README_content_detector.md)** – Content-based segmentation system  
+* **[README_image_similarity.md](README_image_similarity.md)** – Image/icon comparison using ResNet embeddings  
+* **[README_IMAGE_DIFF_CREATOR.md](README_IMAGE_DIFF_CREATOR.md)** – Image difference detection  
 
 ### 📝 Task Automation
-11. **[task_schema_README.md](task_schema_README.md)** – Task schema framework  
-12. **[task_schema_generator_README.md](task_schema_generator_README.md)** – Task schema generation  
+* **[task_schema_README.md](task_schema_README.md)** – Task schema framework  
+* **[task_schema_generator_README.md](task_schema_generator_README.md)** – Task schema generation 
+
+### 📊 Visualisations
+* **[Execution Trace Visual Log](execution_visual_log.md)**
+* **[All Cortex related Visual Logs](cortex_vision_all_viz.md)**
 
 ---
 

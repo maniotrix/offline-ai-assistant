@@ -1,6 +1,9 @@
 # Karna Cortex Vision: Execution Flow Visualization
 
-This document visualizes the execution flow and component interaction of the Karna Cortex Vision module, which simulates human-like visual perception for UI automation.
+> ⚠️ Note: This system implements biomimetic, vision-driven automation **inspired** by human visual perception. It does not claim to replicate biological cognition or full neural complexity.
+
+This document visualizes the execution flow and component interaction of the Karna Cortex Vision module, which implements biomimetic, vision-driven automation inspired by human visual perception for UI automation.
+
 
 ## System Architecture Overview
 
@@ -326,7 +329,7 @@ The execution trace visualization can be exported in multiple formats:
 1. **Universal Application Compatibility** - Works with any visual UI without requiring APIs
 2. **Resilience to UI Changes** - Identifies elements through visual appearance and context
 3. **Application Boundary Crossing** - Seamlessly automates workflows spanning multiple applications
-4. **Human-like Interaction** - Operates through visual perception rather than direct element access
+4. **Human-inspired Interaction** - Mimics perception-based input instead of relying on internal application APIs
 5. **Debugging and Explainability** - The system's "thought process" can be visualized
 
 ## Visualization Metrics
