@@ -77,7 +77,28 @@ But we **are functionally simulating the bottom-up visual + motor loop** — qui
 
 ---
 
-## 🧠 How We Simulate Visual Reasoning with a Local LLM/VLM (Current + Future Steps)
+## 📦 Why Not Just Use GPT-4V, Gemini, or Other VLMs?
+
+The AI landscape is evolving rapidly — and powerful vision-language models (VLMs) like GPT-4V and Gemini are improving fast. But we deliberately chose **not** to rely on them in Karna because:
+
+- ❌ They don’t run well on consumer edge devices (need 24–48GB VRAM or cloud inference)
+- ❌ Even small VLMs (like 7B) are slow and compute-heavy
+- ❌ They struggle with pixel-accurate UI element detection
+- ❌ They require sharing screenshots/data with cloud APIs
+- ❌ They're built for perception, not interaction
+
+Instead, **Karna is optimized for where lightweight agents are most needed**:
+
+- ✅ CPU-only or 2GB GPU systems (even 6–7 year old PCs)
+- ✅ Private, offline environments (no cloud)
+- ✅ Tasks requiring precision clicks, typing, retry logic
+- ✅ Low-latency, real-time local control
+
+> We're not against VLMs — we just believe in using them where they matter most.  
+> Karna fills the gap where *they can't go yet*.
+> 🔗 **[Full breakdown: Why We Built Karna From Scratch Instead of Using a VLM](why_not_just_use_vlm.md)**
+
+## 🧠 How We can Simulate Visual Reasoning with a Local LLM/VLM (Current + Future Steps)
 
 If we structure the system like this:
 
@@ -91,12 +112,12 @@ If we structure the system like this:
 [ Task Schema & Executor ]       ← performs clicks, typing, scrolls, retries based on intent
 ```
 
+
 This gives us a **closed-loop vision–language–action system**.
 And with an LLM/VLM capable of reasoning and natural language understanding, we can simulate a **basic but real cognitive loop grounded in visual perception.**
 
-
-
 ---
+
 
 ### ✅ What it can already do:
 - Answer visual questions from screenshots (VQA)
