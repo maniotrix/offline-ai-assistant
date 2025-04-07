@@ -59,8 +59,11 @@ Unpredictable behaviors (CAPTCHAs, overlays, loading screens) **can and do break
 ---
 
 ### 📊 **Want to see it in action?**  
+* **[ChatGpt as LLM Demo on Youtube](https://youtu.be/PpPhaN1ZoPE)** 
+* **[ChatGpt as  VLM Demo on Youtube](https://youtu.be/0eRsXNdk_lE)**
+
 > Check out our step-by-step visualizations in  
-> **[Execution Trace Visual Log](execution_visual_log.md)** — screenshots and match outputs from real test runs.
+> * **[Execution Trace Visual Log](execution_visual_log.md)** — screenshots and match outputs from real test runs.
 
 ---
 
