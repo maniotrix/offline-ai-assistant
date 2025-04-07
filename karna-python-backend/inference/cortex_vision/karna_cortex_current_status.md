@@ -1,4 +1,9 @@
-# Karna Vision-Based UI Agent: Current Capabilities and Next Steps
+# Karna Vision-Based UI Agent: Current Capabilities and Limitations
+
+>##### 🔗 **Must Read Related Readme Files**
+>1. **[ChatGPT Web Interface Automation](chatgpt_test_README.md)** – A practical implementation of Karna’s core vision stack for automating the ChatGPT interface.
+>2. **[Vision Based UI Automation Demo](vision_based_ui-automation_demo.md)**
+>3. **[Karna Cortex Vision Module](cortex_vision.md)** – A biomimetic, modular system inspired by human vision for general UI automation.
 
 ## ✅ What We Currently Achieve (Factually)
 
@@ -92,12 +97,6 @@ And with a LLM/VLM with reasoning and NLP capabilities, we *can* simulate a **ba
 
 
 
-## 🔗 Other Documentation Readme Files
-1. **[Karna Cortex Vision Module](cortex_vision.md)** – A biomimetic, modular system inspired by human vision for general UI automation.
-2. **[ChatGPT Web Interface Automation](chatgpt_test_README.md)** – A practical implementation of Karna’s core vision stack for automating the ChatGPT interface.
-3. **[Vision Based UI Automation](vision_based_ui-automation_demo.md)**
-
-Here’s your content reformatted with proper emojis and link formatting, keeping **all original content intact**:
 
 ---
 
