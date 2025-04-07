@@ -127,4 +127,4 @@ generated_task_schema_sample_chatgpt/
 
 ## 📚 Conclusion
 
-Karna bridges the gap between traditional UI automation and AI-based visual interaction. Whether used to control complex multi-app workflows or simply to automate a chat window, its human-inspired architecture and modular design make it adaptable, powerful, and future-proof.
+Karna bridges the gap between traditional UI automation and AI-based visual interaction. Whether used to control complex multi-app workflows or simply to automate a chat window, its human-inspired architecture and modular design has the potential to make it adaptable, powerful, and future-proof.
