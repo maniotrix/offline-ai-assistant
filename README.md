@@ -198,8 +198,13 @@ Contributions are welcome! Please feel free to submit pull requests or open issu
 
 ## 📄 License
 
-This project is licensed under the [MIT License](./LICENSE).  
-It is provided “as-is” without warranty or guarantee of any kind.
+This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.  
+It is free to use, study, and modify under the terms of the license.
+
+See the full license text in the [LICENSE](./LICENSE) file.
+
+> This software is provided “as-is”, without any warranty or guarantee of any kind.
+
 
 ## 🤖 AI-Assisted Development Acknowledgment
 
