@@ -1,6 +1,7 @@
 # Karna Cortex Vision Module: Simulating Human UI Perception and Interaction
 
 > **🧠 This document presents a comprehensive overview of the Karna cortex_vision module and its associated components, delineating both implemented functionalities and proposed extensions under development. 🛠️ Conceptual analogies are drawn between the system's computational architecture and the hierarchical organization of the human visual cortex. 👁️**
+> <small> **[All Cortex related Visual Logs](cortex_vision_all_viz.md)** </small>
 
 
 ## Overview: Enabling AI-Driven Desktop Automation by Simulating Human alike Vision Cortex with Neural-inspired Visual Intelligence
