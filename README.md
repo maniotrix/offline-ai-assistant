@@ -23,6 +23,9 @@ Project Karna is an offline AI assistant that automates tasks on your computer b
 
 ## 🛠️ Repository Structure
 
+> ⚡ This project is part of an experiment in AI-assisted engineering — most of the code was generated using tools like GitHub Copilot and Cursor, while the architectural logic, strategy, and reasoning were entirely human-led.
+
+
 ```
 offline-ai-assistant/
 ├── karna-python-backend/        # Python backend for AI processing and automation
@@ -191,3 +194,14 @@ Contributions are welcome! Please feel free to submit pull requests or open issu
 ## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🤖 AI-Assisted Development Acknowledgment
+
+We gratefully acknowledge the use of **GitHub Copilot**, **Cursor**, and other coding agents throughout this project.
+
+- 🧱 **99% of the frontend code** was scaffolded or directly written with the help of AI coding agents.
+- ⚙️ **~80% of the backend code** was generated via AI assistance, including protobuf schemas, model scaffolds, and automation logic.
+
+> As the core developer, my primary role has been system design, high-level strategy, prompt engineering, architectural direction, and defining protocols and automation rules.
+
+This project serves as a demonstration of how a human–AI development loop can rapidly build complex, modular, and intelligent systems.
