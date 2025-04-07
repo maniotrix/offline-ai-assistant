@@ -10,6 +10,8 @@ import base64
 from io import BytesIO
 
 logger = getLogger(__name__)
+
+# TODO Improve and Update the clustering to use other new modules like `content_detector.py`, image diffing, dynamic area detection, etc.
 class ClusterPreprocessor:
     """
     This class contains the code for clustering the parsed content results.
