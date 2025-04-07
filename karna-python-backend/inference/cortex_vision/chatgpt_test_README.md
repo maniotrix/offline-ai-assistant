@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `chatgpt_test.py` module provides a powerful testing framework and command-line interface that enables interacting with ChatGPT's web interface programmatically through Python. It demonstrates how the `task_schema.py` framework can be used to automate browser interactions with AI systems, effectively turning a web-based ChatGPT interface into a programmable Vision-Language Model (VLM) API.
+The `chatgpt_test.py` module provides a simple testing framework and command-line interface that enables interacting with ChatGPT's web interface programmatically through Python. It demonstrates how the `task_schema.py` framework can be used to automate browser interactions with AI systems, effectively turning a web-based ChatGPT interface into a programmable Vision-Language Model (VLM) API.
 
 ## Features
 
