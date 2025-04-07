@@ -1,10 +1,13 @@
 # Karna Vision-Based UI Agent: Current Capabilities and Next Steps
 
+*A human-inspired, vision-first UI agent designed to perceive, act, and eventually reason on screen — just like we do.*
+
 >##### 🔗 **Must Read Related Readme Files**
 >1. **[ChatGPT Web Interface Automation](chatgpt_test_README.md)** – A practical implementation of Karna’s core vision stack for automating the ChatGPT interface.
 >2. **[Vision Based UI Automation Demo](vision_based_ui-automation_demo.md)**
 >3. **[Karna Cortex Vision Module](cortex_vision.md)** – A biomimetic, modular system inspired by human vision for general UI automation.
 
+---
 ## ✅ What We Currently Achieve (Factually)
 
 ### 🔍 **1. CNN-Based Visual Detection**
@@ -99,6 +102,38 @@ And with a LLM/VLM with reasoning and NLP capabilities, we *can* simulate a **ba
 
 
 ---
+
+## 🙏 Acknowledgments
+
+We gratefully acknowledge the use of components, inspiration, or architectural references from open-source projects, including:
+
+- **Microsoft’s [OmniParser](https://github.com/microsoft/OmniParser/tree/master)** – for its approach to document parsing and modular analysis of visual/textual structures in UI environments.  
+  Parts of our visual cortex system (e.g., patch parsing, object extraction) have been informed or inspired by its structure.
+
+We thank all open-source contributors and maintainers who made this research and experimentation possible.
+
+---
+
+---
+
+## ⚖️ Legal and Usage Clarity
+
+This project is experimental and intended for developers or researchers.  
+It is not a plug-and-play product and may require environment configuration or patch updates.
+
+We affirm:
+
+- We use **our own code**, built on **open-source libraries** (YOLO, ResNet, EasyOCR, etc.).
+- Our system interacts with **publicly accessible web UIs** like ChatGPT’s **as a user would**, through vision and keyboard/mouse simulation.
+- We do **not** reverse-engineer, scrape undocumented APIs, or redistribute proprietary models.
+- We do **not** impersonate, misuse, or misrepresent any affiliation with OpenAI.
+- All behavior follows public web access patterns, and no internal OpenAI code or infrastructure is involved.
+- This project is released under an open license and follows responsible OSS practices.
+
+> ℹ️ If OpenAI or any party requests content takedown or usage clarification, we will engage constructively and respectfully.
+
+---
+
 
 ## 📂 Related `cortex_vision` Module Components README Files
 
