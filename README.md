@@ -15,8 +15,10 @@ An intelligent, human-in-the-loop ,vision-based offline AI assistant capable of 
 
 Project Karna is an offline AI assistant that automates tasks on your computer by analyzing screen contents and executing actions. The system captures screenshots, processes visual information, understands context, and performs actions on your behalf.
 
-#### Read More:
-* **[Karna Vision-Based UI Agent: Current Capabilities and Next Steps](karna_cortex_current_status.md)** 
+> 🧭 **Want to understand where we stand today?**  
+> Check out the detailed status report and roadmap:  
+> **[Karna Vision-Based UI Agent: Current Capabilities and Next Steps](./karna-python-backend/inference/cortex_vision/karna_cortex_current_status.md)**
+
 
 ### Core Features
 
