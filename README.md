@@ -25,7 +25,8 @@ Project Karna is an offline AI assistant that automates tasks on your computer b
 
 ## 🛠️ Repository Structure
 
-> ⚡️ This project was built with significant help from AI coding agents like GitHub Copilot and Cursor. All system logic and design was directed by a human architect.
+> ⚡️ This project has been built with significant help from AI coding agents like GitHub Copilot and Cursor — as part of an ongoing experiment in their real-world capabilities.  
+> System architecture, strategy, and even parts of the design process have been developed through interactive collaboration with these agents, under human direction.
 
 ```
 offline-ai-assistant/
