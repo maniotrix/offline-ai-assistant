@@ -240,6 +240,76 @@ Cross-layer Processing
   - Vision-Language Model Integration
 ```
 
+---
+
+## **Karna Roadmap: Brain-Inspired Milestones (Functional, not Biological)**
+
+Here’s a **brain-inspired roadmap** for our system — not as a neuroscience copy, but as **functional goals mapped to brain-like regions**. Each layer/stage pushes your system closer to intelligent visual interaction without claiming cortical fidelity.
+
+### **1. V1-V2 Equivalent: Low-Level Vision**
+**Goal:** Robust spatial detection, edges, patches, basic text + shape recognition  
+- [x] Implement YOLO for object boxes (icons, buttons)  
+- [x] Use OCR for text (menu items, labels)  
+- [x] Patch-based ResNet matching for icons  
+- [ ] Add temporal pooling for short-term visual memory (e.g., tracking a moving dialog)
+
+---
+
+### **2. V4 Equivalent: Visual Attention & Feature Binding**
+**Goal:** Prioritized attention scanning, icon+text grouping  
+- [x] Heatmap-based patch scanning  
+- [x] Focus on visual salience (based on OCR/YOLO)  
+- [ ] Group icons with associated text (e.g., “Download” button = down arrow + label)  
+- [ ] Implement "foveation" — high-res patch at attention point, low-res elsewhere  
+
+---
+
+### **3. IT Cortex Equivalent: Object & Scene Semantics**
+**Goal:** Recognize familiar UI structures and recall prior experiences  
+- [x] ResNet patch matching for visual memory  
+- [ ] Icon co-occurrence memory: learn that certain icon combos imply intent (e.g., camera + mic = video call)  
+- [ ] Temporal icon prediction: remember what’s expected in a UI after clicking something  
+
+---
+
+### **4. Prefrontal Cortex Equivalent: Reasoning & Planning**
+**Goal:** Context-aware decision-making and tool execution  
+- [x] RAG for querying documentation / stored knowledge  
+- [x] LLM for interpreting scene and intent  
+- [x] TaskSchema + Executor for action planning  
+- [ ] Add memory state for decision history ("what did I try last time here?")  
+- [ ] Chain-of-thought visual reasoning (“I can’t click here until I accept T&C first”)
+
+---
+
+### **5. Motor Cortex Equivalent: Execution & Feedback**
+**Goal:** Controlled interaction + feedback integration  
+- [x] Mouse movement + click simulation  
+- [ ] Simulate drag, scroll, input  
+- [ ] Integrate visual feedback loop — “did my click cause expected change?”  
+- [ ] Learn retry strategies if task fails (like a baby trying again)
+
+---
+
+### **6. Hippocampus Equivalent: Spatial Memory & Scene Familiarity**
+**Goal:** Recognize same UI in different layouts/themes  
+- [x] Patch-based recognition  
+- [ ] Build compact scene embeddings  
+- [ ] Scene similarity matcher: “this is like Chrome settings but in dark mode”  
+- [ ] Save UI interaction trails (click history + visual snapshot combo)
+
+---
+
+### **7. Corpus Callosum Equivalent: Cross-Module Coordination**
+**Goal:** Smooth information sharing between modules  
+- [ ] Attention → Reasoning signal handoff (what should I click → why)  
+- [ ] Visual memory update post-click  
+- [ ] Sync RAG + visual context for questions like: “Where is the reset password link?”
+
+---
+
+This roadmap gives us a **biologically inspired growth plan** — not to replicate the brain, but to ask: “What would this feel like if it were part of a real intelligent agent?”
+
 ## Implementation Analysis: Alignment and Limitations
 
 ### Alignment with Biological Vision:

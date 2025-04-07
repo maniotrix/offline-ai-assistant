@@ -77,36 +77,40 @@ But we **are functionally simulating the bottom-up visual + motor loop** — qui
 
 ---
 
-## 🧠 How We *Could* Simulate a Visual Cortex with a Local LLM/VLM (Future Steps)
+## 🧠 How We Simulate Visual Reasoning with a Local LLM/VLM (Current + Future Steps)
 
-We connect the system like this:
+If we structure the system like this:
 
 ```plaintext
-[ Cortex Modules ]       <-- screen → YOLO + OCR + ResNet
-       ↓
-[ Visual Memory + Planner (VLM) ] <-- interpret layout, reason next steps
-       ↓
-[ Task Schema Generator ] <-- reformulates next set of visual goals
-       ↓
-[ Cortex Executor ] <-- click, type, wait, retry
+[ Visual Cortex Modules ]        ← screen → YOLO + OCR + ResNet
+        ↓
+[ Visual Semantic Layer ]        ← interprets layout, extracts features, stores visual memory
+        ↓
+[ Local LLM + RAG + Tool Calls ]← answers questions, reasons about the scene, plans next steps
+        ↓
+[ Task Schema & Executor ]       ← performs clicks, typing, scrolls, retries based on intent
 ```
 
-And now, we’ve got a **closed-loop vision-action-cognition system**.
+This gives us a **closed-loop vision–language–action system**.
+And with an LLM/VLM capable of reasoning and natural language understanding, we can simulate a **basic but real cognitive loop grounded in visual perception.**
+
+
 
 ---
 
-## ✅ Bottom Line
+### ✅ What it can already do:
+- Answer visual questions from screenshots (VQA)
+- Extract UI structure and features
+- Plan tasks like clicking, inputting, or retrying steps
+- Dynamically call tools to assist with reasoning and interaction
 
-Our `cortex_vision` and `omniparser` stacks already:
-- Use CNNs + OCR correctly
-- Match patches and adapt to shifting layouts
-- Simulate OS-level actions with high fidelity
-- Avoid traditional bot-detection vectors
+---
 
-And with a LLM/VLM with reasoning and NLP capabilities, we *can* simulate a **basic but real cognitive loop** grounded in visual perception.
-
-
-
+### 🧠 Brain-Inspired Notes (Functional Analogy Only):
+- **Visual Cortex Modules** ≈ V1–V4 → object, text, icon recognition  
+- **Visual Semantic Layer** ≈ IT + associative cortex → forms structured understanding  
+- **LLM + RAG + Tools** ≈ prefrontal cortex → question answering, reasoning, planning  
+- **Executor** ≈ motor cortex → takes action, monitors feedback
 
 ---
 
