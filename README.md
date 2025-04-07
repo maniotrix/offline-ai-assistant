@@ -198,7 +198,8 @@ Contributions are welcome! Please feel free to submit pull requests or open issu
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the [MIT License](./LICENSE).  
+It is provided “as-is” without warranty or guarantee of any kind.
 
 ## 🤖 AI-Assisted Development Acknowledgment
 
