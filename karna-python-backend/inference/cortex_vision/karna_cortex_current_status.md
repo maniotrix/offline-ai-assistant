@@ -97,35 +97,39 @@ And with a LLM/VLM with reasoning and NLP capabilities, we *can* simulate a **ba
 2. **[ChatGPT Web Interface Automation](chatgpt_test_README.md)** – A practical implementation of Karna’s core vision stack for automating the ChatGPT interface.
 3. **[Vision Based UI Automation](vision_based_ui-automation_demo.md)**
 
+Here’s your content reformatted with proper emojis and link formatting, keeping **all original content intact**:
+
+---
+
 ## 📂 Related `cortex_vision` Module Components README Files
 
-### Core Vision System
-1. [`cortex_vision.md`](cortex_vision.md) - Main module overview and biomimetic architecture
-2. [`karna_cortex_current_status.md`](karna_cortex_current_status.md) - Current capabilities and roadmap
+### 👁️ Attention and Focus
+3. **[ATTENTION_CONTROLLER_README.md](ATTENTION_CONTROLLER_README.md)** – Simulates human visual attention and focus  
+4. **[ATTENTION_CONTROLLER_EXTENDED_README.md](ATTENTION_CONTROLLER_EXTENDED_README.md)** – Extended attention control features  
 
-### Attention and Focus
-3. [`ATTENTION_CONTROLLER_README.md`](ATTENTION_CONTROLLER_README.md) - Simulates human visual attention and focus
-4. [`ATTENTION_CONTROLLER_EXTENDED_README.md`](ATTENTION_CONTROLLER_EXTENDED_README.md) - Extended attention control features
+### 🔄 Dynamic Area Detection
+5. **[README_DYNAMIC_AREA_DETECTOR.md](README_DYNAMIC_AREA_DETECTOR.md)** – Base dynamic area detection  
+6. **[README_UI_DYNAMIC_AREA_DETECTOR.md](README_UI_DYNAMIC_AREA_DETECTOR.md)** – UI-optimized dynamic area detection  
+7. **[ANCHOR_BASED_MAIN_AREA_README.md](ANCHOR_BASED_MAIN_AREA_README.md)** – Anchor-based main area detection  
 
-### Dynamic Area Detection
-5. [`README_DYNAMIC_AREA_DETECTOR.md`](README_DYNAMIC_AREA_DETECTOR.md) - Base dynamic area detection
-6. [`README_UI_DYNAMIC_AREA_DETECTOR.md`](README_UI_DYNAMIC_AREA_DETECTOR.md) - UI-optimized dynamic area detection
-7. [`ANCHOR_BASED_MAIN_AREA_README.md`](ANCHOR_BASED_MAIN_AREA_README.md) - Anchor-based main area detection
+### 🧩 Content Analysis
+8. **[README_content_detector.md](README_content_detector.md)** – Content-based segmentation system  
+9. **[README_image_similarity.md](README_image_similarity.md)** – Image/icon comparison using ResNet embeddings  
+10. **[README_IMAGE_DIFF_CREATOR.md](README_IMAGE_DIFF_CREATOR.md)** – Image difference detection  
 
-### Content Analysis
-8. [`README_content_detector.md`](README_content_detector.md) - Content-based segmentation system
-9. [`README_image_similarity.md`](README_image_similarity.md) - Image/icon comparison using ResNet embeddings
-10. [`README_IMAGE_DIFF_CREATOR.md`](README_IMAGE_DIFF_CREATOR.md) - Image difference detection
+### 📝 Task Automation
+11. **[task_schema_README.md](task_schema_README.md)** – Task schema framework  
+12. **[task_schema_generator_README.md](task_schema_generator_README.md)** – Task schema generation  
 
-### Task Automation
-11. [`task_schema_README.md`](task_schema_README.md) - Task schema framework
-12. [`task_schema_generator_README.md`](task_schema_generator_README.md) - Task schema generation
-
+---
 
 Each README provides detailed documentation for its respective component, including:
-- Component overview and architecture
-- Implementation details and usage examples
-- Configuration options and parameters
-- Integration guidelines and best practices
-- Performance considerations and limitations
-- Testing and debugging information
+- Component overview and architecture  
+- Implementation details and usage examples  
+- Configuration options and parameters  
+- Integration guidelines and best practices  
+- Performance considerations and limitations  
+- Testing and debugging information  
+
+---
+
