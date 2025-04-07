@@ -1,7 +1,10 @@
 # 🧠 Project Karna: Offline AI Assistant
 
 > ⚠️ **Development Status**  
-> This project is under **active development** and is currently in an **experimental phase**.  
+>> This project is under **active development** and is currently in an **experimental phase**. 
+>> 
+>>> Its current implementation is **tightly bound to the developer’s local system configuration**, with limited portability across environments.
+>
 > It is open-sourced for **transparency, exploration, and early feedback** — not yet intended for production use.  
 >
 > 🧠 Experienced developers are welcome to clone, explore, and run at their own risk.
@@ -199,12 +202,14 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 🤖 AI-Assisted Development Acknowledgment
 
-We gratefully acknowledge the use of **GitHub Copilot**, **Cursor**, and other coding agents throughout this project.
+We gratefully acknowledge the use of **GitHub Copilot**, **Cursor**, and other coding agents throughout this project — as part of an ongoing experiment in their real-world capabilities.
 
-- 🧱 **99% of the frontend code** was scaffolded or directly written with the help of AI coding agents.
-- ⚙️ **~80% of the backend code** was generated via AI assistance, including protobuf schemas, model scaffolds, and automation logic.
+- 🧱 **99% of the frontend code** was scaffolded or directly written with the help of AI coding agents.  
+- ⚙️ **~80% of the backend code** was generated via AI assistance, including protobuf schemas, model scaffolds, and automation logic.  
+- 📝 **100% of the documentation** (including this README and subcomponent , md files) was written with the assistance of AI Coding/Writing agents.
 
-> As the core developer, my primary role has been system design, high-level strategy, prompt engineering, architectural direction, and defining protocols and automation rules.
+> System architecture, strategy, and even parts of the design process have been developed through interactive collaboration with these agents — under the direction of a human developer.
 
-This project serves as a demonstration of how a human–AI development loop can rapidly build complex, modular, and intelligent systems.
+This project demonstrates how a human–AI feedback loop can produce complex, modular, and intelligent systems with minimal boilerplate burden and accelerated iteration speed.
+
 
