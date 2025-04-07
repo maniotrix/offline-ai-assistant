@@ -1,208 +1,167 @@
-# Karna Python Backend - WebSocket Implementation
+# Karna Python Backend
 
 ## Overview
-The backend implements a WebSocket server using FastAPI's WebSocket support for real-time bidirectional communication with the frontend. The implementation is primarily handled by the `WebSocketManager` class.
+The Karna Python Backend is a real-time assistant that powers the offline AI assistant. It provides a robust WebSocket server implementation using FastAPI for bidirectional communication with the frontend, along with computer vision, natural language processing, and automation capabilities.
 
 ## Architecture
 
-### WebSocket Manager
-Located in `api/websocket.py`, the WebSocketManager handles:
-- Connection management
-- Message broadcasting
-- Command processing
-- Status updates
+### Core Components
 
-### WebSocket Route
-The WebSocket endpoint is defined in `api/routes.py` and is accessible at `/ws`.
+#### WebSocket System
+Located in `api/websockets/`, the WebSocket system consists of:
 
-## Features
+- **WebSocketManager** - Main singleton that manages all WebSocket connections
+- **Specialized Channel Handlers**:
+  - `CommandWebSocketHandler` - Processes user commands
+  - `StatusWebSocketHandler` - Provides system status updates
+  - `ScreenCaptureWebSocketHandler` - Handles screen capture operations
+  - `VisionDetectWebSocketHandler` - Manages vision detection messages
+
+#### Services
+The backend implements several key services in the `services/` directory:
+
+- **Screen Capture Service** - Captures screen content for analysis
+- **Vision Detect Service** - Detects UI elements and visual features
+- **Task Execution Service** - Executes various automation tasks
+- **Status Service** - Reports on system health and component status
+
+#### Inference Modules
+Located in `inference/`, these modules handle AI model inference:
+
+- **Cortex Vision** - Advanced computer vision capabilities
+- **Ollama Module** - Integration with Ollama for language models
+- **YOLO** - Object detection for UI elements
+
+#### Robot Automation
+Located in `robot/`, these modules handle system automation:
+
+- **Base Robot** - Core automation functionality
+- **Chrome Robot** - Chrome-specific automation
+- **Windows Robot** - Windows-specific automation
+- **Robot Manager** - Coordinates different robot implementations
+
+## WebSocket API
+
+### Endpoints
+The WebSocket API exposes several specialized endpoints:
+
+- **Command Channel**: `/ws/command`
+  - For sending commands and receiving results
+
+- **Status Channel**: `/ws/status`
+  - For receiving system status updates
+
+- **Screen Capture Channel**: `/ws/screen_capture`
+  - For screen capture operations
+
+- **Vision Detect Channel**: `/ws/vision_detect`
+  - For vision detection operations
+
+### Message Protocol
+Messages use Protocol Buffers for efficient, type-safe serialization.
 
 ### Connection Management
-- Active connection tracking
+- Active connections are tracked per channel
 - Proper connection acceptance and cleanup
-- Automatic disconnection handling
+- Automatic disconnection handling with observer pattern
 
-### Message Handling
-Supports two main RPC methods:
-1. `execute_command`:
-   - Processes user commands
-   - Returns command execution results
-   - Handles errors gracefully
+## REST API Endpoints
 
-2. `get_status`:
-   - Returns current status of services:
-     - Vision service status
-     - Language service status
-     - Command processor status
+- **Health Check**: `GET /health`
+  - Basic health check endpoint
 
-### Broadcasting
-- Supports broadcasting messages to all connected clients
-- Used for status updates and notifications
+- **Generate System Bounding Boxes**: `POST /generate-system-bboxes`
+  - Creates system bounding box definitions for automation
 
-## Usage Example
+- **Active Clients**: `GET /ws/clients`
+  - Returns count of active WebSocket clients per channel
 
-```python
-# Client-side connection
-ws = await websocket.connect("ws://localhost:8000/ws")
+## Core Modules
 
-# Execute command
-await ws.send_json({
-    "method": "execute_command",
-    "params": {
-        "command": "your_command_here"
-    }
-})
+### Command Processing
+The command module processes user inputs and converts them to actionable instructions.
 
-# Get status
-await ws.send_json({
-    "method": "get_status",
-    "params": {}
-})
-```
+### Action Prediction
+Uses language models to predict intended actions from user commands.
 
-## Error Handling
-- All WebSocket operations are wrapped in try-except blocks
-- Errors are properly formatted and sent back to clients
-- Connection errors are handled gracefully
+### Action Execution
+Executes predicted actions through the robot automation system.
 
-## Integration Points
-- Integrates with Command Processor for command execution
-- Connects with Vision and Language services for status monitoring
-- Works alongside REST endpoints for hybrid communication
+### Vision Agent
+Provides visual understanding of the screen content.
 
 ## Frontend Integration Guidelines
 
 ### Connection Setup
-The frontend should use Socket.IO client to connect to the WebSocket server:
+Connect to specific WebSocket channels based on functionality needed:
 
 ```typescript
-import { io } from 'socket.io-client';
+const socket = new WebSocket('ws://localhost:8000/ws/command');
 
-const socket = io('ws://localhost:8000/ws', {
-    reconnection: true,
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 5000,
-    timeout: 20000,
-    transports: ['websocket']
-});
+socket.onopen = () => {
+  console.log('Connected to command channel');
+};
 
-// Connection event handlers
-socket.on('connect', () => {
-    console.log('Connected to WebSocket server');
-});
+socket.onclose = () => {
+  console.log('Disconnected from command channel');
+};
 
-socket.on('disconnect', () => {
-    console.log('Disconnected from WebSocket server');
-});
-
-socket.on('error', (error) => {
-    console.error('WebSocket error:', error);
-});
+socket.onerror = (error) => {
+  console.error('WebSocket error:', error);
+};
 ```
 
-### Message Structure
-Messages sent to the server should follow this format:
+### Sending Messages
+Messages should be serialized as Protocol Buffers before sending:
 
 ```typescript
-interface WebSocketMessage {
-    method: 'execute_command' | 'get_status';
-    params: {
-        command?: string;
-        [key: string]: any;
-    };
-}
+// Using protobuf.js or similar library
+const message = CommandMessage.create({
+  command: 'open chrome'
+});
+
+const binary = CommandMessage.encode(message).finish();
+socket.send(binary);
 ```
 
-### Handling Responses
-Server responses follow this structure:
+### Receiving Messages
+Responses will be binary Protocol Buffer messages:
 
 ```typescript
-interface WebSocketResponse {
-    type: 'command_response' | 'status_update' | 'error';
-    data: any;
-}
+socket.onmessage = (event) => {
+  // Decode the binary message using the appropriate protobuf definition
+  const response = CommandResponse.decode(new Uint8Array(event.data));
+  handleResponse(response);
+};
+```
 
-// Example response handlers
-socket.on('rpc_response', (response: WebSocketResponse) => {
-    switch (response.type) {
-        case 'command_response':
-            handleCommandResponse(response.data);
-            break;
-        case 'status_update':
-            handleStatusUpdate(response.data);
-            break;
-        case 'error':
-            handleError(response.data);
-            break;
-    }
-});
+### Multiple Channel Management
+For applications requiring multiple channels:
+
+```typescript
+class WebSocketChannels {
+  commandChannel: WebSocket;
+  statusChannel: WebSocket;
+  screenCaptureChannel: WebSocket;
+  
+  constructor() {
+    this.commandChannel = new WebSocket('ws://localhost:8000/ws/command');
+    this.statusChannel = new WebSocket('ws://localhost:8000/ws/status');
+    this.screenCaptureChannel = new WebSocket('ws://localhost:8000/ws/screen_capture');
+    
+    // Setup handlers for each channel
+    this.setupHandlers();
+  }
+  
+  setupHandlers() {
+    // Setup connection handlers for each channel
+  }
+}
 ```
 
 ### Best Practices
-1. Always implement reconnection logic
+1. Implement reconnection logic for WebSocket channels
 2. Handle connection errors gracefully
-3. Implement proper cleanup on component unmount:
-   ```typescript
-   useEffect(() => {
-       // Setup connection
-       return () => {
-           socket.disconnect();
-       };
-   }, []);
-   ```
-4. Use TypeScript interfaces for type safety
-5. Implement proper error boundaries for WebSocket errors
-
-### Example Component Integration
-
-```typescript
-import { useEffect, useState } from 'react';
-import { io, Socket } from 'socket.io-client';
-
-function WebSocketComponent() {
-    const [socket, setSocket] = useState<Socket | null>(null);
-    const [status, setStatus] = useState<any>(null);
-
-    useEffect(() => {
-        const newSocket = io('ws://localhost:8000/ws', {
-            transports: ['websocket']
-        });
-
-        newSocket.on('connect', () => {
-            console.log('Connected');
-            // Request initial status
-            newSocket.emit('rpc', {
-                method: 'get_status',
-                params: {}
-            });
-        });
-
-        newSocket.on('rpc_response', (response) => {
-            if (response.type === 'status_update') {
-                setStatus(response.data);
-            }
-        });
-
-        setSocket(newSocket);
-
-        return () => {
-            newSocket.disconnect();
-        };
-    }, []);
-
-    const sendCommand = (command: string) => {
-        if (socket) {
-            socket.emit('rpc', {
-                method: 'execute_command',
-                params: { command }
-            });
-        }
-    };
-
-    return (
-        <div>
-            {/* Your component UI */}
-        </div>
-    );
-}
+3. Clean up connections when components unmount
+4. Use typed interfaces for message handling
+5. Handle binary Protocol Buffer messages properly
