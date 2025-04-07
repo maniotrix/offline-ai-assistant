@@ -70,7 +70,7 @@ But we **are functionally simulating the bottom-up visual + motor loop** — qui
 
 ---
 
-## 🧠 How We *Could* Simulate a Visual Cortex with a Local LLM/VLM
+## 🧠 How We *Could* Simulate a Visual Cortex with a Local LLM/VLM (Future Steps)
 
 We connect the system like this:
 
@@ -108,7 +108,7 @@ And with a LLM/VLM with reasoning and NLP capabilities, we *can* simulate a **ba
 We gratefully acknowledge the use of components, inspiration, or architectural references from open-source projects, including:
 
 - **Microsoft’s [OmniParser](https://github.com/microsoft/OmniParser/tree/master)** – for its approach to document parsing and modular analysis of visual/textual structures in UI environments.  
-  Parts of our visual cortex system (e.g., patch parsing, object extraction) have been informed or inspired by its structure.
+  Parts of our visual cortex system (e.g., UI Object Detection, Feature Extraction) have been built upon or inspired by its structure.
 
 We thank all open-source contributors and maintainers who made this research and experimentation possible.
 
