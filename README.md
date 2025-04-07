@@ -5,7 +5,7 @@
 >> 
 >>> Its current implementation is **tightly bound to the developer’s local system configuration**, with limited portability across environments.
 >
-> It is open-sourced for **transparency, exploration, and early feedback** — not yet intended for production use.  
+> It is open-sourced for **transparency, exploration, and early feedback** — not yet intended for **production use or active collaboration**. 
 >
 > 🧠 Experienced developers are welcome to clone, explore, and run at their own risk.
 
