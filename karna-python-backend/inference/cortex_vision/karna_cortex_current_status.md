@@ -1,6 +1,7 @@
 # Karna Vision-Based UI Agent: Current Capabilities and Next Steps
 
 *A human-inspired, vision-first UI agent designed to perceive, act, and eventually reason on screen — just like we do.*
+
 *Once trained for an app, Karna can repeat that task across different devices, screen resolutions, and themes — without retraining. Its visual memory operates layout-agnostically, matching elements like a human would: by appearance, not code.*
 
 [🔍 ChatGPT LLM Interaction Demo – Vision-Based Automation (YouTube)](https://youtu.be/PpPhaN1ZoPE)
