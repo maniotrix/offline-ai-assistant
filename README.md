@@ -50,6 +50,28 @@ It can automate tasks on your computer by analyzing screen contents and executin
 - **📱 Cross-Device**: Knowledge and configurations can be transferred between devices
 - **🧠 Continuous Learning**: Improves through user feedback and interactions
 
+
+## 🧱 Why Karna Is Not Containerized
+
+We deliberately chose **not** to containerize Karna (e.g., via Docker or WSL) — and here's why:
+
+> Karna is designed to run on **consumer-grade Windows devices**, even older PCs with limited RAM or GPU power.  
+> Containerizing it would increase resource usage, reduce responsiveness, and introduce unnecessary complexity.
+
+### 🧠 Technical Reasons:
+
+- 🖥️ **Docker on Windows requires WSL2 or Hyper-V**, which consumes extra CPU and RAM  
+- ⚡ **GPU and screen access is slower inside containers**, especially for real-time vision tasks  
+- 🎯 **Karna uses native clipboard, mouse, keyboard, and screen APIs** — which are fragile or non-functional in isolated containers  
+- 🧩 **Vision-based agents need low-latency interaction** with actual OS layers, not virtual buffers
+
+> This system is built for **performance, precision, and portability** — not for cloud deployment or container orchestration.
+
+### ✅ Result:
+- Karna runs directly on Windows with zero virtualization overhead
+- Works on edge machines, dev laptops, or even 6–7 year old PCs
+- Requires no Docker, WSL, or setup beyond installing dependencies
+
 ## 🛠️ Repository Structure
 
 > ⚡️ This project has been built with significant help from AI coding agents like GitHub Copilot and Cursor — as part of an ongoing experiment in their real-world capabilities.  
