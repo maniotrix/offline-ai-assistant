@@ -4,7 +4,7 @@
 
 *Once trained for an app, Karna can repeat that task across different devices, screen resolutions, and themes — without retraining. Its visual memory operates layout-agnostically, matching elements like a human would: by appearance, not code.*
 
-[🔍 ChatGPT LLM Interaction Demo – Vision-Based Automation (YouTube)](https://youtu.be/PpPhaN1ZoPE)
+[🔍 Youtube Demo: Vision-only bot interacting with ChatGPT web](https://youtu.be/PpPhaN1ZoPE)
 
 
 
@@ -65,8 +65,8 @@ Unpredictable behaviors (CAPTCHAs, overlays, loading screens) **can and do break
 ---
 
 ### 📊 **Want to see it in action?**  
-* **[ChatGpt as LLM Demo on Youtube](https://youtu.be/PpPhaN1ZoPE)** 
-* **[ChatGpt as  VLM Demo on Youtube](https://youtu.be/0eRsXNdk_lE)**
+* **[Youtube Demo: Vision-only bot interacting with ChatGPT web](https://youtu.be/PpPhaN1ZoPE)** 
+* **[Demo of ChatGPT Web used as VLM Inference End-point from Python](https://youtu.be/0eRsXNdk_lE)**
 
 > Check out our step-by-step visualizations in  
 > * **[Execution Trace Visual Log](execution_visual_log.md)** — screenshots and match outputs from real test runs.

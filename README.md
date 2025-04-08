@@ -18,8 +18,8 @@ Project Karna is an offline AI assistant that automates tasks on your computer b
 > 🧭 **Want to understand where we stand today?**  
 > Check out the detailed status report and roadmap:  
 > **[Karna Vision-Based UI Agent: Current Capabilities and Next Steps](./karna-python-backend/inference/cortex_vision/karna_cortex_current_status.md)**
-> * **[ChatGpt as LLM Demo on Youtube](https://youtu.be/PpPhaN1ZoPE)** 
-> * **[ChatGpt as  VLM Demo on Youtube](https://youtu.be/0eRsXNdk_lE)** 
+> * **[Youtube Demo: Vision-only bot interacting with ChatGPT web](https://youtu.be/PpPhaN1ZoPE)** 
+> * **[Youtube Demo of ChatGPT Web used as VLM Inference End-point from Python](https://youtu.be/0eRsXNdk_lE)** 
 
 
 ### Core Features
