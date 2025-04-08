@@ -12,9 +12,7 @@
 An intelligent, human-in-the-loop ,vision-based offline AI assistant capable of understanding and automating tasks on a user's computer through screen capture and analysis.
 
 ## 🚀 Project Overview
-Here’s a clean, professional, and visionary **README intro section** you can use for Karna on GitHub, portfolio, or LinkedIn project descriptions:
 
----
 
 ### 🧠 Karna – Automate Less. Think More.
 
