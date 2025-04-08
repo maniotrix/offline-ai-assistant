@@ -12,8 +12,28 @@
 An intelligent, human-in-the-loop ,vision-based offline AI assistant capable of understanding and automating tasks on a user's computer through screen capture and analysis.
 
 ## 🚀 Project Overview
+Here’s a clean, professional, and visionary **README intro section** you can use for Karna on GitHub, portfolio, or LinkedIn project descriptions:
 
-Project Karna is an offline AI assistant that automates tasks on your computer by analyzing screen contents and executing actions. The system captures screenshots, processes visual information, understands context, and performs actions on your behalf.
+---
+
+### 🧠 Karna – Automate Less. Think More.
+
+Karna isn’t just a UI automation framework — it’s a long-term vision of personal intelligence.
+
+Today, Karna handles the legwork: navigating your desktop, automating repetitive actions, and bridging interfaces like ChatGPT Web with Python.  
+But it’s not built to *automate everything*. It’s built to understand *what not* to automate — and slowly let intelligence take over.
+
+Think of Karna as the early foundation of a **Mini Personal JARVIS** — with privacy and local-first design at its core.
+A system that doesn't just click buttons, but one day learns what you need, when you need it, and why.
+
+> ⚠️ **Work in Progress**  
+> This is not the destination — it's the roadmap.  
+> Right now: Visual automation + knowledge distillation.  
+> Long-term: A self-evolving assistant that thinks *with* you.
+
+---
+
+It automates tasks on your computer by analyzing screen contents and executing actions. The system captures screenshots, processes visual information, understands context, and performs actions on your behalf.
 
 > 🧭 **Want to understand where we stand today?**  
 > Check out the detailed status report and roadmap:  
