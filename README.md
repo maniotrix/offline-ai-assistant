@@ -79,6 +79,7 @@ We deliberately chose **not** to containerize Karna (e.g., via Docker or WSL) �
 
 ```
 offline-ai-assistant/
+├── data/* screencapture data for training system for tasks
 ├── karna-python-backend/        # Python backend for AI processing and automation
 │   ├── api/                     # API endpoints and handlers
 │   ├── asyncs/                  # Asynchronous task processing
