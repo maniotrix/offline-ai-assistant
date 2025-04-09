@@ -1,0 +1,47 @@
+[
+  {
+    "event_id": "b3990744-6b26-4c03-a701-4d89da0959a4",
+    "project_uuid": "youtube.com",
+    "command_uuid": "123e4567-e89b-12d3-a456-426614174000",
+    "timestamp": "2025-03-26T14:38:29.741611",
+    "description": "Mouse clicked at (1046, 166) with Button.left",
+    "screenshot_path": "data\\youtube.com\\123e4567-e89b-12d3-a456-426614174000\\screenshots\\raw\\screenshot_20250326_143829_417705.png",
+    "annotation_path": "data\\youtube.com\\123e4567-e89b-12d3-a456-426614174000\\screenshots\\annotated\\annotated_screenshot_20250326_143829_417705.png",
+    "mouse_x": 1046,
+    "mouse_y": 166,
+    "mouse_event_tool_tip": "Button.left",
+    "key_char": null,
+    "key_code": null,
+    "is_special_key": false
+  },
+  {
+    "event_id": "9ec1aeed-aaed-4ee9-aa7f-2f5f6398ee67",
+    "project_uuid": "youtube.com",
+    "command_uuid": "123e4567-e89b-12d3-a456-426614174000",
+    "timestamp": "2025-03-26T14:38:33.664320",
+    "description": "Mouse clicked at (1275, 156) with Button.left",
+    "screenshot_path": "data\\youtube.com\\123e4567-e89b-12d3-a456-426614174000\\screenshots\\raw\\screenshot_20250326_143833_369730.png",
+    "annotation_path": "data\\youtube.com\\123e4567-e89b-12d3-a456-426614174000\\screenshots\\annotated\\annotated_screenshot_20250326_143833_369730.png",
+    "mouse_x": 1275,
+    "mouse_y": 156,
+    "mouse_event_tool_tip": "Search",
+    "key_char": null,
+    "key_code": null,
+    "is_special_key": false
+  },
+  {
+    "event_id": "f92bd212-b132-4e30-a1bc-0a94ad394223",
+    "project_uuid": "youtube.com",
+    "command_uuid": "123e4567-e89b-12d3-a456-426614174000",
+    "timestamp": "2025-03-26T14:38:36.593025",
+    "description": "Mouse clicked at (1359, 0) with Button.left",
+    "screenshot_path": "data\\youtube.com\\123e4567-e89b-12d3-a456-426614174000\\screenshots\\raw\\screenshot_20250326_143836_279062.png",
+    "annotation_path": "data\\youtube.com\\123e4567-e89b-12d3-a456-426614174000\\screenshots\\annotated\\annotated_screenshot_20250326_143836_279062.png",
+    "mouse_x": 1359,
+    "mouse_y": 0,
+    "mouse_event_tool_tip": "Button.left",
+    "key_char": null,
+    "key_code": null,
+    "is_special_key": false
+  }
+]

@@ -1,0 +1,62 @@
+[
+  {
+    "event_id": "9b073de5-e2c1-468f-a1ce-b7d033d4be7b",
+    "project_uuid": "chatgpt",
+    "command_uuid": "883c46f5-c62d-4799-baa1-5e3b12f12e8c",
+    "timestamp": "2025-03-29T13:17:25.761291",
+    "description": "Mouse clicked at (623, 516) with Button.left",
+    "screenshot_path": "data\\chatgpt\\883c46f5-c62d-4799-baa1-5e3b12f12e8c\\screenshots\\raw\\screenshot_20250329_131725_617204.png",
+    "annotation_path": "data\\chatgpt\\883c46f5-c62d-4799-baa1-5e3b12f12e8c\\screenshots\\annotated\\annotated_screenshot_20250329_131725_617204.png",
+    "mouse_x": 623,
+    "mouse_y": 516,
+    "mouse_event_tool_tip": "Button.left",
+    "key_char": null,
+    "key_code": null,
+    "is_special_key": false
+  },
+  {
+    "event_id": "2065c037-ad71-41ff-b4b7-72ad3cfbc481",
+    "project_uuid": "chatgpt",
+    "command_uuid": "883c46f5-c62d-4799-baa1-5e3b12f12e8c",
+    "timestamp": "2025-03-29T13:17:29.333759",
+    "description": "Mouse clicked at (1320, 558) with Button.left",
+    "screenshot_path": "data\\chatgpt\\883c46f5-c62d-4799-baa1-5e3b12f12e8c\\screenshots\\raw\\screenshot_20250329_131729_196616.png",
+    "annotation_path": "data\\chatgpt\\883c46f5-c62d-4799-baa1-5e3b12f12e8c\\screenshots\\annotated\\annotated_screenshot_20250329_131729_196616.png",
+    "mouse_x": 1320,
+    "mouse_y": 558,
+    "mouse_event_tool_tip": "Button.left",
+    "key_char": null,
+    "key_code": null,
+    "is_special_key": false
+  },
+  {
+    "event_id": "bf685989-b84d-40ba-8287-5770a19a5f0c",
+    "project_uuid": "chatgpt",
+    "command_uuid": "883c46f5-c62d-4799-baa1-5e3b12f12e8c",
+    "timestamp": "2025-03-29T13:17:57.451235",
+    "description": "Mouse clicked at (956, 500) with Button.left",
+    "screenshot_path": "data\\chatgpt\\883c46f5-c62d-4799-baa1-5e3b12f12e8c\\screenshots\\raw\\screenshot_20250329_131757_316854.png",
+    "annotation_path": "data\\chatgpt\\883c46f5-c62d-4799-baa1-5e3b12f12e8c\\screenshots\\annotated\\annotated_screenshot_20250329_131757_316854.png",
+    "mouse_x": 956,
+    "mouse_y": 500,
+    "mouse_event_tool_tip": "Button.left",
+    "key_char": null,
+    "key_code": null,
+    "is_special_key": false
+  },
+  {
+    "event_id": "2d269a28-6aac-4484-84e7-18e7cf719987",
+    "project_uuid": "chatgpt",
+    "command_uuid": "883c46f5-c62d-4799-baa1-5e3b12f12e8c",
+    "timestamp": "2025-03-29T13:18:01.719731",
+    "description": "Mouse clicked at (590, 264) with Button.left",
+    "screenshot_path": "data\\chatgpt\\883c46f5-c62d-4799-baa1-5e3b12f12e8c\\screenshots\\raw\\screenshot_20250329_131801_573080.png",
+    "annotation_path": "data\\chatgpt\\883c46f5-c62d-4799-baa1-5e3b12f12e8c\\screenshots\\annotated\\annotated_screenshot_20250329_131801_573080.png",
+    "mouse_x": 590,
+    "mouse_y": 264,
+    "mouse_event_tool_tip": "Button.left",
+    "key_char": null,
+    "key_code": null,
+    "is_special_key": false
+  }
+]

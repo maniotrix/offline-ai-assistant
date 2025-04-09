@@ -24,7 +24,7 @@ wheels/
 venv/
 env/
 ENV/
-data/
+# data/
 
 # IDE
 .idea/
@@ -34,10 +34,10 @@ data/
 .DS_Store
 
 # Project specific
-data/screenshots/*
-data/annotations/*
-!data/screenshots/.gitkeep
-!data/annotations/.gitkeep
+# data/screenshots/*
+# data/annotations/*
+# !data/screenshots/.gitkeep
+# !data/annotations/.gitkeep
 # models/vision/*/*.pth
 # models/language/*/*.pth
 # models/*.pth
